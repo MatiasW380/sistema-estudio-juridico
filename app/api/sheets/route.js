@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-import credentials from '@/../google-service-account';
+// Importación directa desde la carpeta lib
+import credentials from '@/lib/google-service-account'; 
 
 export async function GET() {
   try {
@@ -18,6 +19,7 @@ export async function GET() {
 
     return NextResponse.json({ data: response.data.values });
   } catch (error) {
+    console.error("Error en conexión:", error);
     return NextResponse.json({ error: "Fallo en autenticación", detalle: error.message }, { status: 500 });
   }
 }
