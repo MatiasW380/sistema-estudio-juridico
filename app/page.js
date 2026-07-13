@@ -1,14 +1,11 @@
 // Ruta exacta en GitHub: app/page.js
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
-import { unstable_noStore as noStore } from 'next/cache';
 
 export default function DashboardClientes() {
-  try {
-    noStore();
-  } catch (e) {}
-
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
@@ -17,10 +14,11 @@ export default function DashboardClientes() {
     async function cargarClientes() {
       try {
         const respuesta = await fetch('/api/sheets');
-        if (!respuesta.ok) throw new Error('Error en API');
+        if (!respuesta.ok) throw new Error('API responde con error técnico');
         const datos = await respuesta.json();
-        setClientes(datos);
+        setClientes(Array.isArray(datos) ? datos : []);
       } catch (err) {
+        console.warn("Cargando datos locales debido a error de credenciales.");
         setClientes([
           { id: "1", nombre: "Juan Carlos Pérez", dni: "24.532.112", telefono: "3516554433", email: "jcperez@gmail.com", causa: "Pérez c/ EPEC - Ordinario", estado: "En Trámite" },
           { id: "2", nombre: "María Laura Martínez", dni: "32.114.982", telefono: "3541223344", email: "marialauramartinez@hotmail.com", causa: "Martínez c/ Tarjeta Naranja - Defensa Consumidor", estado: "Audiencia" }
@@ -33,13 +31,12 @@ export default function DashboardClientes() {
   }, []);
 
   const clientesFiltrados = clientes.filter(cliente =>
-    cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    cliente.causa.toLowerCase().includes(busqueda.toLowerCase())
+    (cliente.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) ||
+    (cliente.causa || '').toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', color: '#1e293b', fontFamily: 'sans-serif', margin: 0 }}>
-      {/* Barra de Navegación Superior */}
       <header style={{ backgroundColor: '#0f172a', color: 'white', padding: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -53,13 +50,11 @@ export default function DashboardClientes() {
         </div>
       </header>
 
-      {/* Cuerpo del Panel */}
-      <main style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 16px', display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+      <main style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 16px' }}>
         <section style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
           <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#0f172a' }}>Fichas de Clientes y Expedientes</h2>
           <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#64748b' }}>Búsqueda y estado de causas vigentes en Córdoba.</p>
 
-          {/* Buscador */}
           <div style={{ marginBottom: '24px' }}>
             <input
               type="text"
@@ -70,7 +65,6 @@ export default function DashboardClientes() {
             />
           </div>
 
-          {/* Tabla de Datos */}
           {cargando ? (
             <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b', fontSize: '14px' }}>Cargando base de datos jurídica...</div>
           ) : (
