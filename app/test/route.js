@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return new Response('¡Hola desde Vercel! El enrutador funciona de primera.', {
+  return new Response('¡Hola desde Vercel! La ruta funciona perfectamente.', {
     status: 200,
     headers: { 'Content-Type': 'text/plain' },
   });
