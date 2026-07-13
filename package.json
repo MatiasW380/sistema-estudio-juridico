@@ -9,11 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.11.0",
+    "googleapis": "^134.0.0",
     "next": "14.2.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "next-auth": "^4.24.7",
-    "googleapis": "^137.2.0",
-    "@google/generative-ai": "^0.11.1"
+    "react-dom": "^18.3.1"
   }
 }
