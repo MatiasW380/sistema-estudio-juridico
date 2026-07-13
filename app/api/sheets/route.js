@@ -1,36 +1,48 @@
-// Ruta: app/api/drive/route.js
+// Ruta: app/api/sheets/route.js
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const folderId = searchParams.get('folderId');
-
-  if (!folderId) {
-    return NextResponse.json({ error: "Falta el ID de la carpeta" }, { status: 400 });
-  }
-
   try {
-    // Usamos directamente las variables de entorno configuradas en Vercel
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_CLIENT_EMAIL,
         private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       },
-      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      scopes: ['https://www.googleapis.com/auth/sheets.readonly'],
     });
 
-    const drive = google.drive({ version: 'v3', auth });
+    const sheets = google.sheets({ version: 'v4', auth });
     
-    const res = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false`,
-      fields: 'files(id, name, mimeType, webViewLink)',
-      orderBy: 'createdTime desc',
+    // ID de tu planilla (lo extraje de tu contexto)
+    const SPREADSHEET_ID = '17YFhMlCPE8AkXJG4Pw6'; 
+    const RANGE = 'Clientes_y_Expedientes!A2:G100'; // Ajustado al nombre de tu pestaña
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: RANGE,
     });
 
-    return NextResponse.json(res.data.files);
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
+    // Mapeamos las filas a un formato de objeto para usar en el frontend
+    const clientes = rows.map((row) => ({
+      id: row[0],
+      nombre: row[1],
+      telefono: row[2],
+      nro_sac: row[3],
+      caratula: row[4],
+      fuero: row[5],
+      folderId: row[6], // Este es el ID crítico para conectar con Drive
+    }));
+
+    return NextResponse.json({ data: clientes });
   } catch (error) {
-    console.error("Error en Drive API:", error);
-    return NextResponse.json({ error: "Error al conectar con Drive" }, { status: 500 });
+    console.error("Error al leer Sheets:", error);
+    return NextResponse.json({ error: "Error al conectar con la base de datos" }, { status: 500 });
   }
 }
