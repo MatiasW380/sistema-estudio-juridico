@@ -4,38 +4,46 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   try {
-    // 1. Verificación rápida de variables de entorno
-    if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      return NextResponse.json({ error: "Faltan variables: Verifica GOOGLE_CLIENT_EMAIL y GOOGLE_PRIVATE_KEY en Vercel" }, { status: 500 });
-    }
+    // Leemos la variable unificada que ya tienes en Vercel
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
     const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      },
+      credentials,
       scopes: ['https://www.googleapis.com/auth/sheets.readonly'],
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
     
-    // ID de la planilla
+    // ID de la planilla que tenemos en contexto
     const SPREADSHEET_ID = '17YFhMlCPE8AkXJG4Pw6'; 
-    
-    // Intentamos obtener solo el título para probar la conexión
-    const response = await sheets.spreadsheets.get({
+    const RANGE = 'Clientes_y_Expedientes!A2:G100'; 
+
+    const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
+      range: RANGE,
     });
 
-    return NextResponse.json({ 
-        message: "Conexión exitosa", 
-        title: response.data.properties.title 
-    });
+    const rows = response.data.values;
 
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
+    const clientes = rows.map((row) => ({
+      id: row[0],
+      nombre: row[1],
+      telefono: row[2],
+      nro_sac: row[3],
+      caratula: row[4],
+      fuero: row[5],
+      folderId: row[6],
+    }));
+
+    return NextResponse.json({ data: clientes });
   } catch (error) {
-    // Esto nos dirá el error real en el navegador
+    console.error("Error crítico en Sheets:", error);
     return NextResponse.json({ 
-        error: "Error de conexión", 
+        error: "Error al conectar", 
         detalle: error.message 
     }, { status: 500 });
   }
