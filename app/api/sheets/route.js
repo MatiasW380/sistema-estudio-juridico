@@ -1,4 +1,7 @@
 // app/api/sheets/route.js
+// 🔥 ¡AGREGA ESTA LÍNEA AL PRINCIPIO!
+export const dynamic = 'force-dynamic';
+
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 import credentials from '../../../lib/google-service-account.js';
