@@ -3,16 +3,18 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Lectura directa de variables
+    // Leemos las variables individuales
     const client_email = process.env.GOOGLE_CLIENT_EMAIL;
-    const private_key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const private_key = process.env.GOOGLE_PRIVATE_KEY ? process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n') : null;
     const project_id = process.env.GOOGLE_PROJECT_ID;
 
     if (!client_email || !private_key || !project_id) {
-      return NextResponse.json({ error: "Faltan variables de entorno individuales" }, { status: 500 });
+      return NextResponse.json({ 
+        error: "Faltan variables de entorno", 
+        debug: { hasEmail: !!client_email, hasKey: !!private_key, hasProject: !!project_id } 
+      }, { status: 500 });
     }
 
-    // Autenticación con credenciales separadas
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email,
@@ -32,7 +34,6 @@ export async function GET() {
     return NextResponse.json({ data: response.data.values });
 
   } catch (error) {
-    console.error("Error detallado:", error);
     return NextResponse.json({ error: "Fallo en autenticación", detalle: error.message }, { status: 500 });
   }
 }
