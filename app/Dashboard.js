@@ -1,48 +1,39 @@
+// Ruta: app/Dashboard.js
 'use client';
 import React, { useState } from 'react';
 
-export default function DashboardGeneral() {
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+export default function FichaCliente({ cliente }) {
+  const [archivos, setArchivos] = useState([]);
 
-  // Simulación de la estructura que vamos a conectar
-  const clientes = [
-    { id: 1, nombre: "Juan Carlos Pérez", causa: "Pérez c/ EPEC", estado: "En Trámite" },
-    { id: 2, nombre: "María Laura Martínez", causa: "Martínez c/ Naranja", estado: "Audiencia" }
-  ];
+  // Carga los documentos del cliente desde Drive al abrir la ficha
+  const cargarExpediente = async (folderId) => {
+    const res = await fetch(`/api/drive?folderId=${folderId}`);
+    const data = await res.json();
+    setArchivos(data);
+  };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f0f4f8' }}>
-      {/* Sidebar - Gestión de Módulos */}
-      <aside style={{ width: '260px', backgroundColor: '#0f172a', color: '#fff', padding: '20px' }}>
-        <h2 style={{ fontSize: '18px', color: '#38bdf8' }}>Estudio Jurídico</h2>
-        {['Clientes', 'Agenda', 'Jurisprudencia', 'IA Escritor'].map(m => (
-          <div style={{ padding: '15px 0', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>{m}</div>
-        ))}
-      </aside>
+    <div style={{ padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+      <h2>Expediente: {cliente.nombre}</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
+        
+        {/* Panel Izquierdo: Datos */}
+        <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px' }}>
+          <p><strong>DNI:</strong> {cliente.dni}</p>
+          <p><strong>Causa:</strong> {cliente.causa}</p>
+          <button onClick={() => cargarExpediente(cliente.id_carpeta)}>Ver Expediente Completo</button>
+        </div>
 
-      {/* Contenido - Vista de Fichas */}
-      <main style={{ flex: 1, padding: '40px' }}>
-        {!clienteSeleccionado ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-            {clientes.map(c => (
-              <div onClick={() => setClienteSeleccionado(c)} style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
-                <h3 style={{ margin: 0 }}>{c.nombre}</h3>
-                <p style={{ color: '#64748b' }}>{c.causa}</p>
-                <span style={{ color: '#0369a1', fontSize: '12px', fontWeight: 'bold' }}>{c.estado}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ background: 'white', padding: '40px', borderRadius: '12px' }}>
-            <button onClick={() => setClienteSeleccionado(null)}>← Volver al listado</button>
-            <h1>Expediente: {clienteSeleccionado.nombre}</h1>
-            {/* AQUÍ VINCULAREMOS EL VISOR DE PDFS DE DRIVE */}
-            <div style={{ border: '2px dashed #cbd5e1', padding: '40px', textAlign: 'center' }}>
-              Arrastra aquí los PDF del expediente
-            </div>
-          </div>
-        )}
-      </main>
+        {/* Panel Derecho: Documentos */}
+        <div style={{ borderLeft: '2px solid #e2e8f0', paddingLeft: '20px' }}>
+          <h3>Documentos en Drive</h3>
+          {archivos.map(f => (
+            <a key={f.id} href={f.webViewLink} target="_blank" style={{ display: 'block', margin: '10px 0' }}>
+              📄 {f.name}
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
