@@ -1,67 +1,35 @@
-// Ruta exacta en GitHub: app/api/sheets/route.js
+// Ruta: app/api/sheets/route.js
 export const dynamic = 'force-dynamic';
-
-import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    let privateKey = process.env.GOOGLE_PRIVATE_KEY || process.env.GOOGLE_CLIENT_SECRET || '';
+    const spreadsheetId = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
+    const apiKey = process.env.GOOGLE_API_KEY;
+    // Nombre corregido: Clientes_y_Expedientes
+    const range = 'Clientes_y_Expedientes!A2:H100'; 
+    
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+    
+    const respuesta = await fetch(url);
+    const datos = await respuesta.json();
 
-    // Si la clave viene con comillas extras o mal formateada desde Vercel, la limpiamos
-    if (privateKey) {
-      privateKey = privateKey.replace(/\\n/g, '\n').trim();
-      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-        privateKey = privateKey.substring(1, privateKey.length - 1);
-      }
-    }
+    if (!datos.values) return NextResponse.json([]);
 
-    // Si la llave no tiene el formato correcto o está vacía, evitamos que OpenSSL rompa el build
-    if (!clientEmail || !privateKey || !privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-      console.warn("Llave de Google ausente o con formato inválido. Entrando en modo simulación.");
-      return NextResponse.json([
-        { id: "1", nombre: "Juan Carlos Pérez", dni: "24.532.112", telefono: "3516554433", email: "jcperez@gmail.com", causa: "Pérez c/ EPEC - Ordinario", estado: "En Trámite" },
-        { id: "2", nombre: "María Laura Martínez", dni: "32.114.982", telefono: "3541223344", email: "marialauramartinez@hotmail.com", causa: "Martínez c/ Tarjeta Naranja - Defensa Consumidor", estado: "Audiencia" }
-      ]);
-    }
-
-    const auth = new google.auth.JWT(
-      clientEmail,
-      null,
-      privateKey,
-      ['https://www.googleapis.com/auth/spreadsheets.readonly']
-    );
-
-    const sheets = google.sheets({ version: 'v4', auth });
-    const spreadsheetId = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc'; 
-
-    const respuesta = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'Clientes!A2:G100',
-    });
-
-    const filas = respuesta.data.values;
-    if (!filas || filas.length === 0) return NextResponse.json([]);
-
-    const clientes = filas.map((fila, indice) => ({
-      id: fila[0] || String(indice + 1),
-      nombre: fila[1] || 'Sin nombre',
-      dni: fila[2] || '-',
-      telefono: fila[3] || '-',
-      email: fila[4] || '-',
-      causa: fila[5] || 'Sin causa asignada',
-      estado: fila[6] || 'En Trámite',
+    // Mapeo corregido según las columnas de tu Excel
+    const clientes = datos.values.map((fila, index) => ({
+      id: index + 1,
+      nombre: fila[1] || "Sin nombre", // Columna B: Nombre
+      dni: fila[2] || "-",            // Columna C: DNI
+      telefono: fila[3] || "-",       // Columna D: Teléfono
+      email: fila[4] || "-",          // Columna E: Email
+      causa: fila[5] || "Sin causa",  // Columna F: Causa
+      estado: fila[6] || "En Trámite" // Columna G: Estado
     }));
 
     return NextResponse.json(clientes);
 
   } catch (error) {
-    console.error('Error controlado en la API:', error.message);
-    // Retorno seguro para que la app no muestre un 404 en pantalla externa
-    return NextResponse.json([
-      { id: "1", nombre: "Juan Carlos Pérez (Modo Seguro)", dni: "24.532.112", telefono: "3516554433", email: "jcperez@gmail.com", causa: "Pérez c/ EPEC - Ordinario", estado: "En Trámite" },
-      { id: "2", nombre: "María Laura Martínez (Modo Seguro)", dni: "32.114.982", telefono: "3541223344", email: "marialauramartinez@hotmail.com", causa: "Martínez c/ Tarjeta Naranja - Defensa Consumidor", estado: "Audiencia" }
-    ]);
+    return NextResponse.json({ error: "Error al leer" }, { status: 500 });
   }
 }
