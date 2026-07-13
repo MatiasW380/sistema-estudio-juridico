@@ -1,17 +1,22 @@
 // Ruta exacta en GitHub: src/app/page.js
 'use client';
 
-// Forzamos el modo dinámico para que Vercel no rompa la página al compilar
-export const dynamic = 'force-dynamic'; 
-
 import React, { useState, useEffect } from 'react';
+// Importamos la herramienta que obliga a que la página no sea estática
+import { unstable_noStore as noStore } from 'next/cache';
 
 export default function DashboardClientes() {
+  // Ejecutamos la función inmediatamente al renderizar para romper el modo estático
+  try {
+    noStore();
+  } catch (e) {
+    // Evitamos problemas en el entorno local
+  }
+
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
 
-  // Intentamos leer de Google Sheets; si falla o está vacío, usa datos de simulación local
   useEffect(() => {
     async function cargarClientes() {
       try {
@@ -22,7 +27,7 @@ export default function DashboardClientes() {
         const datos = await respuesta.json();
         setClientes(datos);
       } catch (err) {
-        // Datos de muestra de Córdoba para que la pantalla no aparezca rota o vacía en el primer test
+        // Datos de simulación local para Córdoba
         setClientes([
           { id: "1", nombre: "Juan Carlos Pérez", dni: "24.532.112", telefono: "3516554433", email: "jcperez@gmail.com", causa: "Pérez c/ EPEC - Ordinario", estado: "En Trámite" },
           { id: "2", nombre: "María Laura Martínez", dni: "32.114.982", telefono: "3541223344", email: "marialauramartinez@hotmail.com", causa: "Martínez c/ Tarjeta Naranja - Defensa Consumidor", estado: "Audiencia" }
@@ -35,7 +40,6 @@ export default function DashboardClientes() {
     cargarClientes();
   }, []);
 
-  // Filtrador del buscador para expedientes o nombres
   const clientesFiltrados = clientes.filter(cliente =>
     cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     cliente.causa.toLowerCase().includes(busqueda.toLowerCase())
@@ -77,7 +81,7 @@ export default function DashboardClientes() {
           </button>
         </aside>
 
-        {/* Contenido Principal: Listado de Clientes */}
+        {/* Contenido Principal */}
         <section className="md:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -97,7 +101,7 @@ export default function DashboardClientes() {
             />
           </div>
 
-          {/* Tabla de Datos */}
+          {/* Tabla */}
           {cargando ? (
             <div className="text-center py-12 text-slate-500 text-sm">Cargando base de datos jurídica...</div>
           ) : (
