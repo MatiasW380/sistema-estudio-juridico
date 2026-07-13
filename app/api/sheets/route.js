@@ -1,11 +1,16 @@
-// Ruta: app/api/sheets/route.js
+// app/api/sheets/route.js
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   try {
-    // Leemos la variable unificada que ya tienes en Vercel
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    // Lectura directa desde el process.env para asegurar que se tome el valor
+    const credentialsString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    if (!credentialsString) {
+      return NextResponse.json({ error: "No se encuentra GOOGLE_SERVICE_ACCOUNT_JSON" }, { status: 500 });
+    }
+
+    const credentials = JSON.parse(credentialsString);
 
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -14,7 +19,7 @@ export async function GET(request) {
 
     const sheets = google.sheets({ version: 'v4', auth });
     
-    // ID de la planilla que tenemos en contexto
+    // ID extraído de tu contexto
     const SPREADSHEET_ID = '17YFhMlCPE8AkXJG4Pw6'; 
     const RANGE = 'Clientes_y_Expedientes!A2:G100'; 
 
@@ -23,28 +28,8 @@ export async function GET(request) {
       range: RANGE,
     });
 
-    const rows = response.data.values;
-
-    if (!rows || rows.length === 0) {
-      return NextResponse.json({ data: [] });
-    }
-
-    const clientes = rows.map((row) => ({
-      id: row[0],
-      nombre: row[1],
-      telefono: row[2],
-      nro_sac: row[3],
-      caratula: row[4],
-      fuero: row[5],
-      folderId: row[6],
-    }));
-
-    return NextResponse.json({ data: clientes });
+    return NextResponse.json({ data: response.data.values || [] });
   } catch (error) {
-    console.error("Error crítico en Sheets:", error);
-    return NextResponse.json({ 
-        error: "Error al conectar", 
-        detalle: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
