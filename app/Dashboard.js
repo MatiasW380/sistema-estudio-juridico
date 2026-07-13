@@ -1,5 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+// En app/Dashboard.js
+import ClienteCard from '../components/ClienteCard';
+
 
 const MODULOS = {
   Clientes: 'Clientes_y_Expedientes',
