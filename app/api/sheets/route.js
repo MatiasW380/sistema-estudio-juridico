@@ -1,19 +1,27 @@
+// Ruta: app/api/drive/route.js
+import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const pestana = searchParams.get('range') || 'Clientes_y_Expedientes';
-  
-  try {
-    const spreadsheetId = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
-    const apiKey = process.env.GOOGLE_API_KEY;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${pestana}!A1:Z100?key=${apiKey}`;
-    
-    const respuesta = await fetch(url);
-    const datos = await respuesta.json();
+  const folderId = searchParams.get('folderId'); // El ID que viene de tu BD
 
-    return NextResponse.json(datos.values || []);
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+      scopes: ['https://www.googleapis.com/auth/drive.readonly']
+    });
+
+    const drive = google.drive({ version: 'v3', auth });
+    
+    // Busca los archivos dentro de la carpeta específica del cliente
+    const res = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'files(id, name, mimeType, webViewLink)',
+    });
+
+    return NextResponse.json(res.data.files);
   } catch (error) {
-    return NextResponse.json({ error: "Error al leer datos" }, { status: 500 });
+    return NextResponse.json({ error: "No se pudo conectar a Drive" }, { status: 500 });
   }
 }
