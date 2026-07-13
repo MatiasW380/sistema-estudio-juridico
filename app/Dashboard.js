@@ -1,55 +1,47 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-
-const MODULOS = {
-  Clientes: 'Clientes_y_Expedientes',
-  Consultas: 'Historia_Consultas',
-  Finanzas: 'Finanzas',
-  Agenda: 'Agenda_Plazos',
-  Biblioteca: 'Biblioteca_Leyes',
-  Jurisprudencia: 'Doctrina_Jurisprudencia',
-  Asistente: 'Asistente_IA'
-};
+import React, { useState } from 'react';
 
 export default function DashboardGeneral() {
-  const [seccion, setSeccion] = useState('Clientes');
-  const [datos, setDatos] = useState([]);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
 
-  useEffect(() => {
-    async function fetchDatos() {
-      const res = await fetch(`/api/sheets?range=${MODULOS[seccion]}`);
-      const json = await res.json();
-      setDatos(json);
-    }
-    fetchDatos();
-  }, [seccion]);
+  // Simulación de la estructura que vamos a conectar
+  const clientes = [
+    { id: 1, nombre: "Juan Carlos Pérez", causa: "Pérez c/ EPEC", estado: "En Trámite" },
+    { id: 2, nombre: "María Laura Martínez", causa: "Martínez c/ Naranja", estado: "Audiencia" }
+  ];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#1e293b', fontFamily: 'Inter, sans-serif' }}>
-      <aside style={{ width: '260px', backgroundColor: '#0f172a', color: '#e2e8f0', padding: '20px' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '40px', color: '#7dd3fc', textAlign: 'center' }}>SISTEMA JURÍDICO</h2>
-        {Object.keys(MODULOS).map(m => (
-          <button key={m} onClick={() => setSeccion(m)} style={{ 
-            display: 'block', width: '100%', padding: '14px', marginBottom: '5px',
-            background: seccion === m ? '#1e293b' : 'transparent', color: seccion === m ? '#7dd3fc' : '#94a3b8',
-            border: 'none', textAlign: 'left', cursor: 'pointer', borderRadius: '6px' 
-          }}>
-            {m}
-          </button>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f0f4f8' }}>
+      {/* Sidebar - Gestión de Módulos */}
+      <aside style={{ width: '260px', backgroundColor: '#0f172a', color: '#fff', padding: '20px' }}>
+        <h2 style={{ fontSize: '18px', color: '#38bdf8' }}>Estudio Jurídico</h2>
+        {['Clientes', 'Agenda', 'Jurisprudencia', 'IA Escritor'].map(m => (
+          <div style={{ padding: '15px 0', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>{m}</div>
         ))}
       </aside>
 
+      {/* Contenido - Vista de Fichas */}
       <main style={{ flex: 1, padding: '40px' }}>
-        <header style={{ marginBottom: '30px', borderBottom: '2px solid #e2e8f0', paddingBottom: '20px' }}>
-          <h1 style={{ color: '#1e293b', margin: 0 }}>{seccion}</h1>
-        </header>
-        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          {datos.length > 0 ? (
-            <pre style={{ overflowX: 'auto' }}>{JSON.stringify(datos, null, 2)}</pre>
-          ) : (
-            <p>No hay datos registrados en {seccion}.</p>
-          )}
-        </div>
+        {!clienteSeleccionado ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            {clientes.map(c => (
+              <div onClick={() => setClienteSeleccionado(c)} style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                <h3 style={{ margin: 0 }}>{c.nombre}</h3>
+                <p style={{ color: '#64748b' }}>{c.causa}</p>
+                <span style={{ color: '#0369a1', fontSize: '12px', fontWeight: 'bold' }}>{c.estado}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ background: 'white', padding: '40px', borderRadius: '12px' }}>
+            <button onClick={() => setClienteSeleccionado(null)}>← Volver al listado</button>
+            <h1>Expediente: {clienteSeleccionado.nombre}</h1>
+            {/* AQUÍ VINCULAREMOS EL VISOR DE PDFS DE DRIVE */}
+            <div style={{ border: '2px dashed #cbd5e1', padding: '40px', textAlign: 'center' }}>
+              Arrastra aquí los PDF del expediente
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
