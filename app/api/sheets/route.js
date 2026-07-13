@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-import credentials from '../../../google-service-account'; // Ajusta la ruta si es necesario
+import credentials from '@/../google-service-account';
 
 export async function GET() {
   try {
