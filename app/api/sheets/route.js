@@ -1,16 +1,9 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
+import credentials from '../../../google-service-account'; // Ajusta la ruta si es necesario
 
 export async function GET() {
   try {
-    const base64Data = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64;
-    if (!base64Data) {
-        return NextResponse.json({ error: "Falta la variable GOOGLE_SERVICE_ACCOUNT_BASE64" }, { status: 500 });
-    }
-
-    // Decodifica de Base64 a JSON
-    const credentials = JSON.parse(Buffer.from(base64Data, 'base64').toString('utf-8'));
-
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
@@ -24,7 +17,6 @@ export async function GET() {
     });
 
     return NextResponse.json({ data: response.data.values });
-
   } catch (error) {
     return NextResponse.json({ error: "Fallo en autenticación", detalle: error.message }, { status: 500 });
   }
