@@ -11,28 +11,26 @@ export async function GET(request) {
   }
 
   try {
-    // Manejo de la variable de entorno: si es un JSON string o objeto
-    const credentials = typeof process.env.GOOGLE_SERVICE_ACCOUNT_JSON === 'string' 
-      ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON) 
-      : process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-
+    // Usamos directamente las variables de entorno configuradas en Vercel
     const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.readonly']
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
     });
 
     const drive = google.drive({ version: 'v3', auth });
     
-    // Busca los archivos dentro de la carpeta específica del cliente
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: 'files(id, name, mimeType, webViewLink)',
-      orderBy: 'createdTime desc', // Ordenamos por fecha de creación (los más nuevos primero)
+      orderBy: 'createdTime desc',
     });
 
     return NextResponse.json(res.data.files);
   } catch (error) {
     console.error("Error en Drive API:", error);
-    return NextResponse.json({ error: "No se pudo conectar a Drive: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error al conectar con Drive" }, { status: 500 });
   }
 }
