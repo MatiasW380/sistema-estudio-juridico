@@ -1,89 +1,53 @@
-// Ruta exacta en GitHub: app/Dashboard.js
 'use client';
-
 import React, { useState, useEffect } from 'react';
 
-export default function DashboardClientes() {
-  const [clientes, setClientes] = useState([]);
-  const [busqueda, setBusqueda] = useState('');
-  const [cargando, setCargando] = useState(true);
+// Estructura de navegación basada en tus 7 pestañas
+const MODULOS = {
+  Clientes: 'Clientes_y_Expedientes',
+  Consultas: 'Historia_Consultas',
+  Finanzas: 'Finanzas',
+  Agenda: 'Agenda_Plazos',
+  Biblioteca: 'Biblioteca_Leyes',
+  Jurisprudencia: 'Doctrina_Jurisprudencia',
+  Asistente: 'Asistente_IA'
+};
+
+export default function DashboardGeneral() {
+  const [seccion, setSeccion] = useState('Clientes');
+  const [datos, setDatos] = useState([]);
+
+  // Esta función leerá la pestaña correspondiente según el menú
+  const cargarDatos = async (nombrePestana) => {
+    try {
+      const res = await fetch(`/api/sheets?range=${nombrePestana}`);
+      const json = await res.json();
+      setDatos(json);
+    } catch (e) {
+      console.error("Error al cargar módulo", e);
+    }
+  };
 
   useEffect(() => {
-    async function cargarClientes() {
-      try {
-        const respuesta = await fetch('/api/sheets');
-        if (!respuesta.ok) throw new Error('Error al conectar');
-        const datos = await respuesta.json();
-        setClientes(Array.isArray(datos) ? datos : []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setCargando(false);
-      }
-    }
-    cargarClientes();
-  }, []);
-
-  const clientesFiltrados = clientes.filter(cliente =>
-    (cliente.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) ||
-    (cliente.causa || '').toLowerCase().includes(busqueda.toLowerCase())
-  );
+    cargarDatos(MODULOS[seccion]);
+  }, [seccion]);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f4f4f2', color: '#1a1a1a', fontFamily: 'serif', margin: 0 }}>
-      {/* Barra de Navegación Estilo Estudio */}
-      <header style={{ backgroundColor: '#1a1a1a', color: '#d4af37', padding: '24px', borderBottom: '2px solid #d4af37' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '24px', textTransform: 'uppercase', letterSpacing: '2px' }}>Estudio Jurídico</h1>
-            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#a0a0a0' }}>Sistema de Gestión Integral</p>
+    <div style={{ display: 'flex', height: '100vh' }}>
+      {/* Sidebar de Gestión */}
+      <nav style={{ width: '260px', background: '#1a1a1a', color: '#d4af37', padding: '20px' }}>
+        <h2 style={{ fontSize: '20px', marginBottom: '40px' }}>ESTUDIO BARONETTO</h2>
+        {Object.keys(MODULOS).map(m => (
+          <div key={m} onClick={() => setSeccion(m)} style={{ padding: '15px', cursor: 'pointer', borderBottom: '1px solid #333' }}>
+            {m}
           </div>
-          <div style={{ textAlign: 'right', fontSize: '13px', color: '#ffffff' }}>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>Matías Baronetto</p>
-          </div>
-        </div>
-      </header>
+        ))}
+      </nav>
 
-      <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        <section style={{ backgroundColor: '#ffffff', padding: '30px', border: '1px solid #d1d1d1', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <h2 style={{ margin: '0 0 20px 0', fontSize: '22px', borderBottom: '1px solid #1a1a1a', paddingBottom: '10px' }}>
-            Listado de Clientes y Expedientes
-          </h2>
-
-          <input
-            type="text"
-            placeholder="Buscar por cliente o causa..."
-            style={{ width: '100%', padding: '12px', border: '1px solid #1a1a1a', marginBottom: '20px', fontSize: '14px' }}
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-
-          {cargando ? (
-            <div style={{ padding: '40px', textAlign: 'center' }}>Cargando registros...</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#1a1a1a', color: '#ffffff' }}>
-                  <th style={{ padding: '12px' }}>Cliente</th>
-                  <th style={{ padding: '12px' }}>Expediente / Causa</th>
-                  <th style={{ padding: '12px' }}>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientesFiltrados.map((cliente) => (
-                  <tr key={cliente.id} style={{ borderBottom: '1px solid #d1d1d1' }}>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ fontWeight: 'bold' }}>{cliente.nombre}</div>
-                      <div style={{ fontSize: '11px', color: '#666' }}>{cliente.dni}</div>
-                    </td>
-                    <td style={{ padding: '12px' }}>{cliente.causa}</td>
-                    <td style={{ padding: '12px', color: '#8b4513', fontWeight: 'bold' }}>{cliente.estado}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+      {/* Contenido Dinámico */}
+      <main style={{ flex: 1, padding: '40px', background: '#f4f4f2' }}>
+        <h1>{seccion}</h1>
+        {/* Aquí renderizaremos la vista dinámica según la sección */}
+        <pre>{JSON.stringify(datos, null, 2)}</pre> 
       </main>
     </div>
   );
