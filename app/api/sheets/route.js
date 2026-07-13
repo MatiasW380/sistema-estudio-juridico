@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-// Importación directa desde la carpeta lib
-import credentials from '@/lib/google-service-account'; 
+// Esta ruta le dice: sal de 'app/api/sheets', sube 3 niveles hasta llegar a la raíz y entra en 'lib'
+import credentials from '../../../lib/google-service-account'; 
 
 export async function GET() {
   try {
