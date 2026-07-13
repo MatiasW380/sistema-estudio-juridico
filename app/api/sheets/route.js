@@ -1,16 +1,11 @@
-// app/api/sheets/route.js
+// Ruta: app/api/sheets/route.js
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   try {
-    // Lectura directa desde el process.env para asegurar que se tome el valor
-    const credentialsString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    if (!credentialsString) {
-      return NextResponse.json({ error: "No se encuentra GOOGLE_SERVICE_ACCOUNT_JSON" }, { status: 500 });
-    }
-
-    const credentials = JSON.parse(credentialsString);
+    // Leemos la variable directamente
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -19,7 +14,7 @@ export async function GET(request) {
 
     const sheets = google.sheets({ version: 'v4', auth });
     
-    // ID extraído de tu contexto
+    // ID de tu hoja de cálculo
     const SPREADSHEET_ID = '17YFhMlCPE8AkXJG4Pw6'; 
     const RANGE = 'Clientes_y_Expedientes!A2:G100'; 
 
@@ -30,6 +25,7 @@ export async function GET(request) {
 
     return NextResponse.json({ data: response.data.values || [] });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error en Sheets:", error);
+    return NextResponse.json({ error: "Error en el backend: " + error.message }, { status: 500 });
   }
 }
