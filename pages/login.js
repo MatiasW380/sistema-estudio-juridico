@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { verificarUsuario } from '../lib/auth';
+import { verificarUsuario } from '../lib/googleSheets';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
