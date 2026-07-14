@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { getClientes, appendToSheet } from '../../lib/googleSheets';
+import { getClientes } from '../../lib/googleSheets';
 
 // Esta función se ejecuta en el servidor
 export async function getServerSideProps(context) {
@@ -72,37 +72,38 @@ export default function FichaCliente({ cliente, expedientes }) {
     }
 
     try {
-      console.log('📦 Preparando datos para appendToSheet...');
-      console.log('Cliente ID:', cliente.ID_Cliente);
-      console.log('Nombre:', cliente.Nombre_Cliente);
-      console.log('Teléfono:', cliente.Telefono);
-      console.log('Nuevo SAC:', nuevoExpediente.Numero_SAC);
-      console.log('Nueva Carátula:', nuevoExpediente.Caratula);
-      console.log('Nuevo Fuero:', nuevoExpediente.Fuero);
+      // Construir los datos para enviar al servidor
+      const datos = {
+        clienteId: cliente.ID_Cliente,
+        nombre: cliente.Nombre_Cliente,
+        telefono: cliente.Telefono || '',
+        numeroSAC: nuevoExpediente.Numero_SAC,
+        caratula: nuevoExpediente.Caratula,
+        fuero: nuevoExpediente.Fuero || '',
+        usuariosCompartidos: cliente.Usuarios_Compartidos || '',
+      };
 
-      const fila = [
-        cliente.ID_Cliente,
-        cliente.Nombre_Cliente,
-        cliente.Telefono || '',
-        nuevoExpediente.Numero_SAC,
-        nuevoExpediente.Caratula,
-        nuevoExpediente.Fuero || '',
-        '',
-        cliente.Usuarios_Compartidos || '',
-      ];
+      console.log('📤 Enviando datos:', datos);
 
-      console.log('📤 Enviando fila:', fila);
+      // Llamar a la API de Next.js (crearemos esta ruta)
+      const response = await fetch('/api/agregar-expediente', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datos),
+      });
 
-      const resultado = await appendToSheet('Clientes_y_Expedientes', fila);
-      console.log('📥 Resultado de appendToSheet:', resultado);
+      const resultado = await response.json();
+      console.log('📥 Respuesta del servidor:', resultado);
 
-      if (resultado) {
+      if (resultado.success) {
         setMensaje('✅ Expediente agregado correctamente');
         setNuevoExpediente({ Numero_SAC: '', Caratula: '', Fuero: '' });
         setMostrarFormulario(false);
         setTimeout(() => router.reload(), 1500);
       } else {
-        setMensaje('❌ Error al agregar el expediente. Revisá los logs.');
+        setMensaje('❌ Error al agregar el expediente: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
       console.error('❌ Error en handleSubmit:', error);
