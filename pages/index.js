@@ -1,6 +1,4 @@
 // pages/index.js
-// Página de inicio con verificación de sesión
-
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 
@@ -8,7 +6,6 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Verificar si hay sesión activa
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
