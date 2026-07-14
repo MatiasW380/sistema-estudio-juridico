@@ -39,6 +39,7 @@ export default function FichaCliente({ cliente, expedientes }) {
     Fuero: '',
   });
   const [mensaje, setMensaje] = useState('');
+  const [cargando, setCargando] = useState(false);
   const router = useRouter();
 
   if (!cliente) {
@@ -54,49 +55,60 @@ export default function FichaCliente({ cliente, expedientes }) {
     router.push('/clientes');
   };
 
-  // Manejar cambios en el formulario
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNuevoExpediente(prev => ({ ...prev, [name]: value }));
   };
 
-  // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje('');
+    setCargando(true);
 
-    // Validar campos obligatorios
     if (!nuevoExpediente.Numero_SAC || !nuevoExpediente.Caratula) {
       setMensaje('⚠️ N° SAC y Carátula son obligatorios');
+      setCargando(false);
       return;
     }
 
     try {
-      // Preparar los datos para la hoja (mismo ID_Cliente, mismo teléfono, etc.)
+      console.log('📦 Preparando datos para appendToSheet...');
+      console.log('Cliente ID:', cliente.ID_Cliente);
+      console.log('Nombre:', cliente.Nombre_Cliente);
+      console.log('Teléfono:', cliente.Telefono);
+      console.log('Nuevo SAC:', nuevoExpediente.Numero_SAC);
+      console.log('Nueva Carátula:', nuevoExpediente.Caratula);
+      console.log('Nuevo Fuero:', nuevoExpediente.Fuero);
+
       const fila = [
-        cliente.ID_Cliente,                 // ID_Cliente (mismo que el cliente existente)
-        cliente.Nombre_Cliente,             // Nombre_Cliente (mismo)
-        cliente.Telefono || '',             // Teléfono (mismo)
-        nuevoExpediente.Numero_SAC,         // Numero_SAC (nuevo)
-        nuevoExpediente.Caratula,           // Caratula (nuevo)
-        nuevoExpediente.Fuero || '',        // Fuero (nuevo)
-        '',                                 // ID_Carpeta_Drive (vacío por ahora)
-        cliente.Usuarios_Compartidos || '', // Usuarios_Compartidos (mismo)
+        cliente.ID_Cliente,
+        cliente.Nombre_Cliente,
+        cliente.Telefono || '',
+        nuevoExpediente.Numero_SAC,
+        nuevoExpediente.Caratula,
+        nuevoExpediente.Fuero || '',
+        '',
+        cliente.Usuarios_Compartidos || '',
       ];
 
+      console.log('📤 Enviando fila:', fila);
+
       const resultado = await appendToSheet('Clientes_y_Expedientes', fila);
+      console.log('📥 Resultado de appendToSheet:', resultado);
+
       if (resultado) {
         setMensaje('✅ Expediente agregado correctamente');
         setNuevoExpediente({ Numero_SAC: '', Caratula: '', Fuero: '' });
         setMostrarFormulario(false);
-        // Recargar la página para ver el nuevo expediente
-        setTimeout(() => router.reload(), 1000);
+        setTimeout(() => router.reload(), 1500);
       } else {
-        setMensaje('❌ Error al agregar el expediente');
+        setMensaje('❌ Error al agregar el expediente. Revisá los logs.');
       }
     } catch (error) {
-      console.error('Error al agregar expediente:', error);
+      console.error('❌ Error en handleSubmit:', error);
       setMensaje('❌ Error: ' + error.message);
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -254,8 +266,8 @@ export default function FichaCliente({ cliente, expedientes }) {
                     </div>
                   )}
                   <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ backgroundColor: '#3182ce' }}>
-                      Guardar Expediente
+                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                      {cargando ? 'Guardando...' : 'Guardar Expediente'}
                     </button>
                     <button type="button" onClick={() => { setMostrarFormulario(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
                       Cancelar
