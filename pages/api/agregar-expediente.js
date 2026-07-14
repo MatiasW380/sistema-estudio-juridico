@@ -24,17 +24,28 @@ export default async function handler(req, res) {
     }
 
     // PASO 1: Crear la carpeta en Drive
-    console.log('📁 Creando carpeta en Drive...');
-    const folderId = await crearCarpetaExpediente(numeroSAC, caratula);
+    console.log('📁 Intentando crear carpeta en Drive...');
+    let folderId = null;
+    let driveError = null;
     
-    if (!folderId) {
-      console.error('❌ No se pudo crear la carpeta en Drive');
-      // Continuamos igual, pero avisamos al usuario
-    } else {
-      console.log(`✅ Carpeta creada con ID: ${folderId}`);
+    try {
+      folderId = await crearCarpetaExpediente(numeroSAC, caratula);
+      if (folderId) {
+        console.log(`✅ Carpeta creada con ID: ${folderId}`);
+      } else {
+        console.error('❌ crearCarpetaExpediente devolvió null');
+        driveError = 'La función crearCarpetaExpediente devolvió null';
+      }
+    } catch (error) {
+      console.error('❌ Error al crear carpeta:', error);
+      driveError = error.message || 'Error desconocido al crear carpeta';
     }
 
-    // PASO 2: Preparar la fila para la hoja (incluyendo el ID de la carpeta)
+    if (!folderId) {
+      console.warn('⚠️ No se pudo crear la carpeta en Drive. Continuamos sin folderId.');
+    }
+
+    // PASO 2: Preparar la fila para la hoja
     const fila = [
       clienteId,
       nombre,
@@ -42,7 +53,7 @@ export default async function handler(req, res) {
       numeroSAC,
       caratula,
       fuero || '',
-      folderId || '',  // Guardamos el ID de la carpeta en Drive
+      folderId || '',  // Guardamos el ID de la carpeta (vacío si falló)
       usuariosCompartidos || '',
     ];
 
@@ -56,7 +67,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ 
         success: true, 
         folderId: folderId || null,
-        mensaje: folderId ? 'Expediente y carpeta creados' : 'Expediente creado, pero hubo un problema con Drive'
+        driveError: driveError || null,
+        mensaje: folderId 
+          ? 'Expediente y carpeta creados' 
+          : 'Expediente creado, pero no se pudo crear la carpeta en Drive. Verificá permisos.'
       });
     } else {
       console.error('❌ Error al agregar expediente a Sheets');
