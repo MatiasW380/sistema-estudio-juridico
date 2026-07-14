@@ -1,51 +1,77 @@
-// pages/index.js
-// Página de inicio con verificación de sesión
+// pages/clientes/index.js
+// Página para probar la conexión con Google Sheets
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { getClientes } from '../../lib/googleSheets';
 
-export default function Home() {
-  const router = useRouter();
+// Esta función se ejecuta en el servidor (getServerSideProps)
+export async function getServerSideProps() {
+  try {
+    const clientes = await getClientes();
+    return {
+      props: {
+        clientes,
+        error: null,
+      },
+    };
+  } catch (error) {
+    console.error('Error en getServerSideProps:', error);
+    return {
+      props: {
+        clientes: [],
+        error: 'Error al cargar los clientes: ' + error.message,
+      },
+    };
+  }
+}
 
-  useEffect(() => {
-    // Verificar si hay sesión activa
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {});
-    
-    if (!cookies.user) {
-      router.push('/login');
-    }
-  }, [router]);
-
-  const handleLogout = () => {
-    document.cookie = 'user=; path=/; max-age=0';
-    router.push('/login');
-  };
-
+// Esta es la función que se ejecuta en el navegador (el componente)
+export default function ClientesPage({ clientes, error }) {
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>🏛️ Sistema de Gestión Jurídica</h1>
-        <button onClick={handleLogout} style={{ backgroundColor: '#e53e3e' }}>
-          Cerrar sesión
-        </button>
-      </div>
-      <p style={{ marginTop: '20px', fontSize: '1.2rem' }}>
-        Bienvenido, Matías. Tu sistema está funcionando correctamente.
+      <h1>👥 Clientes</h1>
+      <p style={{ marginBottom: '20px', color: '#4a5568' }}>
+        Lista de clientes cargada desde Google Sheets
       </p>
-      <p style={{ marginTop: '10px', color: '#4a5568' }}>
-        Este es el panel principal. Pronto podrás gestionar expedientes, clientes y generar escritos con IA.
-      </p>
-      <div style={{ marginTop: '30px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-        <a href="/clientes">
-          <button>📋 Expedientes</button>
-        </a>
-        <button>👤 Clientes</button>
-        <button>🤖 Generar Escrito con IA</button>
-        <button>📅 Agenda</button>
+
+      {error && (
+        <div style={{ backgroundColor: '#fed7d7', color: '#9b2c2c', padding: '15px', borderRadius: '8px' }}>
+          {error}
+        </div>
+      )}
+
+      {!error && (
+        <>
+          {clientes.length === 0 ? (
+            <p>No hay clientes cargados en la planilla.</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#edf2f7' }}>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>ID</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Nombre</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Teléfono</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>N° SAC</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Carátula</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientes.map((cliente, index) => (
+                  <tr key={index}>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.ID_Cliente || ''}</td>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Nombre_Cliente || ''}</td>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Telefono || ''}</td>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Numero_SAC || ''}</td>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Caratula || ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+
+      <div style={{ marginTop: '20px' }}>
+        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
       </div>
     </div>
   );
