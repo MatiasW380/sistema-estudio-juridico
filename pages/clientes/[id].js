@@ -9,14 +9,22 @@ import { getClientes } from '../../lib/googleSheets';
 export async function getServerSideProps(context) {
   const { id } = context.params;
   try {
-    const clientes = await getClientes();
-    const cliente = clientes.find(c => c.ID_Cliente === id);
+    // Obtener todos los clientes
+    const todosLosClientes = await getClientes();
+    
+    // Buscar el cliente por ID
+    const cliente = todosLosClientes.find(c => c.ID_Cliente === id);
     if (!cliente) {
       return { notFound: true };
     }
+
+    // Obtener TODOS los expedientes de este cliente (mismo ID_Cliente)
+    const expedientes = todosLosClientes.filter(c => c.ID_Cliente === id);
+
     return {
       props: {
         cliente,
+        expedientes,
       },
     };
   } catch (error) {
@@ -26,11 +34,10 @@ export async function getServerSideProps(context) {
 }
 
 // Componente principal de la ficha
-export default function FichaCliente({ cliente }) {
+export default function FichaCliente({ cliente, expedientes }) {
   const [activeTab, setActiveTab] = useState('datos');
   const router = useRouter();
 
-  // Si no hay cliente, mostrar mensaje
   if (!cliente) {
     return (
       <div className="container">
@@ -40,7 +47,6 @@ export default function FichaCliente({ cliente }) {
     );
   }
 
-  // Función para volver a la lista de clientes
   const volver = () => {
     router.push('/clientes');
   };
@@ -90,7 +96,7 @@ export default function FichaCliente({ cliente }) {
             fontWeight: 'bold'
           }}
         >
-          📄 Expedientes
+          📄 Expedientes ({expedientes.length})
         </button>
         <button
           onClick={() => setActiveTab('consultas')}
@@ -131,33 +137,37 @@ export default function FichaCliente({ cliente }) {
               <div><strong>ID Cliente:</strong> {cliente.ID_Cliente}</div>
               <div><strong>Nombre:</strong> {cliente.Nombre_Cliente}</div>
               <div><strong>Teléfono:</strong> {cliente.Telefono || 'No registrado'}</div>
-              <div><strong>N° SAC:</strong> {cliente.Numero_SAC || 'No registrado'}</div>
-              <div><strong>Carátula:</strong> {cliente.Caratula || 'No registrada'}</div>
-              <div><strong>Fuero:</strong> {cliente.Fuero || 'No registrado'}</div>
-            </div>
-            <div style={{ marginTop: '20px' }}>
-              <p><strong>ID Carpeta Drive:</strong> {cliente.ID_Carpeta_Drive || 'No asignada'}</p>
-              <p><strong>Usuarios Compartidos:</strong> {cliente.Usuarios_Compartidos || 'Ninguno'}</p>
+              <div><strong>ID Carpeta Drive:</strong> {cliente.ID_Carpeta_Drive || 'No asignada'}</div>
+              <div><strong>Usuarios Compartidos:</strong> {cliente.Usuarios_Compartidos || 'Ninguno'}</div>
             </div>
           </div>
         )}
 
         {activeTab === 'expedientes' && (
           <div>
-            <h2>📄 Expedientes</h2>
-            <p style={{ color: '#4a5568', marginBottom: '15px' }}>
-              Aquí se listarán los archivos PDF del SAC y documentos extra del cliente.
-            </p>
-            <div style={{
-              backgroundColor: '#f7fafc',
-              padding: '20px',
-              borderRadius: '8px',
-              textAlign: 'center',
-              color: '#4a5568'
-            }}>
-              <p>🔜 Próximamente: integración con Google Drive para listar archivos.</p>
-              <p style={{ fontSize: '0.9rem' }}>Podrás subir, ver y descargar PDFs de este cliente.</p>
-            </div>
+            <h2>📄 Expedientes del Cliente</h2>
+            {expedientes.length === 0 ? (
+              <p style={{ color: '#4a5568' }}>Este cliente no tiene expedientes cargados.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#edf2f7' }}>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>N° SAC</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Carátula</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fuero</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expedientes.map((exp, index) => (
+                    <tr key={index}>
+                      <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{exp.Numero_SAC || 'No registrado'}</td>
+                      <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{exp.Caratula || 'No registrada'}</td>
+                      <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{exp.Fuero || 'No registrado'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
