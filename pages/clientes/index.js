@@ -1,9 +1,6 @@
 // pages/clientes/index.js
-// Página para probar la conexión con Google Sheets
+const { getClientes } = require('../../lib/googleSheets');
 
-import { getClientes } from '../../lib/googleSheets';
-
-// Esta función se ejecuta en el servidor (getServerSideProps)
 export async function getServerSideProps() {
   try {
     const clientes = await getClientes();
@@ -24,7 +21,6 @@ export async function getServerSideProps() {
   }
 }
 
-// Esta es la función que se ejecuta en el navegador (el componente)
 export default function ClientesPage({ clientes, error }) {
   return (
     <div className="container">
