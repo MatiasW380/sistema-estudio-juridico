@@ -1,24 +1,20 @@
 // pages/clientes/[id].js
-// Ficha completa del cliente con pestañas
+// Ficha completa del cliente con pestañas y formulario para agregar expediente
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { getClientes } from '../../lib/googleSheets';
+import { getClientes, appendToSheet } from '../../lib/googleSheets';
 
 // Esta función se ejecuta en el servidor
 export async function getServerSideProps(context) {
   const { id } = context.params;
   try {
-    // Obtener todos los clientes
     const todosLosClientes = await getClientes();
-    
-    // Buscar el cliente por ID
     const cliente = todosLosClientes.find(c => c.ID_Cliente === id);
     if (!cliente) {
       return { notFound: true };
     }
 
-    // Obtener TODOS los expedientes de este cliente (mismo ID_Cliente)
     const expedientes = todosLosClientes.filter(c => c.ID_Cliente === id);
 
     return {
@@ -36,6 +32,13 @@ export async function getServerSideProps(context) {
 // Componente principal de la ficha
 export default function FichaCliente({ cliente, expedientes }) {
   const [activeTab, setActiveTab] = useState('datos');
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [nuevoExpediente, setNuevoExpediente] = useState({
+    Numero_SAC: '',
+    Caratula: '',
+    Fuero: '',
+  });
+  const [mensaje, setMensaje] = useState('');
   const router = useRouter();
 
   if (!cliente) {
@@ -49,6 +52,52 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   const volver = () => {
     router.push('/clientes');
+  };
+
+  // Manejar cambios en el formulario
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNuevoExpediente(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Manejar envío del formulario
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMensaje('');
+
+    // Validar campos obligatorios
+    if (!nuevoExpediente.Numero_SAC || !nuevoExpediente.Caratula) {
+      setMensaje('⚠️ N° SAC y Carátula son obligatorios');
+      return;
+    }
+
+    try {
+      // Preparar los datos para la hoja (mismo ID_Cliente, mismo teléfono, etc.)
+      const fila = [
+        cliente.ID_Cliente,                 // ID_Cliente (mismo que el cliente existente)
+        cliente.Nombre_Cliente,             // Nombre_Cliente (mismo)
+        cliente.Telefono || '',             // Teléfono (mismo)
+        nuevoExpediente.Numero_SAC,         // Numero_SAC (nuevo)
+        nuevoExpediente.Caratula,           // Caratula (nuevo)
+        nuevoExpediente.Fuero || '',        // Fuero (nuevo)
+        '',                                 // ID_Carpeta_Drive (vacío por ahora)
+        cliente.Usuarios_Compartidos || '', // Usuarios_Compartidos (mismo)
+      ];
+
+      const resultado = await appendToSheet('Clientes_y_Expedientes', fila);
+      if (resultado) {
+        setMensaje('✅ Expediente agregado correctamente');
+        setNuevoExpediente({ Numero_SAC: '', Caratula: '', Fuero: '' });
+        setMostrarFormulario(false);
+        // Recargar la página para ver el nuevo expediente
+        setTimeout(() => router.reload(), 1000);
+      } else {
+        setMensaje('❌ Error al agregar el expediente');
+      }
+    } catch (error) {
+      console.error('Error al agregar expediente:', error);
+      setMensaje('❌ Error: ' + error.message);
+    }
   };
 
   return (
@@ -145,7 +194,77 @@ export default function FichaCliente({ cliente, expedientes }) {
 
         {activeTab === 'expedientes' && (
           <div>
-            <h2>📄 Expedientes del Cliente</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>📄 Expedientes del Cliente</h2>
+              <button 
+                onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                style={{ backgroundColor: '#38a169' }}
+              >
+                + Agregar Expediente
+              </button>
+            </div>
+
+            {mostrarFormulario && (
+              <div style={{
+                backgroundColor: '#f7fafc',
+                padding: '20px',
+                borderRadius: '8px',
+                marginTop: '15px',
+                marginBottom: '20px'
+              }}>
+                <h3>Nuevo Expediente</h3>
+                <form onSubmit={handleSubmit}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div>
+                      <label><strong>N° SAC *</strong></label>
+                      <input
+                        type="text"
+                        name="Numero_SAC"
+                        value={nuevoExpediente.Numero_SAC}
+                        onChange={handleChange}
+                        placeholder="Ej: 123456"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label><strong>Carátula *</strong></label>
+                      <input
+                        type="text"
+                        name="Caratula"
+                        value={nuevoExpediente.Caratula}
+                        onChange={handleChange}
+                        placeholder="Ej: Lopez c/ Molina"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label><strong>Fuero</strong></label>
+                      <input
+                        type="text"
+                        name="Fuero"
+                        value={nuevoExpediente.Fuero}
+                        onChange={handleChange}
+                        placeholder="Ej: Civil, Laboral, Familia"
+                      />
+                    </div>
+                  </div>
+                  {mensaje && (
+                    <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>
+                      {mensaje}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                    <button type="submit" style={{ backgroundColor: '#3182ce' }}>
+                      Guardar Expediente
+                    </button>
+                    <button type="button" onClick={() => { setMostrarFormulario(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
             {expedientes.length === 0 ? (
               <p style={{ color: '#4a5568' }}>Este cliente no tiene expedientes cargados.</p>
             ) : (
