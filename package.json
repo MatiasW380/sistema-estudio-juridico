@@ -14,7 +14,8 @@
     "react-dom": "19.0.0",
     "next-auth": "^4.24.11",
     "googleapis": "^144.0.0",
-    "@google/generative-ai": "^0.21.0"
+    "@google/generative-ai": "^0.21.0",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
