@@ -1,14 +1,36 @@
 // pages/index.js
-// Página de inicio con verificación de sesión
+// Página de inicio con verificación de sesión en el servidor
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 
+// Esta función se ejecuta en el servidor antes de cargar la página
+export async function getServerSideProps(context) {
+  // Leer la cookie 'user' desde la solicitud
+  const cookies = context.req.headers.cookie || '';
+  const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
+  
+  // Si no hay cookie de usuario, redirigir al login
+  if (!userCookie) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
+  // Si hay cookie, permitir el acceso
+  return {
+    props: {},
+  };
+}
+
 export default function Home() {
   const router = useRouter();
 
+  // Verificación adicional en el cliente por si acaso
   useEffect(() => {
-    // Verificar si hay sesión activa
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
