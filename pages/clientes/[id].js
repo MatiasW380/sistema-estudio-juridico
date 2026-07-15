@@ -33,6 +33,8 @@ export default function FichaCliente({ cliente, expedientes }) {
   });
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [archivos, setArchivos] = useState([]);
+  const [mostrarArchivos, setMostrarArchivos] = useState(false);
   const router = useRouter();
 
   if (!cliente) {
@@ -102,6 +104,56 @@ export default function FichaCliente({ cliente, expedientes }) {
       setMensaje('❌ Error: ' + error.message);
     } finally {
       setCargando(false);
+    }
+  };
+
+  // Función para descargar el expediente completo
+  const descargarExpedienteCompleto = async () => {
+    // Obtener el primer expediente que tenga ID_Carpeta_Drive
+    const expedienteConCarpeta = expedientes.find(e => e.ID_Carpeta_Drive);
+    if (!expedienteConCarpeta) {
+      alert('Este expediente no tiene carpeta en Drive');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/drive/descargar-completo?folderId=${expedienteConCarpeta.ID_Carpeta_Drive}`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Error al descargar');
+        return;
+      }
+
+      // Descargar el archivo
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `expediente_${expedienteConCarpeta.Numero_SAC || 'completo'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al descargar:', error);
+      alert('Error al descargar el expediente');
+    }
+  };
+
+  // Función para listar archivos de una carpeta
+  const listarArchivos = async (folderId, sac) => {
+    try {
+      const response = await fetch(`/api/drive/listar?folderId=${folderId}`);
+      if (!response.ok) {
+        alert('Error al listar archivos');
+        return;
+      }
+      const data = await response.json();
+      setArchivos(data.files || []);
+      setMostrarArchivos(true);
+    } catch (error) {
+      console.error('Error al listar archivos:', error);
+      alert('Error al listar archivos');
     }
   };
 
@@ -210,9 +262,14 @@ export default function FichaCliente({ cliente, expedientes }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>📄 Expedientes del Cliente</h2>
-              <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
-                + Agregar Expediente
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={descargarExpedienteCompleto} style={{ backgroundColor: '#3182ce' }}>
+                  📥 Descargar Completo
+                </button>
+                <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
+                  + Agregar Expediente
+                </button>
+              </div>
             </div>
 
             {mostrarFormulario && (
@@ -273,24 +330,60 @@ export default function FichaCliente({ cliente, expedientes }) {
             {expedientes.length === 0 ? (
               <p style={{ color: '#4a5568' }}>Este cliente no tiene expedientes cargados.</p>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#edf2f7' }}>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>N° SAC</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Carátula</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fuero</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expedientes.map((exp, index) => (
-                    <tr key={index}>
-                      <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{exp.Numero_SAC || 'No registrado'}</td>
-                      <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{exp.Caratula || 'No registrada'}</td>
-                      <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{exp.Fuero || 'No registrado'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div>
+                {expedientes.map((exp, index) => (
+                  <div key={index} style={{ 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: '8px', 
+                    padding: '15px', 
+                    marginBottom: '15px',
+                    backgroundColor: '#f7fafc'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>N° SAC:</strong> {exp.Numero_SAC || 'No registrado'}<br />
+                        <strong>Carátula:</strong> {exp.Caratula || 'No registrada'}<br />
+                        <strong>Fuero:</strong> {exp.Fuero || 'No registrado'}
+                      </div>
+                      {exp.ID_Carpeta_Drive && (
+                        <button 
+                          onClick={() => listarArchivos(exp.ID_Carpeta_Drive, exp.Numero_SAC)}
+                          style={{ backgroundColor: '#3182ce' }}
+                        >
+                          📂 Ver Archivos
+                        </button>
+                      )}
+                    </div>
+                    {/* Mostrar archivos si se hizo clic en "Ver Archivos" */}
+                    {mostrarArchivos && archivos.length > 0 && (
+                      <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
+                        <strong>Archivos en la carpeta:</strong>
+                        <ul style={{ listStyle: 'none', padding: 0, marginTop: '5px' }}>
+                          {archivos.map((file) => (
+                            <li key={file.id} style={{ padding: '5px 0', borderBottom: '1px solid #e2e8f0' }}>
+                              📄 {file.name}
+                              <a 
+                                href={`/api/drive/descargar?fileId=${file.id}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ marginLeft: '10px', color: '#3182ce' }}
+                              >
+                                Descargar
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                        <button 
+                          onClick={() => { setMostrarArchivos(false); setArchivos([]); }}
+                          style={{ marginTop: '10px', backgroundColor: '#718096' }}
+                        >
+                          Cerrar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
