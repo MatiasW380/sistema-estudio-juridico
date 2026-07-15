@@ -11,33 +11,39 @@ export default function UsuariosPage() {
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [session, setSession] = useState(null);
   const router = useRouter();
 
-  // Obtener datos del usuario logueado desde la cookie
-  const getSession = () => {
+  // Obtener sesión solo en el cliente
+  useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
     }, {});
-    return cookies.user ? JSON.parse(decodeURIComponent(cookies.user)) : null;
-  };
-
-  const session = getSession();
-
-  useEffect(() => {
-    if (!session || session.rol !== 'admin') {
-      router.push('/');
-      return;
+    
+    if (cookies.user) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(cookies.user));
+        setSession(userData);
+        if (userData.rol !== 'admin') {
+          router.push('/');
+        } else {
+          cargarUsuarios(userData);
+        }
+      } catch (e) {
+        router.push('/login');
+      }
+    } else {
+      router.push('/login');
     }
-    cargarUsuarios();
   }, []);
 
-  const cargarUsuarios = async () => {
+  const cargarUsuarios = async (userSession) => {
     try {
       const response = await fetch('/api/usuarios', {
         headers: {
-          'email': session.email,
+          'email': userSession.email,
           'pin': '3543' // En producción, obtener el PIN de la sesión
         }
       });
@@ -82,7 +88,7 @@ export default function UsuariosPage() {
         setMensaje('✅ Usuario creado correctamente');
         setNuevoEmail('');
         setNuevoPin('');
-        cargarUsuarios();
+        cargarUsuarios(session);
       } else {
         setError(data.error || 'Error al crear usuario');
       }
@@ -106,7 +112,7 @@ export default function UsuariosPage() {
       });
       const data = await response.json();
       if (data.success) {
-        cargarUsuarios();
+        cargarUsuarios(session);
       } else {
         setError(data.error || 'Error al actualizar');
       }
