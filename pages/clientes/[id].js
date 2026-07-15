@@ -5,27 +5,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes } from '../../lib/googleSheets';
 
-// Esta función se ejecuta en el servidor
 export async function getServerSideProps(context) {
   const { id } = context.params;
   try {
-    // Obtener todos los clientes (ya agrupados por ID_Cliente)
     const todosLosClientes = await getClientes();
-    
-    // Buscar el cliente por ID
     const cliente = todosLosClientes.find(c => c.ID_Cliente === id);
     if (!cliente) {
       return { notFound: true };
     }
-
-    // Los expedientes ya están dentro de cliente.expedientes
     const expedientes = cliente.expedientes || [];
-
     return {
-      props: {
-        cliente,
-        expedientes,
-      },
+      props: { cliente, expedientes },
     };
   } catch (error) {
     console.error('Error al cargar cliente:', error);
@@ -33,7 +23,6 @@ export async function getServerSideProps(context) {
   }
 }
 
-// Componente principal de la ficha
 export default function FichaCliente({ cliente, expedientes }) {
   const [activeTab, setActiveTab] = useState('datos');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -86,18 +75,13 @@ export default function FichaCliente({ cliente, expedientes }) {
         usuariosCompartidos: cliente.Usuarios_Compartidos || '',
       };
 
-      console.log('📤 Enviando datos:', datos);
-
       const response = await fetch('/api/agregar-expediente', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos),
       });
 
       const resultado = await response.json();
-      console.log('📥 Respuesta del servidor:', resultado);
 
       if (resultado.success) {
         let mensajeExito = '✅ Expediente agregado correctamente';
@@ -123,22 +107,16 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   return (
     <div className="container">
-      {/* Encabezado con datos básicos */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ marginBottom: '5px' }}>
-            👤 {cliente.Nombre_Cliente}
-          </h1>
+          <h1 style={{ marginBottom: '5px' }}>👤 {cliente.Nombre_Cliente}</h1>
           <p style={{ color: '#4a5568', margin: 0 }}>
             ID: {cliente.ID_Cliente} | Teléfono: {cliente.Telefono || 'No registrado'}
           </p>
         </div>
-        <button onClick={volver} style={{ backgroundColor: '#718096' }}>
-          ← Volver
-        </button>
+        <button onClick={volver} style={{ backgroundColor: '#718096' }}>← Volver</button>
       </div>
 
-      {/* Pestañas */}
       <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '20px' }}>
         <button
           onClick={() => setActiveTab('datos')}
@@ -198,7 +176,6 @@ export default function FichaCliente({ cliente, expedientes }) {
         </button>
       </div>
 
-      {/* Contenido de las pestañas */}
       <div style={{ minHeight: '300px' }}>
         {activeTab === 'datos' && (
           <div>
@@ -219,22 +196,13 @@ export default function FichaCliente({ cliente, expedientes }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>📄 Expedientes del Cliente</h2>
-              <button 
-                onClick={() => setMostrarFormulario(!mostrarFormulario)}
-                style={{ backgroundColor: '#38a169' }}
-              >
+              <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
                 + Agregar Expediente
               </button>
             </div>
 
             {mostrarFormulario && (
-              <div style={{
-                backgroundColor: '#f7fafc',
-                padding: '20px',
-                borderRadius: '8px',
-                marginTop: '15px',
-                marginBottom: '20px'
-              }}>
+              <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', marginTop: '15px', marginBottom: '20px' }}>
                 <h3>Nuevo Expediente</h3>
                 <form onSubmit={handleSubmit}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -316,16 +284,8 @@ export default function FichaCliente({ cliente, expedientes }) {
         {activeTab === 'consultas' && (
           <div>
             <h2>📝 Historial de Consultas</h2>
-            <p style={{ color: '#4a5568', marginBottom: '15px' }}>
-              Registro de reuniones y conversaciones con el cliente.
-            </p>
-            <div style={{
-              backgroundColor: '#f7fafc',
-              padding: '20px',
-              borderRadius: '8px',
-              textAlign: 'center',
-              color: '#4a5568'
-            }}>
+            <p style={{ color: '#4a5568', marginBottom: '15px' }}>Registro de reuniones y conversaciones con el cliente.</p>
+            <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', textAlign: 'center', color: '#4a5568' }}>
               <p>🔜 Próximamente: carga y visualización de consultas.</p>
               <p style={{ fontSize: '0.9rem' }}>Podrás agregar notas de cada reunión con fecha y abogado que atendió.</p>
             </div>
@@ -335,22 +295,12 @@ export default function FichaCliente({ cliente, expedientes }) {
         {activeTab === 'finanzas' && (
           <div>
             <h2>💰 Finanzas</h2>
-            <p style={{ color: '#4a5568', marginBottom: '15px' }}>
-              Control de honorarios, pagos y gastos del cliente.
-            </p>
-            <div style={{
-              backgroundColor: '#f7fafc',
-              padding: '20px',
-              borderRadius: '8px',
-              textAlign: 'center',
-              color: '#4a5568'
-            }}>
+            <p style={{ color: '#4a5568', marginBottom: '15px' }}>Control de honorarios, pagos y gastos del cliente.</p>
+            <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', textAlign: 'center', color: '#4a5568' }}>
               <p>🔜 Próximamente: registro de honorarios, cuotas, pagos y gastos.</p>
               <p style={{ fontSize: '0.9rem' }}>Podrás generar reportes por períodos.</p>
             </div>
           </div>
         )}
       </div>
-    </div>
-  );
-}
+    </div
