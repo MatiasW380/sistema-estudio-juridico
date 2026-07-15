@@ -9,13 +9,17 @@ import { getClientes } from '../../lib/googleSheets';
 export async function getServerSideProps(context) {
   const { id } = context.params;
   try {
+    // Obtener todos los clientes (ya agrupados por ID_Cliente)
     const todosLosClientes = await getClientes();
+    
+    // Buscar el cliente por ID
     const cliente = todosLosClientes.find(c => c.ID_Cliente === id);
     if (!cliente) {
       return { notFound: true };
     }
 
-    const expedientes = todosLosClientes.filter(c => c.ID_Cliente === id);
+    // Los expedientes ya están dentro de cliente.expedientes (gracias a la nueva versión de getClientes)
+    const expedientes = cliente.expedientes || [];
 
     return {
       props: {
