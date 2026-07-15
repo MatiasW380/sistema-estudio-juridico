@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes } from '../../lib/googleSheets';
+import BotonInicio from '../../components/BotonInicio';
 
 export async function getServerSideProps(context) {
   const { sac } = context.params;
@@ -81,13 +82,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones }
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h1 style={{ marginBottom: '5px' }}>
-            📄 Expediente {sac}
-          </h1>
-          <p style={{ color: '#4a5568', margin: 0 }}>
-            Cliente: {cliente.Nombre_Cliente} | Carátula: {expediente.Caratula || 'No registrada'}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <BotonInicio />
+          <div>
+            <h1 style={{ marginBottom: '5px' }}>📄 Expediente {sac}</h1>
+            <p style={{ color: '#4a5568', margin: 0 }}>
+              Cliente: {cliente.Nombre_Cliente} | Carátula: {expediente.Caratula || 'No registrada'}
+            </p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
