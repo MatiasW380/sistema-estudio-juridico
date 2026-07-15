@@ -1,5 +1,5 @@
 // pages/clientes/index.js
-// Página para listar clientes con buscador
+// Página para listar clientes con buscador y eliminar
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
@@ -19,6 +19,7 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
   const [clientes, setClientes] = useState(clientesIniciales);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [eliminando, setEliminando] = useState(null);
   const router = useRouter();
 
   const handleBuscar = async () => {
@@ -41,6 +42,35 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleBuscar();
+    }
+  };
+
+  const eliminarCliente = async (id, nombre) => {
+    if (!confirm(`¿Estás seguro de eliminar al cliente "${nombre}" y todos sus expedientes?`)) {
+      return;
+    }
+
+    setEliminando(id);
+    try {
+      const response = await fetch(`/api/eliminar?tipo=cliente&id=${id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`Cliente eliminado correctamente`);
+        // Recargar la lista
+        const nuevosClientes = await getClientes();
+        setClientes(nuevosClientes);
+        setClientesIniciales(nuevosClientes);
+      } else {
+        alert(data.error || 'Error al eliminar el cliente');
+      }
+    } catch (error) {
+      console.error('Error al eliminar:', error);
+      alert('Error al eliminar el cliente');
+    } finally {
+      setEliminando(null);
     }
   };
 
@@ -86,11 +116,12 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>DNI</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Domicilio</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Expedientes</th>
+              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {clientes.map((cliente) => (
-              <tr key={cliente.ID_Cliente} style={{ cursor: 'pointer' }}>
+              <tr key={cliente.ID_Cliente}>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
                   <a href={`/clientes/${cliente.ID_Cliente}`} style={{ color: '#3182ce', textDecoration: 'none' }}>
                     {cliente.ID_Cliente || ''}
@@ -106,6 +137,21 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Domicilio || ''}</td>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
                   {cliente.totalExpedientes || 0}
+                </td>
+                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
+                  <button
+                    onClick={() => eliminarCliente(cliente.ID_Cliente, cliente.Nombre_Cliente)}
+                    style={{
+                      backgroundColor: '#e53e3e',
+                      padding: '5px 10px',
+                      fontSize: '0.8rem',
+                      opacity: eliminando === cliente.ID_Cliente ? 0.7 : 1,
+                      cursor: eliminando === cliente.ID_Cliente ? 'not-allowed' : 'pointer'
+                    }}
+                    disabled={eliminando === cliente.ID_Cliente}
+                  >
+                    {eliminando === cliente.ID_Cliente ? 'Eliminando...' : '🗑️ Eliminar'}
+                  </button>
                 </td>
               </tr>
             ))}
