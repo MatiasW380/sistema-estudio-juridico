@@ -1,16 +1,13 @@
 // pages/index.js
-// Página de inicio con verificación de sesión en el servidor
+// Página de inicio con verificación de sesión
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-// Esta función se ejecuta en el servidor antes de cargar la página
 export async function getServerSideProps(context) {
-  // Leer la cookie 'user' desde la solicitud
   const cookies = context.req.headers.cookie || '';
   const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
   
-  // Si no hay cookie de usuario, redirigir al login
   if (!userCookie) {
     return {
       redirect: {
@@ -20,7 +17,6 @@ export async function getServerSideProps(context) {
     };
   }
 
-  // Si hay cookie, permitir el acceso
   return {
     props: {},
   };
@@ -29,7 +25,6 @@ export async function getServerSideProps(context) {
 export default function Home() {
   const router = useRouter();
 
-  // Verificación adicional en el cliente por si acaso
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
@@ -67,6 +62,9 @@ export default function Home() {
         </a>
         <a href="/clientes">
           <button>👤 Clientes</button>
+        </a>
+        <a href="/usuarios">
+          <button>👥 Usuarios</button>
         </a>
         <button>🤖 Generar Escrito con IA</button>
         <button>📅 Agenda</button>
