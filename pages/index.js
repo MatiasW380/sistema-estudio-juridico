@@ -54,19 +54,15 @@ export default function Home() {
         Bienvenido, Matías. Tu sistema está funcionando correctamente.
       </p>
       <p style={{ marginTop: '10px', color: '#4a5568' }}>
-        Este es el panel principal. Pronto podrás gestionar expedientes, clientes y generar escritos con IA.
+        Gestioná clientes, expedientes, usuarios y plazos desde este panel.
       </p>
       <div style={{ marginTop: '30px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-        <a href="/clientes">
-          <button>📋 Expedientes</button>
-        </a>
         <a href="/clientes">
           <button>👤 Clientes</button>
         </a>
         <a href="/usuarios">
           <button>👥 Usuarios</button>
         </a>
-        <button>🤖 Generar Escrito con IA</button>
         <button>📅 Agenda</button>
       </div>
     </div>
