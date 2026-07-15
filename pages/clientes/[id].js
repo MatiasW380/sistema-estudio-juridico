@@ -303,4 +303,6 @@ export default function FichaCliente({ cliente, expedientes }) {
           </div>
         )}
       </div>
-    </div
+    </div>
+  );
+}
