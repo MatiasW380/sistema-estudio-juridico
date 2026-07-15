@@ -107,16 +107,29 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   return (
     <div className="container">
+      {/* Encabezado con datos básicos y botón Editar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ marginBottom: '5px' }}>👤 {cliente.Nombre_Cliente}</h1>
+          <h1 style={{ marginBottom: '5px' }}>
+            👤 {cliente.Nombre_Cliente}
+          </h1>
           <p style={{ color: '#4a5568', margin: 0 }}>
             ID: {cliente.ID_Cliente} | Teléfono: {cliente.Telefono || 'No registrado'}
           </p>
         </div>
-        <button onClick={volver} style={{ backgroundColor: '#718096' }}>← Volver</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <a href={`/clientes/${cliente.ID_Cliente}/editar`}>
+            <button style={{ backgroundColor: '#ed8936' }}>
+              ✏️ Editar
+            </button>
+          </a>
+          <button onClick={volver} style={{ backgroundColor: '#718096' }}>
+            ← Volver
+          </button>
+        </div>
       </div>
 
+      {/* Pestañas */}
       <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '20px' }}>
         <button
           onClick={() => setActiveTab('datos')}
@@ -176,6 +189,7 @@ export default function FichaCliente({ cliente, expedientes }) {
         </button>
       </div>
 
+      {/* Contenido de las pestañas */}
       <div style={{ minHeight: '300px' }}>
         {activeTab === 'datos' && (
           <div>
