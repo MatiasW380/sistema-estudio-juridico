@@ -35,6 +35,7 @@ export default function FichaCliente({ cliente, expedientes }) {
   const [cargando, setCargando] = useState(false);
   const [archivos, setArchivos] = useState([]);
   const [mostrarArchivos, setMostrarArchivos] = useState(false);
+  const [folderIdActual, setFolderIdActual] = useState('');
   const router = useRouter();
 
   if (!cliente) {
@@ -107,41 +108,8 @@ export default function FichaCliente({ cliente, expedientes }) {
     }
   };
 
-  // Función para descargar el expediente completo
-  const descargarExpedienteCompleto = async () => {
-    // Obtener el primer expediente que tenga ID_Carpeta_Drive
-    const expedienteConCarpeta = expedientes.find(e => e.ID_Carpeta_Drive);
-    if (!expedienteConCarpeta) {
-      alert('Este expediente no tiene carpeta en Drive');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/drive/descargar-completo?folderId=${expedienteConCarpeta.ID_Carpeta_Drive}`);
-      if (!response.ok) {
-        const error = await response.json();
-        alert(error.error || 'Error al descargar');
-        return;
-      }
-
-      // Descargar el archivo
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `expediente_${expedienteConCarpeta.Numero_SAC || 'completo'}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error al descargar:', error);
-      alert('Error al descargar el expediente');
-    }
-  };
-
   // Función para listar archivos de una carpeta
-  const listarArchivos = async (folderId, sac) => {
+  const listarArchivos = async (folderId) => {
     try {
       const response = await fetch(`/api/drive/listar?folderId=${folderId}`);
       if (!response.ok) {
@@ -150,6 +118,7 @@ export default function FichaCliente({ cliente, expedientes }) {
       }
       const data = await response.json();
       setArchivos(data.files || []);
+      setFolderIdActual(folderId);
       setMostrarArchivos(true);
     } catch (error) {
       console.error('Error al listar archivos:', error);
@@ -262,14 +231,9 @@ export default function FichaCliente({ cliente, expedientes }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>📄 Expedientes del Cliente</h2>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={descargarExpedienteCompleto} style={{ backgroundColor: '#3182ce' }}>
-                  📥 Descargar Completo
-                </button>
-                <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
-                  + Agregar Expediente
-                </button>
-              </div>
+              <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
+                + Agregar Expediente
+              </button>
             </div>
 
             {mostrarFormulario && (
@@ -332,30 +296,44 @@ export default function FichaCliente({ cliente, expedientes }) {
             ) : (
               <div>
                 {expedientes.map((exp, index) => (
-                  <div key={index} style={{ 
-                    border: '1px solid #e2e8f0', 
-                    borderRadius: '8px', 
-                    padding: '15px', 
-                    marginBottom: '15px',
-                    backgroundColor: '#f7fafc'
-                  }}>
+                  <div 
+                    key={index}
+                    style={{ 
+                      border: '1px solid #e2e8f0', 
+                      borderRadius: '8px', 
+                      padding: '15px', 
+                      marginBottom: '15px',
+                      backgroundColor: '#f7fafc',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onClick={() => router.push(`/expediente/${exp.Numero_SAC}`)}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <strong>N° SAC:</strong> {exp.Numero_SAC || 'No registrado'}<br />
                         <strong>Carátula:</strong> {exp.Caratula || 'No registrada'}<br />
                         <strong>Fuero:</strong> {exp.Fuero || 'No registrado'}
                       </div>
-                      {exp.ID_Carpeta_Drive && (
-                        <button 
-                          onClick={() => listarArchivos(exp.ID_Carpeta_Drive, exp.Numero_SAC)}
-                          style={{ backgroundColor: '#3182ce' }}
-                        >
-                          📂 Ver Archivos
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {exp.ID_Carpeta_Drive && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              listarArchivos(exp.ID_Carpeta_Drive);
+                            }}
+                            style={{ backgroundColor: '#3182ce', padding: '5px 10px', fontSize: '0.8rem' }}
+                          >
+                            📂 Ver Archivos
+                          </button>
+                        )}
+                        <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>▶</span>
+                      </div>
                     </div>
                     {/* Mostrar archivos si se hizo clic en "Ver Archivos" */}
-                    {mostrarArchivos && archivos.length > 0 && (
+                    {mostrarArchivos && folderIdActual === exp.ID_Carpeta_Drive && archivos.length > 0 && (
                       <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
                         <strong>Archivos en la carpeta:</strong>
                         <ul style={{ listStyle: 'none', padding: 0, marginTop: '5px' }}>
@@ -374,8 +352,8 @@ export default function FichaCliente({ cliente, expedientes }) {
                           ))}
                         </ul>
                         <button 
-                          onClick={() => { setMostrarArchivos(false); setArchivos([]); }}
-                          style={{ marginTop: '10px', backgroundColor: '#718096' }}
+                          onClick={() => { setMostrarArchivos(false); setArchivos([]); setFolderIdActual(''); }}
+                          style={{ marginTop: '10px', backgroundColor: '#718096', padding: '5px 10px', fontSize: '0.8rem' }}
                         >
                           Cerrar
                         </button>
