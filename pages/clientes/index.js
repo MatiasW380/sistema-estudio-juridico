@@ -46,34 +46,31 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
   };
 
   const eliminarCliente = async (id, nombre) => {
-    if (!confirm(`¿Estás seguro de eliminar al cliente "${nombre}" y todos sus expedientes?`)) {
-      return;
-    }
+  if (!confirm(`¿Estás seguro de eliminar al cliente "${nombre}" y todos sus expedientes?`)) {
+    return;
+  }
 
-    setEliminando(id);
-    try {
-      const response = await fetch(`/api/eliminar?tipo=cliente&id=${id}`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(`Cliente eliminado correctamente`);
-        // Recargar la lista
-        const nuevosClientes = await getClientes();
-        setClientes(nuevosClientes);
-        setClientesIniciales(nuevosClientes);
-      } else {
-        alert(data.error || 'Error al eliminar el cliente');
-      }
-    } catch (error) {
-      console.error('Error al eliminar:', error);
-      alert('Error al eliminar el cliente');
-    } finally {
-      setEliminando(null);
+  setEliminando(id);
+  try {
+    const response = await fetch(`/api/eliminar?tipo=cliente&id=${id}`, {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      alert('Cliente eliminado correctamente');
+      // Forzar recarga completa de la página para obtener datos actualizados
+      router.reload();
+    } else {
+      alert(data.error || 'Error al eliminar el cliente');
     }
-  };
-
+  } catch (error) {
+    console.error('Error al eliminar:', error);
+    alert('Error al eliminar el cliente');
+  } finally {
+    setEliminando(null);
+  }
+};
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
