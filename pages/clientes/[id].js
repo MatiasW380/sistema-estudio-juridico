@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes } from '../../lib/googleSheets';
+import BotonInicio from '../../components/BotonInicio';
 
 export async function getServerSideProps(context) {
   const { id } = context.params;
@@ -108,7 +109,6 @@ export default function FichaCliente({ cliente, expedientes }) {
     }
   };
 
-  // Función para listar archivos de una carpeta
   const listarArchivos = async (folderId) => {
     try {
       const response = await fetch(`/api/drive/listar?folderId=${folderId}`);
@@ -128,25 +128,21 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   return (
     <div className="container">
-      {/* Encabezado con datos básicos y botón Editar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h1 style={{ marginBottom: '5px' }}>
-            👤 {cliente.Nombre_Cliente}
-          </h1>
-          <p style={{ color: '#4a5568', margin: 0 }}>
-            ID: {cliente.ID_Cliente} | Teléfono: {cliente.Telefono || 'No registrado'}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <BotonInicio />
+          <div>
+            <h1 style={{ marginBottom: '5px' }}>👤 {cliente.Nombre_Cliente}</h1>
+            <p style={{ color: '#4a5568', margin: 0 }}>
+              ID: {cliente.ID_Cliente} | Teléfono: {cliente.Telefono || 'No registrado'}
+            </p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <a href={`/clientes/${cliente.ID_Cliente}/editar`}>
-            <button style={{ backgroundColor: '#ed8936' }}>
-              ✏️ Editar
-            </button>
+            <button style={{ backgroundColor: '#ed8936' }}>✏️ Editar</button>
           </a>
-          <button onClick={volver} style={{ backgroundColor: '#718096' }}>
-            ← Volver
-          </button>
+          <button onClick={volver} style={{ backgroundColor: '#718096' }}>← Volver</button>
         </div>
       </div>
 
@@ -332,7 +328,6 @@ export default function FichaCliente({ cliente, expedientes }) {
                         <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>▶</span>
                       </div>
                     </div>
-                    {/* Mostrar archivos si se hizo clic en "Ver Archivos" */}
                     {mostrarArchivos && folderIdActual === exp.ID_Carpeta_Drive && archivos.length > 0 && (
                       <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
                         <strong>Archivos en la carpeta:</strong>
