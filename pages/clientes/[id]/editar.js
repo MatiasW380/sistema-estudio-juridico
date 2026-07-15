@@ -77,4 +77,75 @@ export default function EditarCliente({ cliente }) {
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <BotonInicio />
+          <h1>✏️ Editar Cliente</h1>
+        </div>
+        <a href={`/clientes/${id}`} style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver a la ficha</a>
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
+        <div style={{ marginBottom: '15px' }}>
+          <label><strong>ID Cliente:</strong></label>
+          <input type="text" value={id} disabled style={{ backgroundColor: '#f7fafc' }} />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label><strong>Nombre *</strong></label>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Ej: Juan Perez"
+            required
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label><strong>Teléfono</strong></label>
+          <input
+            type="text"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            placeholder="Ej: 3511234567"
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label><strong>DNI</strong></label>
+          <input
+            type="text"
+            value={dni}
+            onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+            placeholder="Ej: 12345678"
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label><strong>Domicilio</strong></label>
+          <input
+            type="text"
+            value={domicilio}
+            onChange={(e) => setDomicilio(e.target.value)}
+            placeholder="Ej: Calle Falsa 123"
+          />
+        </div>
+
+        {error && (
+          <div style={{ backgroundColor: '#fed7d7', color: '#9b2c2c', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+            {cargando ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
+          <button type="button" onClick={() => router.push(`/clientes/${id}`)} style={{ backgroundColor: '#718096' }}>
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
