@@ -1,7 +1,9 @@
 // pages/login.js
+// Página de login con email + PIN de 4 números
+
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-const { verificarUsuario } = require('../lib/googleSheets');
+import { verificarUsuario } from '../lib/googleSheets';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +17,8 @@ export default function LoginPage() {
     setError('');
     setCargando(true);
 
+    console.log('🔍 Intentando login con:', email, pin);
+
     if (!email || !pin) {
       setError('Completá todos los campos');
       setCargando(false);
@@ -27,7 +31,10 @@ export default function LoginPage() {
     }
 
     try {
+      console.log('📤 Llamando a verificarUsuario...');
       const usuario = await verificarUsuario(email, pin);
+      console.log('📥 Resultado de verificarUsuario:', usuario);
+
       if (usuario) {
         document.cookie = `user=${encodeURIComponent(JSON.stringify(usuario))}; path=/; max-age=86400`;
         router.push('/');
@@ -35,6 +42,7 @@ export default function LoginPage() {
         setError('Email o PIN incorrecto');
       }
     } catch (err) {
+      console.error('❌ Error en handleSubmit:', err);
       setError('Error al verificar: ' + err.message);
     } finally {
       setCargando(false);
