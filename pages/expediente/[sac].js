@@ -1,14 +1,13 @@
 // pages/expediente/[sac].js
 // Página de detalle de un expediente con su feed de actuaciones
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes } from '../../lib/googleSheets';
 
 export async function getServerSideProps(context) {
   const { sac } = context.params;
   try {
-    // Obtener el expediente de la lista de clientes
     const clientes = await getClientes();
     let expediente = null;
     let cliente = null;
@@ -26,7 +25,6 @@ export async function getServerSideProps(context) {
       return { notFound: true };
     }
 
-    // Obtener actuaciones del expediente
     const actuaciones = await getActuaciones(sac);
 
     return {
@@ -48,9 +46,36 @@ export async function getServerSideProps(context) {
 
 export default function ExpedientePage({ sac, expediente, cliente, actuaciones }) {
   const router = useRouter();
+  const [eliminando, setEliminando] = useState(false);
 
   const volver = () => {
     router.push(`/clientes/${cliente.ID_Cliente}`);
+  };
+
+  const eliminarExpediente = async () => {
+    if (!confirm(`¿Estás seguro de eliminar el expediente ${sac}?`)) {
+      return;
+    }
+
+    setEliminando(true);
+    try {
+      const response = await fetch(`/api/eliminar?tipo=expediente&sac=${sac}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Expediente eliminado correctamente');
+        router.push(`/clientes/${cliente.ID_Cliente}`);
+      } else {
+        alert(data.error || 'Error al eliminar el expediente');
+      }
+    } catch (error) {
+      console.error('Error al eliminar:', error);
+      alert('Error al eliminar el expediente');
+    } finally {
+      setEliminando(false);
+    }
   };
 
   return (
@@ -65,6 +90,17 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones }
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={eliminarExpediente}
+            style={{
+              backgroundColor: '#e53e3e',
+              opacity: eliminando ? 0.7 : 1,
+              cursor: eliminando ? 'not-allowed' : 'pointer'
+            }}
+            disabled={eliminando}
+          >
+            {eliminando ? 'Eliminando...' : '🗑️ Eliminar Expediente'}
+          </button>
           <button onClick={volver} style={{ backgroundColor: '#718096' }}>
             ← Volver al cliente
           </button>
