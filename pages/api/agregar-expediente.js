@@ -1,7 +1,7 @@
 // pages/api/agregar-expediente.js
 // API para agregar un nuevo expediente y crear su carpeta en Drive
 
-import { appendToSheet, crearCarpetaExpediente } from '../../lib/googleSheets';
+import { appendToSheet, crearCarpetaExpediente, getClientes } from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
   console.log('🚀 API /api/agregar-expediente ejecutándose...');
@@ -27,6 +27,16 @@ export default async function handler(req, res) {
       });
     }
 
+    // --- OBTENER DATOS DEL CLIENTE (DNI y Domicilio) ---
+    const clientes = await getClientes();
+    const cliente = clientes.find(c => c.ID_Cliente === clienteId);
+    const dni = cliente?.DNI || '';
+    const domicilio = cliente?.Domicilio || '';
+
+    console.log('📋 Datos del cliente:');
+    console.log('  DNI:', dni);
+    console.log('  Domicilio:', domicilio);
+
     // --- CREAR CARPETA EN DRIVE ---
     console.log('📁 Creando carpeta en Drive...');
     let folderId = null;
@@ -47,12 +57,12 @@ export default async function handler(req, res) {
       clienteId,                // ID_Cliente
       nombre,                   // Nombre_Cliente
       telefono || '',           // Telefono
-      '',                       // DNI (vacío, se mantiene del cliente)
-      '',                       // Domicilio (vacío, se mantiene del cliente)
+      dni,                      // DNI (heredado del cliente)
+      domicilio,                // Domicilio (heredado del cliente)
       numeroSAC,                // Numero_SAC
       caratula,                 // Caratula
       fuero || '',              // Fuero
-      folderId || '',           // ID_Carpeta_Drive
+      folderId || '',           // ID_Carpeta_Drive (ID real de la carpeta en Drive)
       usuariosCompartidos || '', // Usuarios_Compartidos
     ];
 
