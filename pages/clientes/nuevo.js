@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { crearCliente, getNextClienteId } from '../../lib/googleSheets';
+import { getNextClienteId } from '../../lib/googleSheets';
 
 export async function getServerSideProps() {
   const nextId = await getNextClienteId();
@@ -31,7 +31,20 @@ export default function NuevoCliente({ nextId }) {
     }
 
     try {
-      const resultado = await crearCliente(nombre, telefono, dni, domicilio);
+      const response = await fetch('/api/crear-cliente', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          telefono: telefono.trim(),
+          dni: dni.trim(),
+          domicilio: domicilio.trim(),
+        }),
+      });
+
+      const resultado = await response.json();
       
       if (resultado.success) {
         router.push(`/clientes/${resultado.id}`);
@@ -39,6 +52,7 @@ export default function NuevoCliente({ nextId }) {
         setError(resultado.error || 'Error al crear el cliente');
       }
     } catch (err) {
+      console.error('❌ Error en handleSubmit:', err);
       setError('Error: ' + err.message);
     } finally {
       setCargando(false);
