@@ -1,9 +1,8 @@
 // pages/clientes/index.js
-// Página para probar la conexión con Google Sheets
+// Página para listar clientes (agrupados por ID_Cliente)
 
 import { getClientes } from '../../lib/googleSheets';
 
-// Esta función se ejecuta en el servidor (getServerSideProps)
 export async function getServerSideProps() {
   try {
     const clientes = await getClientes();
@@ -24,13 +23,12 @@ export async function getServerSideProps() {
   }
 }
 
-// Esta es la función que se ejecuta en el navegador (el componente)
 export default function ClientesPage({ clientes, error }) {
   return (
     <div className="container">
       <h1>👥 Clientes</h1>
       <p style={{ marginBottom: '20px', color: '#4a5568' }}>
-        Lista de clientes cargada desde Google Sheets
+        Lista de clientes agrupados por ID
       </p>
 
       {error && (
@@ -50,8 +48,8 @@ export default function ClientesPage({ clientes, error }) {
                   <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>ID</th>
                   <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Nombre</th>
                   <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Teléfono</th>
-                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>N° SAC</th>
-                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Carátula</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Expedientes</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Carátula (principal)</th>
                 </tr>
               </thead>
               <tbody>
@@ -68,8 +66,14 @@ export default function ClientesPage({ clientes, error }) {
                       </a>
                     </td>
                     <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Telefono || ''}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Numero_SAC || ''}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Caratula || ''}</td>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
+                      {cliente.totalExpedientes || 0}
+                    </td>
+                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
+                      {cliente.expedientes && cliente.expedientes.length > 0 
+                        ? cliente.expedientes[0].Caratula || '' 
+                        : ''}
+                    </td>
                   </tr>
                 ))}
               </tbody>
