@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import BotonInicio from '../components/BotonInicio';
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
@@ -14,7 +15,6 @@ export default function UsuariosPage() {
   const [session, setSession] = useState(null);
   const router = useRouter();
 
-  // Obtener sesión solo en el cliente
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
@@ -44,7 +44,7 @@ export default function UsuariosPage() {
       const response = await fetch('/api/usuarios', {
         headers: {
           'email': userSession.email,
-          'pin': '3543' // En producción, obtener el PIN de la sesión
+          'pin': '3543'
         }
       });
       const data = await response.json();
@@ -128,7 +128,10 @@ export default function UsuariosPage() {
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>👥 Administración de Usuarios</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <BotonInicio />
+          <h1>👥 Administración de Usuarios</h1>
+        </div>
         <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
       </div>
 
