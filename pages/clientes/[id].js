@@ -18,7 +18,7 @@ export async function getServerSideProps(context) {
       return { notFound: true };
     }
 
-    // Los expedientes ya están dentro de cliente.expedientes (gracias a la nueva versión de getClientes)
+    // Los expedientes ya están dentro de cliente.expedientes
     const expedientes = cliente.expedientes || [];
 
     return {
@@ -207,6 +207,8 @@ export default function FichaCliente({ cliente, expedientes }) {
               <div><strong>ID Cliente:</strong> {cliente.ID_Cliente}</div>
               <div><strong>Nombre:</strong> {cliente.Nombre_Cliente}</div>
               <div><strong>Teléfono:</strong> {cliente.Telefono || 'No registrado'}</div>
+              <div><strong>DNI:</strong> {cliente.DNI || 'No registrado'}</div>
+              <div><strong>Domicilio:</strong> {cliente.Domicilio || 'No registrado'}</div>
               <div><strong>ID Carpeta Drive:</strong> {cliente.ID_Carpeta_Drive || 'No asignada'}</div>
               <div><strong>Usuarios Compartidos:</strong> {cliente.Usuarios_Compartidos || 'Ninguno'}</div>
             </div>
