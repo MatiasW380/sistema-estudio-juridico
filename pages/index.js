@@ -67,6 +67,9 @@ export default function Home() {
           <button>💰 Finanzas</button>
         </a>
         <button>📅 Agenda</button>
+          <a href="/biblioteca">
+  <button>📚 Biblioteca</button>
+</a>
       </div>
     </div>
   );
