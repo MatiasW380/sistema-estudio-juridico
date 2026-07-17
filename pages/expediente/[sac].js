@@ -1,5 +1,5 @@
 // pages/expediente/[sac].js
-// Página de detalle de un expediente con su feed de actuaciones
+// Página de detalle de un expediente con feed de actuaciones (expandible)
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -48,6 +48,7 @@ export async function getServerSideProps(context) {
 export default function ExpedientePage({ sac, expediente, cliente, actuaciones: actuacionesIniciales }) {
   const [actuaciones, setActuaciones] = useState(actuacionesIniciales || []);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [expandidos, setExpandidos] = useState({});
   const [sessionEmail, setSessionEmail] = useState('');
   const [nuevaActuacion, setNuevaActuacion] = useState({
     fecha: new Date().toISOString().split('T')[0],
@@ -112,7 +113,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       return;
     }
 
-    // Validar tipo "Otro"
     if (nuevaActuacion.tipo === 'Otro' && !nuevaActuacion.tipoOtro.trim()) {
       setMensaje('⚠️ Especificá el nombre del tipo cuando seleccionás "Otro"');
       setCargando(false);
@@ -154,7 +154,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           esBorrador: true,
         });
         setMostrarFormulario(false);
-        // Recargar actuaciones
         const reloadResponse = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
         const reloadData = await reloadResponse.json();
         if (reloadData.actuaciones) {
@@ -197,6 +196,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   };
 
+  const toggleExpandir = (index) => {
+    setExpandidos(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  // Función para obtener las primeras líneas del contenido
+  const getResumen = (contenido, maxLineas = 2) => {
+    if (!contenido) return '';
+    const lineas = contenido.split('\n').filter(line => line.trim() !== '');
+    const primeras = lineas.slice(0, maxLineas);
+    return primeras.join('\n');
+  };
+
   // Función para obtener el color según el tipo
   const getTipoColor = (tipo) => {
     const colores = {
@@ -216,7 +230,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     return colores[tipo] || '#718096';
   };
 
-  // Función para obtener el color según el origen
   const getOrigenColor = (origen) => {
     const colores = {
       'Yo': '#3182ce',
@@ -426,80 +439,130 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
       ) : (
         <div>
-          {actuaciones.map((act, index) => (
-            <div
-              key={index}
-              style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '15px',
-                marginBottom: '10px',
-                backgroundColor: act.Es_Borrador === 'SI' ? '#fefcbf' : '#f7fafc',
-                borderLeft: `4px solid ${getTipoColor(act.Tipo)}`
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <strong style={{ color: getTipoColor(act.Tipo) }}>
-                    {act.Tipo || 'Actuación'}
-                  </strong>
-                  <span style={{ 
-                    marginLeft: '10px', 
-                    backgroundColor: getOrigenColor(act.Origen), 
-                    color: 'white', 
-                    padding: '2px 10px', 
-                    borderRadius: '12px', 
-                    fontSize: '0.8rem' 
-                  }}>
-                    {act.Origen || 'Sin origen'}
+          {actuaciones.map((act, index) => {
+            const resumen = getResumen(act.Contenido, 2);
+            const estaExpandido = expandidos[index] || false;
+            const tieneMas = act.Contenido && act.Contenido.split('\n').filter(l => l.trim() !== '').length > 2;
+
+            return (
+              <div
+                key={index}
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  marginBottom: '10px',
+                  backgroundColor: act.Es_Borrador === 'SI' ? '#fefcbf' : '#f7fafc',
+                  borderLeft: `4px solid ${getTipoColor(act.Tipo)}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onClick={() => toggleExpandir(index)}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = act.Es_Borrador === 'SI' ? '#fde68a' : '#edf2f7'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = act.Es_Borrador === 'SI' ? '#fefcbf' : '#f7fafc'}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong style={{ color: getTipoColor(act.Tipo) }}>
+                      {act.Tipo || 'Actuación'}
+                    </strong>
+                    <span style={{ 
+                      marginLeft: '10px', 
+                      backgroundColor: getOrigenColor(act.Origen), 
+                      color: 'white', 
+                      padding: '2px 10px', 
+                      borderRadius: '12px', 
+                      fontSize: '0.8rem' 
+                    }}>
+                      {act.Origen || 'Sin origen'}
+                    </span>
+                    {act.Presentado === 'SI' && (
+                      <span style={{ 
+                        marginLeft: '10px', 
+                        backgroundColor: '#38a169', 
+                        color: 'white', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '0.8rem' 
+                      }}>
+                        ✅ Presentado
+                      </span>
+                    )}
+                    {act.Es_Borrador === 'SI' && act.Presentado !== 'SI' && (
+                      <span style={{ 
+                        marginLeft: '10px', 
+                        backgroundColor: '#ed8936', 
+                        color: 'white', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '0.8rem' 
+                      }}>
+                        📝 Borrador
+                      </span>
+                    )}
+                    <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
+                      {act.Fecha || 'Sin fecha'}
+                    </span>
+                  </div>
+                  <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                    {estaExpandido ? '▲' : '▼'}
                   </span>
-                  {act.Presentado === 'SI' && (
-                    <span style={{ 
-                      marginLeft: '10px', 
-                      backgroundColor: '#38a169', 
-                      color: 'white', 
-                      padding: '2px 8px', 
-                      borderRadius: '12px', 
-                      fontSize: '0.8rem' 
-                    }}>
-                      ✅ Presentado
-                    </span>
-                  )}
-                  {act.Es_Borrador === 'SI' && act.Presentado !== 'SI' && (
-                    <span style={{ 
-                      marginLeft: '10px', 
-                      backgroundColor: '#ed8936', 
-                      color: 'white', 
-                      padding: '2px 8px', 
-                      borderRadius: '12px', 
-                      fontSize: '0.8rem' 
-                    }}>
-                      📝 Borrador
-                    </span>
+                </div>
+
+                {/* Resumen del contenido */}
+                <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
+                  {resumen ? (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                      {resumen}
+                      {tieneMas && !estaExpandido && (
+                        <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                      )}
+                    </div>
+                  ) : (
+                    <em style={{ color: '#a0aec0' }}>Sin contenido</em>
                   )}
                 </div>
-                <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>{act.Fecha || 'Sin fecha'}</span>
+
+                {/* Contenido expandido */}
+                {estaExpandido && act.Contenido && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    paddingTop: '12px', 
+                    borderTop: '1px solid #e2e8f0',
+                    whiteSpace: 'pre-wrap',
+                    fontSize: '0.95rem',
+                    backgroundColor: 'white',
+                    padding: '12px',
+                    borderRadius: '4px'
+                  }}>
+                    {act.Contenido}
+                  </div>
+                )}
+
+                {/* PDF adjunto */}
+                {act.Tiene_PDF === 'SI' && act.ID_PDF_Drive && (
+                  <div style={{ marginTop: '10px' }}>
+                    <a 
+                      href={`/api/drive/descargar?fileId=${act.ID_PDF_Drive}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ color: '#3182ce', fontSize: '0.9rem' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      📎 Ver PDF adjunto
+                    </a>
+                  </div>
+                )}
+
+                {/* Creado por */}
+                {act.Creado_Por && (
+                  <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#a0aec0' }}>
+                    👤 {act.Creado_Por}
+                  </div>
+                )}
               </div>
-              <div style={{ marginTop: '10px', whiteSpace: 'pre-wrap' }}>{act.Contenido || 'Sin contenido'}</div>
-              {act.Tiene_PDF === 'SI' && act.ID_PDF_Drive && (
-                <div style={{ marginTop: '10px' }}>
-                  <a 
-                    href={`/api/drive/descargar?fileId=${act.ID_PDF_Drive}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    style={{ color: '#3182ce' }}
-                  >
-                    📎 Ver PDF adjunto
-                  </a>
-                </div>
-              )}
-              {act.Creado_Por && (
-                <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#4a5568' }}>
-                  👤 Creado por: {act.Creado_Por}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
