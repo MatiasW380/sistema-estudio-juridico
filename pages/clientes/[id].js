@@ -1,7 +1,7 @@
 // pages/clientes/[id].js
 // Ficha completa del cliente con pestañas y formulario para agregar expediente
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
@@ -38,6 +38,131 @@ export default function FichaCliente({ cliente, expedientes }) {
   const [mostrarArchivos, setMostrarArchivos] = useState(false);
   const [folderIdActual, setFolderIdActual] = useState('');
   const router = useRouter();
+
+  // ==========================================
+  // ESTADOS PARA FINANZAS
+  // ==========================================
+  const [movimientos, setMovimientos] = useState([]);
+  const [saldo, setSaldo] = useState({ totalDebe: 0, totalHaber: 0, saldo: 0 });
+  const [mostrarFormularioFinanzas, setMostrarFormularioFinanzas] = useState(false);
+  const [cargandoFinanzas, setCargandoFinanzas] = useState(false);
+  const [mensajeFinanzas, setMensajeFinanzas] = useState('');
+  const [nuevoMovimiento, setNuevoMovimiento] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    tipo: 'Honorario',
+    categoria: 'Honorarios',
+    concepto: '',
+    montoTotal: '',
+    montoPagado: '',
+    estado: 'Pendiente',
+  });
+
+  // ==========================================
+  // FUNCIONES PARA FINANZAS
+  // ==========================================
+
+  const cargarMovimientos = async () => {
+    try {
+      let todosMovimientos = [];
+      for (const exp of expedientes) {
+        const res = await fetch(`/api/finanzas?numeroSAC=${exp.Numero_SAC}`);
+        const data = await res.json();
+        if (data.finanzas) {
+          todosMovimientos = [...todosMovimientos, ...data.finanzas];
+        }
+      }
+      todosMovimientos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+      setMovimientos(todosMovimientos);
+
+      // Calcular saldo
+      let totalDebe = 0;
+      let totalHaber = 0;
+      todosMovimientos.forEach(m => {
+        const total = parseFloat(m.Monto_Total) || 0;
+        const pagado = parseFloat(m.Monto_Pagado) || 0;
+        if (m.Tipo === 'Honorario' || m.Tipo === 'Cuota') {
+          totalDebe += total - pagado;
+        }
+        if (m.Tipo === 'Pago') {
+          totalHaber += pagado;
+        }
+      });
+      setSaldo({ totalDebe, totalHaber, saldo: totalDebe - totalHaber });
+    } catch (error) {
+      console.error('Error al cargar movimientos:', error);
+    }
+  };
+
+  const handleChangeFinanzas = (e) => {
+    const { name, value } = e.target;
+    setNuevoMovimiento(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitFinanzas = async (e) => {
+    e.preventDefault();
+    setMensajeFinanzas('');
+    setCargandoFinanzas(true);
+
+    const exp = expedientes[0];
+    if (!exp) {
+      setMensajeFinanzas('⚠️ El cliente no tiene expedientes');
+      setCargandoFinanzas(false);
+      return;
+    }
+
+    if (!nuevoMovimiento.fecha || !nuevoMovimiento.tipo) {
+      setMensajeFinanzas('⚠️ Fecha y Tipo son obligatorios');
+      setCargandoFinanzas(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/finanzas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numeroSAC: exp.Numero_SAC,
+          fecha: nuevoMovimiento.fecha,
+          tipo: nuevoMovimiento.tipo,
+          categoria: nuevoMovimiento.categoria,
+          concepto: nuevoMovimiento.concepto,
+          montoTotal: nuevoMovimiento.montoTotal || '',
+          montoPagado: nuevoMovimiento.montoPagado || '',
+          estado: nuevoMovimiento.estado,
+        }),
+      });
+
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensajeFinanzas('✅ Movimiento agregado correctamente');
+        setNuevoMovimiento({
+          fecha: new Date().toISOString().split('T')[0],
+          tipo: 'Honorario',
+          categoria: 'Honorarios',
+          concepto: '',
+          montoTotal: '',
+          montoPagado: '',
+          estado: 'Pendiente',
+        });
+        setMostrarFormularioFinanzas(false);
+        cargarMovimientos();
+      } else {
+        setMensajeFinanzas('❌ Error al agregar movimiento: ' + (resultado.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error en handleSubmitFinanzas:', error);
+      setMensajeFinanzas('❌ Error: ' + error.message);
+    } finally {
+      setCargandoFinanzas(false);
+    }
+  };
+
+  // Cargar movimientos al entrar a la pestaña finanzas
+  useEffect(() => {
+    if (activeTab === 'finanzas' && expedientes.length > 0) {
+      cargarMovimientos();
+    }
+  }, [activeTab, expedientes]);
 
   if (!cliente) {
     return (
@@ -375,11 +500,203 @@ export default function FichaCliente({ cliente, expedientes }) {
         {activeTab === 'finanzas' && (
           <div>
             <h2>💰 Finanzas</h2>
-            <p style={{ color: '#4a5568', marginBottom: '15px' }}>Control de honorarios, pagos y gastos del cliente.</p>
-            <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', textAlign: 'center', color: '#4a5568' }}>
-              <p>🔜 Próximamente: registro de honorarios, cuotas, pagos y gastos.</p>
-              <p style={{ fontSize: '0.9rem' }}>Podrás generar reportes por períodos.</p>
+            
+            {/* Saldo actual */}
+            <div style={{
+              backgroundColor: '#f7fafc',
+              padding: '15px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              display: 'flex',
+              gap: '30px',
+              flexWrap: 'wrap'
+            }}>
+              <div><strong>Total Adeudado:</strong> ${saldo.totalDebe.toFixed(2)}</div>
+              <div><strong>Total Pagado:</strong> ${saldo.totalHaber.toFixed(2)}</div>
+              <div><strong>Saldo:</strong> 
+                <span style={{ color: saldo.saldo > 0 ? '#e53e3e' : '#38a169' }}>
+                  ${saldo.saldo.toFixed(2)}
+                </span>
+              </div>
             </div>
+
+            {/* Formulario para nuevo movimiento */}
+            <button 
+              onClick={() => setMostrarFormularioFinanzas(!mostrarFormularioFinanzas)}
+              style={{ backgroundColor: '#38a169', marginBottom: '20px' }}
+            >
+              + Agregar Movimiento
+            </button>
+
+            {mostrarFormularioFinanzas && (
+              <div style={{
+                backgroundColor: '#f7fafc',
+                padding: '20px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <h3>Nuevo Movimiento</h3>
+                <form onSubmit={handleSubmitFinanzas}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div>
+                      <label><strong>Fecha *</strong></label>
+                      <input
+                        type="date"
+                        name="fecha"
+                        value={nuevoMovimiento.fecha}
+                        onChange={handleChangeFinanzas}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label><strong>Categoría</strong></label>
+                      <select
+                        name="categoria"
+                        value={nuevoMovimiento.categoria}
+                        onChange={handleChangeFinanzas}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                      >
+                        <option value="Honorarios">Honorarios</option>
+                        <option value="Caja_Abogados">Caja de Abogados</option>
+                        <option value="Colegio_Abogados">Colegio de Abogados</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label><strong>Tipo *</strong></label>
+                      <select
+                        name="tipo"
+                        value={nuevoMovimiento.tipo}
+                        onChange={handleChangeFinanzas}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                        required
+                      >
+                        <option value="Honorario">Honorario</option>
+                        <option value="Cuota">Cuota</option>
+                        <option value="Pago">Pago</option>
+                        <option value="Aporte">Aporte</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label><strong>Estado</strong></label>
+                      <select
+                        name="estado"
+                        value={nuevoMovimiento.estado}
+                        onChange={handleChangeFinanzas}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                      >
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Pagado">Pagado</option>
+                        <option value="Parcial">Parcial</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label><strong>Monto Total</strong></label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="montoTotal"
+                        value={nuevoMovimiento.montoTotal}
+                        onChange={handleChangeFinanzas}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label><strong>Monto Pagado</strong></label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="montoPagado"
+                        value={nuevoMovimiento.montoPagado}
+                        onChange={handleChangeFinanzas}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '15px' }}>
+                    <label><strong>Concepto</strong></label>
+                    <textarea
+                      name="concepto"
+                      value={nuevoMovimiento.concepto}
+                      onChange={handleChangeFinanzas}
+                      placeholder="Descripción del movimiento..."
+                      style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '60px' }}
+                    />
+                  </div>
+                  {mensajeFinanzas && (
+                    <div style={{ 
+                      marginTop: '15px', 
+                      padding: '10px', 
+                      borderRadius: '8px', 
+                      backgroundColor: mensajeFinanzas.includes('✅') ? '#c6f6d5' : '#fed7d7', 
+                      color: mensajeFinanzas.includes('✅') ? '#22543d' : '#9b2c2c' 
+                    }}>
+                      {mensajeFinanzas}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargandoFinanzas}>
+                      {cargandoFinanzas ? 'Guardando...' : 'Guardar Movimiento'}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { setMostrarFormularioFinanzas(false); setMensajeFinanzas(''); }} 
+                      style={{ backgroundColor: '#718096' }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Lista de movimientos */}
+            <h3>📋 Historial de Movimientos</h3>
+            {movimientos.length === 0 ? (
+              <p style={{ color: '#4a5568' }}>No hay movimientos registrados para este cliente.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#edf2f7' }}>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fecha</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Categoría</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Tipo</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Concepto</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>Total</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>Pagado</th>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimientos.map((mov, index) => {
+                    const total = parseFloat(mov.Monto_Total) || 0;
+                    const pagado = parseFloat(mov.Monto_Pagado) || 0;
+                    return (
+                      <tr key={index}>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Fecha || ''}</td>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Categoria || ''}</td>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Tipo || ''}</td>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Concepto || ''}</td>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
+                          ${total.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
+                          ${pagado.toFixed(2)}
+                        </td>
+                        <td style={{ 
+                          padding: '10px', 
+                          border: '1px solid #e2e8f0', 
+                          textAlign: 'center',
+                          color: mov.Estado === 'Pagado' ? '#38a169' : mov.Estado === 'Parcial' ? '#ed8936' : '#e53e3e'
+                        }}>
+                          {mov.Estado || 'Pendiente'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
