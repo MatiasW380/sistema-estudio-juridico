@@ -3,6 +3,13 @@
 
 import { getAccessToken } from '../../../lib/googleSheets';
 
+// Deshabilitar bodyParser para manejar archivos
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req, res) {
   console.log('🚀 API /api/drive/subir ejecutándose...');
   
@@ -16,15 +23,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'folderId y fileName son obligatorios' });
     }
 
+    // Leer el archivo del body
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+    const fileBuffer = Buffer.concat(chunks);
+
+    if (!fileBuffer || fileBuffer.length === 0) {
+      return res.status(400).json({ error: 'No se recibió el archivo' });
+    }
+
+    console.log(`📄 Archivo recibido: ${fileName} (${fileBuffer.length} bytes)`);
+
     const token = await getAccessToken();
     if (!token) {
       return res.status(500).json({ error: 'Error al obtener token de acceso' });
-    }
-
-    // Obtener el archivo del body
-    const fileBuffer = req.body;
-    if (!fileBuffer) {
-      return res.status(400).json({ error: 'No se recibió el archivo' });
     }
 
     // Subir archivo a Drive
