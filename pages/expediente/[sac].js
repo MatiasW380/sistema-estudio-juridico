@@ -646,4 +646,91 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                             📝 Borrador
                           </span>
                         )}
-                        <span style={{ marginLeft: '15px', color:
+                        <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
+                          {act.Fecha || 'Sin fecha'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {puedeEditarAct && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); editarActuacion(act, index); }}
+                              style={{ backgroundColor: '#ed8936', padding: '4px 8px', fontSize: '0.75rem' }}
+                            >
+                              ✏️ Editar
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); eliminarActuacion(act); }}
+                              style={{ backgroundColor: '#e53e3e', padding: '4px 8px', fontSize: '0.75rem' }}
+                            >
+                              🗑️
+                            </button>
+                          </>
+                        )}
+                        <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                          {estaExpandido ? '▲' : '▼'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Resumen del contenido */}
+                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
+                      {resumen ? (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>
+                          {resumen}
+                          {tieneMas && !estaExpandido && (
+                            <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                          )}
+                        </div>
+                      ) : (
+                        <em style={{ color: '#a0aec0' }}>Sin contenido</em>
+                      )}
+                    </div>
+
+                    {/* Contenido expandido */}
+                    {estaExpandido && act.Contenido && (
+                      <div style={{ 
+                        marginTop: '12px', 
+                        paddingTop: '12px', 
+                        borderTop: '1px solid #e2e8f0',
+                        whiteSpace: 'pre-wrap',
+                        fontSize: '0.95rem',
+                        backgroundColor: 'white',
+                        padding: '12px',
+                        borderRadius: '4px'
+                      }}>
+                        {act.Contenido}
+                      </div>
+                    )}
+
+                    {/* PDF adjunto */}
+                    {act.Tiene_PDF === 'SI' && act.ID_PDF_Drive && (
+                      <div style={{ marginTop: '10px' }}>
+                        <a 
+                          href={`/api/drive/descargar?fileId=${act.ID_PDF_Drive}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ color: '#3182ce', fontSize: '0.9rem' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          📎 Ver PDF adjunto
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Creado por */}
+                    {act.Creado_Por && (
+                      <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#a0aec0' }}>
+                        👤 {act.Creado_Por}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
