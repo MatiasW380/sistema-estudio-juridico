@@ -3,10 +3,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { crearCliente, getNextClienteId } from '../../lib/googleSheets';
+import { getNextClienteId } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
 
 export async function getServerSideProps() {
+  console.log('📄 getServerSideProps de nuevo cliente ejecutándose');
   const nextId = await getNextClienteId();
   return { props: { nextId } };
 }
@@ -22,24 +23,54 @@ export default function NuevoCliente({ nextId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('📤 ====== FORMULARIO ENVIADO ======');
+    console.log('📤 nombre:', nombre);
+    console.log('📤 telefono:', telefono);
+    console.log('📤 dni:', dni);
+    console.log('📤 domicilio:', domicilio);
+    
     setError('');
     setCargando(true);
 
     if (!nombre.trim()) {
+      console.log('❌ Nombre vacío');
       setError('El nombre es obligatorio');
       setCargando(false);
       return;
     }
 
     try {
-      const resultado = await crearCliente(nombre, telefono, dni, domicilio);
+      const datos = {
+        nombre: nombre.trim(),
+        telefono: telefono.trim(),
+        dni: dni.trim(),
+        domicilio: domicilio.trim(),
+      };
+
+      console.log('📤 Enviando a /api/crear-cliente:', datos);
+
+      const response = await fetch('/api/crear-cliente', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datos),
+      });
+
+      console.log('📥 Respuesta status:', response.status);
+
+      const resultado = await response.json();
+      console.log('📥 Respuesta JSON:', resultado);
       
       if (resultado.success) {
+        console.log('✅ Cliente creado, ID:', resultado.id);
         router.push(`/clientes/${resultado.id}`);
       } else {
+        console.log('❌ Error del servidor:', resultado.error);
         setError(resultado.error || 'Error al crear el cliente');
       }
     } catch (err) {
+      console.error('❌ Error en handleSubmit:', err);
       setError('Error: ' + err.message);
     } finally {
       setCargando(false);
