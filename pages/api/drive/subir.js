@@ -1,16 +1,7 @@
 // pages/api/drive/subir.js
-// API para subir un archivo a una carpeta de Drive
+// API para subir un archivo a una carpeta de Drive (recibe base64)
 
 import { getAccessToken } from '../../../lib/googleSheets';
-import { IncomingForm } from 'formidable';
-import fs from 'fs';
-
-// Deshabilitar bodyParser para manejar archivos
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 export default async function handler(req, res) {
   console.log('🚀 API /api/drive/subir ejecutándose...');
@@ -20,33 +11,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parsear el FormData
-    const form = new IncomingForm();
-    form.keepExtensions = true;
+    const { folderId, fileName, fileBase64 } = req.body;
     
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        resolve([fields, files]);
-      });
-    });
-
-    const file = files.file;
-    if (!file) {
-      return res.status(400).json({ error: 'No se recibió el archivo' });
+    if (!folderId || !fileName || !fileBase64) {
+      return res.status(400).json({ error: 'folderId, fileName y fileBase64 son obligatorios' });
     }
 
-    const folderId = fields.folderId || req.query.folderId;
-    const fileName = fields.fileName || req.query.fileName || file.originalFilename;
+    console.log(`📄 Archivo recibido: ${fileName} (base64, ${fileBase64.length} caracteres)`);
 
-    if (!folderId) {
-      return res.status(400).json({ error: 'folderId es obligatorio' });
-    }
-
-    console.log(`📄 Archivo recibido: ${fileName} (${file.filepath})`);
-
-    // Leer el archivo
-    const fileBuffer = fs.readFileSync(file.filepath);
+    // Convertir base64 a buffer
+    const fileBuffer = Buffer.from(fileBase64, 'base64');
 
     const token = await getAccessToken();
     if (!token) {
@@ -62,7 +36,7 @@ export default async function handler(req, res) {
 
     const formData = new FormData();
     formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    formData.append('file', new Blob([fileBuffer], { type: file.mimetype || 'application/pdf' }));
+    formData.append('file', new Blob([fileBuffer], { type: 'application/pdf' }));
 
     const response = await fetch(uploadUrl, {
       method: 'POST',
@@ -80,10 +54,6 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     console.log(`✅ Archivo subido: ${fileName} (ID: ${data.id})`);
-
-    // Limpiar archivo temporal
-    fs.unlinkSync(file.filepath);
-
     return res.status(200).json({ 
       success: true, 
       fileId: data.id,
