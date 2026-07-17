@@ -48,9 +48,11 @@ export async function getServerSideProps(context) {
 export default function ExpedientePage({ sac, expediente, cliente, actuaciones: actuacionesIniciales }) {
   const [actuaciones, setActuaciones] = useState(actuacionesIniciales || []);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState('');
   const [nuevaActuacion, setNuevaActuacion] = useState({
     fecha: new Date().toISOString().split('T')[0],
     tipo: 'Escrito',
+    tipoOtro: '',
     origen: 'Yo',
     contenido: '',
     esBorrador: true,
@@ -58,6 +60,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const router = useRouter();
+
+  // Obtener el email de la sesión
+  useEffect(() => {
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    if (cookies.user) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(cookies.user));
+        setSessionEmail(userData.email || '');
+      } catch (e) {}
+    }
+  }, []);
 
   // Recargar actuaciones cuando cambia el SAC
   useEffect(() => {
@@ -89,38 +106,32 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setMensaje('');
     setCargando(true);
 
-    if (!nuevaActuacion.fecha || !nuevaActuacion.tipo || !nuevaActuacion.contenido.trim()) {
-      setMensaje('⚠️ Fecha, Tipo y Contenido son obligatorios');
+    if (!nuevaActuacion.fecha || !nuevaActuacion.contenido.trim()) {
+      setMensaje('⚠️ Fecha y Contenido son obligatorios');
+      setCargando(false);
+      return;
+    }
+
+    // Validar tipo "Otro"
+    if (nuevaActuacion.tipo === 'Otro' && !nuevaActuacion.tipoOtro.trim()) {
+      setMensaje('⚠️ Especificá el nombre del tipo cuando seleccionás "Otro"');
       setCargando(false);
       return;
     }
 
     try {
-      // Obtener el usuario de la cookie
-      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {});
-      let creadoPor = 'sistema';
-      if (cookies.user) {
-        try {
-          const userData = JSON.parse(decodeURIComponent(cookies.user));
-          creadoPor = userData.email || 'sistema';
-        } catch (e) {}
-      }
-
       const datos = {
         numeroSAC: sac,
         fecha: nuevaActuacion.fecha,
         tipo: nuevaActuacion.tipo,
+        tipoOtro: nuevaActuacion.tipoOtro,
         origen: nuevaActuacion.origen,
         contenido: nuevaActuacion.contenido,
-        presentado: false,
+        presentado: !nuevaActuacion.esBorrador,
         tienePDF: false,
         idPDFDrive: '',
         esBorrador: nuevaActuacion.esBorrador,
-        creadoPor: creadoPor,
+        creadoPor: sessionEmail || 'sistema',
         compartidoCon: '',
       };
 
@@ -137,6 +148,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setNuevaActuacion({
           fecha: new Date().toISOString().split('T')[0],
           tipo: 'Escrito',
+          tipoOtro: '',
           origen: 'Yo',
           contenido: '',
           esBorrador: true,
@@ -193,6 +205,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       'Pericia': '#38a169',
       'Proveído': '#ed8936',
       'Apertura': '#4a5568',
+      'Sentencia': '#e53e3e',
+      'Resolución': '#d69e2e',
+      'Fijación de Audiencia': '#9f7aea',
+      'Admisión de la Demanda': '#38a169',
+      'Decreto de Autos': '#2b6cb0',
+      'Admisión de Apelación': '#dd6b20',
       'Otro': '#718096',
     };
     return colores[tipo] || '#718096';
@@ -204,6 +222,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       'Yo': '#3182ce',
       'Tribunal': '#e53e3e',
       'Otra Parte': '#ed8936',
+      'Perito': '#9f7aea',
+      'Respuesta a Oficio': '#38a169',
+      'Equipo Técnico': '#805ad5',
     };
     return colores[origen] || '#4a5568';
   };
@@ -212,6 +233,30 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setMostrarFormulario(!mostrarFormulario);
     setMensaje('');
   };
+
+  const tiposActuacion = [
+    'Escrito',
+    'Decreto',
+    'Pericia',
+    'Proveído',
+    'Apertura',
+    'Sentencia',
+    'Resolución',
+    'Fijación de Audiencia',
+    'Admisión de la Demanda',
+    'Decreto de Autos',
+    'Admisión de Apelación',
+    'Otro'
+  ];
+
+  const origenes = [
+    'Yo',
+    'Tribunal',
+    'Otra Parte',
+    'Perito',
+    'Respuesta a Oficio',
+    'Equipo Técnico'
+  ];
 
   return (
     <div className="container">
@@ -292,14 +337,25 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                   required
                 >
-                  <option value="Escrito">Escrito</option>
-                  <option value="Decreto">Decreto</option>
-                  <option value="Pericia">Pericia</option>
-                  <option value="Proveído">Proveído</option>
-                  <option value="Apertura">Apertura</option>
-                  <option value="Otro">Otro</option>
+                  {tiposActuacion.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
                 </select>
               </div>
+              {nuevaActuacion.tipo === 'Otro' && (
+                <div>
+                  <label><strong>Especificar Tipo *</strong></label>
+                  <input
+                    type="text"
+                    name="tipoOtro"
+                    value={nuevaActuacion.tipoOtro}
+                    onChange={handleChange}
+                    placeholder="Ej: Oficio, Nota, etc."
+                    style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                    required
+                  />
+                </div>
+              )}
               <div>
                 <label><strong>Origen</strong></label>
                 <select
@@ -308,9 +364,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   onChange={handleChange}
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 >
-                  <option value="Yo">Yo</option>
-                  <option value="Tribunal">Tribunal</option>
-                  <option value="Otra Parte">Otra Parte</option>
+                  {origenes.map(o => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
                 </select>
               </div>
               <div>
