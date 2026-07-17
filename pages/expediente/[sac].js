@@ -140,22 +140,28 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       // Si hay un PDF seleccionado, subirlo a Drive
       if (pdfSeleccionado && expediente.ID_Carpeta_Drive) {
         setSubiendoPDF(true);
-        const formData = new FormData();
-        formData.append('file', pdfSeleccionado);
+        try {
+          const formData = new FormData();
+          formData.append('file', pdfSeleccionado);
+          formData.append('folderId', expediente.ID_Carpeta_Drive);
+          formData.append('fileName', pdfSeleccionado.name);
 
-        const uploadResponse = await fetch(`/api/drive/subir?folderId=${expediente.ID_Carpeta_Drive}&fileName=${pdfSeleccionado.name}`, {
-          method: 'POST',
-          body: pdfSeleccionado,
-        });
+          const uploadResponse = await fetch('/api/drive/subir', {
+            method: 'POST',
+            body: formData,
+          });
 
-        const uploadResult = await uploadResponse.json();
-        if (uploadResult.success) {
-          idPDFDrive = uploadResult.fileId;
-          tienePDF = true;
-          setMensaje('✅ PDF subido correctamente');
-        } else {
-          setMensaje('⚠️ Error al subir el PDF: ' + (uploadResult.error || 'Error desconocido'));
-          // Continuamos con la actuación sin PDF
+          const uploadResult = await uploadResponse.json();
+          if (uploadResult.success) {
+            idPDFDrive = uploadResult.fileId;
+            tienePDF = true;
+            setMensaje('✅ PDF subido correctamente');
+          } else {
+            setMensaje('⚠️ Error al subir el PDF: ' + (uploadResult.error || 'Error desconocido'));
+          }
+        } catch (error) {
+          console.error('Error al subir PDF:', error);
+          setMensaje('⚠️ Error al subir el PDF: ' + error.message);
         }
         setSubiendoPDF(false);
       }
