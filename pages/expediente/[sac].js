@@ -1,7 +1,7 @@
 // pages/expediente/[sac].js
-// Página de detalle de un expediente con feed de actuaciones (expandible, editable y eliminable)
+// Página de detalle de un expediente con feed de actuaciones (expandible, editable, con PDF)
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
@@ -51,16 +51,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [expandidos, setExpandidos] = useState({});
   const [editando, setEditando] = useState(null);
   const [sessionEmail, setSessionEmail] = useState('');
-  const [nuevaActuacion, setNuevaActuacion] = useState({
-    fecha: new Date().toISOString().split('T')[0],
-    tipo: 'Escrito',
-    tipoOtro: '',
-    origen: 'Yo',
-    contenido: '',
-    esBorrador: true,
-  });
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [subiendoPDF, setSubiendoPDF] = useState(false);
+  const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
+  const [pdfNombre, setPdfNombre] = useState('');
+  const fileInputRef = useRef(null);
   const router = useRouter();
 
   // Obtener el email de la sesión
@@ -103,6 +99,23 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setNuevaActuacion(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPdfSeleccionado(file);
+      setPdfNombre(file.name);
+    }
+  };
+
+  const [nuevaActuacion, setNuevaActuacion] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    tipo: 'Escrito',
+    tipoOtro: '',
+    origen: 'Yo',
+    contenido: '',
+    esBorrador: true,
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje('');
@@ -121,6 +134,32 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
 
     try {
+      let idPDFDrive = '';
+      let tienePDF = false;
+
+      // Si hay un PDF seleccionado, subirlo a Drive
+      if (pdfSeleccionado && expediente.ID_Carpeta_Drive) {
+        setSubiendoPDF(true);
+        const formData = new FormData();
+        formData.append('file', pdfSeleccionado);
+
+        const uploadResponse = await fetch(`/api/drive/subir?folderId=${expediente.ID_Carpeta_Drive}&fileName=${pdfSeleccionado.name}`, {
+          method: 'POST',
+          body: pdfSeleccionado,
+        });
+
+        const uploadResult = await uploadResponse.json();
+        if (uploadResult.success) {
+          idPDFDrive = uploadResult.fileId;
+          tienePDF = true;
+          setMensaje('✅ PDF subido correctamente');
+        } else {
+          setMensaje('⚠️ Error al subir el PDF: ' + (uploadResult.error || 'Error desconocido'));
+          // Continuamos con la actuación sin PDF
+        }
+        setSubiendoPDF(false);
+      }
+
       const datos = {
         numeroSAC: sac,
         fecha: nuevaActuacion.fecha,
@@ -129,8 +168,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         origen: nuevaActuacion.origen,
         contenido: nuevaActuacion.contenido,
         presentado: !nuevaActuacion.esBorrador,
-        tienePDF: false,
-        idPDFDrive: '',
+        tienePDF: tienePDF,
+        idPDFDrive: idPDFDrive,
         esBorrador: nuevaActuacion.esBorrador,
         creadoPor: sessionEmail || 'sistema',
         compartidoCon: '',
@@ -145,7 +184,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Actuación agregada correctamente');
+        setMensaje('✅ Actuación agregada correctamente' + (tienePDF ? ' con PDF adjunto' : ''));
         setNuevaActuacion({
           fecha: new Date().toISOString().split('T')[0],
           tipo: 'Escrito',
@@ -154,6 +193,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           contenido: '',
           esBorrador: true,
         });
+        setPdfSeleccionado(null);
+        setPdfNombre('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setMostrarFormulario(false);
         const reloadResponse = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
         const reloadData = await reloadResponse.json();
@@ -168,6 +210,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       setMensaje('❌ Error: ' + error.message);
     } finally {
       setCargando(false);
+      setSubiendoPDF(false);
     }
   };
 
@@ -197,10 +240,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   };
 
-  // Función para editar una actuación
   const editarActuacion = async (act, index) => {
     if (editando === index) {
-      // Si ya está en modo edición, guardar cambios
       const contenido = document.getElementById(`edit_contenido_${index}`).value;
       const fecha = document.getElementById(`edit_fecha_${index}`).value;
       const tipo = document.getElementById(`edit_tipo_${index}`).value;
@@ -241,7 +282,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   };
 
-  // Función para eliminar una actuación
   const eliminarActuacion = async (act) => {
     if (!confirm(`¿Estás seguro de eliminar esta actuación?`)) {
       return;
@@ -269,7 +309,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   };
 
   const toggleExpandir = (index) => {
-    if (editando !== null) return; // No expandir si estamos editando
+    if (editando !== null) return;
     setExpandidos(prev => ({
       ...prev,
       [index]: !prev[index]
@@ -316,6 +356,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const toggleFormulario = () => {
     setMostrarFormulario(!mostrarFormulario);
     setMensaje('');
+    setPdfSeleccionado(null);
+    setPdfNombre('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const tiposActuacion = [
@@ -342,7 +385,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     'Equipo Técnico'
   ];
 
-  // Verificar si el usuario puede editar/eliminar
   const puedeEditar = (act) => {
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
@@ -482,6 +524,26 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 required
               />
             </div>
+
+            {/* Subida de PDF */}
+            {expediente.ID_Carpeta_Drive && (
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Adjuntar PDF (opcional)</strong></label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  ref={fileInputRef}
+                  style={{ display: 'block', marginTop: '5px' }}
+                />
+                {pdfNombre && (
+                  <span style={{ marginLeft: '10px', color: '#38a169' }}>
+                    ✅ {pdfNombre}
+                  </span>
+                )}
+              </div>
+            )}
+
             {mensaje && (
               <div style={{ 
                 marginTop: '15px', 
@@ -494,8 +556,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               </div>
             )}
             <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-                {cargando ? 'Guardando...' : 'Guardar Actuación'}
+              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando || subiendoPDF}>
+                {subiendoPDF ? 'Subiendo PDF...' : cargando ? 'Guardando...' : 'Guardar Actuación'}
               </button>
               <button 
                 type="button" 
@@ -523,6 +585,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             const esCreador = act.Creado_Por === sessionEmail;
             const puedeEditarAct = esBorrador && esCreador;
             const estaEditando = editando === index;
+            const tienePDF = act.Tiene_PDF === 'SI' && act.ID_PDF_Drive;
 
             return (
               <div
@@ -646,6 +709,18 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                             📝 Borrador
                           </span>
                         )}
+                        {tienePDF && (
+                          <span style={{ 
+                            marginLeft: '10px', 
+                            backgroundColor: '#805ad5', 
+                            color: 'white', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '0.8rem' 
+                          }}>
+                            📎 PDF
+                          </span>
+                        )}
                         <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
                           {act.Fecha || 'Sin fecha'}
                         </span>
@@ -704,10 +779,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                     )}
 
                     {/* PDF adjunto */}
-                    {act.Tiene_PDF === 'SI' && act.ID_PDF_Drive && (
+                    {tienePDF && (
                       <div style={{ marginTop: '10px' }}>
                         <a 
-                          href={`/api/drive/descargar?fileId=${act.ID_PDF_Drive}`} 
+                          href={`https://drive.google.com/file/d/${act.ID_PDF_Drive}/view`}
                           target="_blank" 
                           rel="noopener noreferrer" 
                           style={{ color: '#3182ce', fontSize: '0.9rem' }}
