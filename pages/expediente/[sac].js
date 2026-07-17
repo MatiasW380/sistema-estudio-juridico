@@ -143,10 +143,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         try {
           // Leer el archivo como base64
           const reader = new FileReader();
-          const base64PDF = await new Promise((resolve) => {
+          const base64PDF = await new Promise((resolve, reject) => {
             reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+            reader.onerror = (e) => reject(e);
             reader.readAsDataURL(pdfSeleccionado);
           });
+
+          console.log('📄 PDF convertido a base64, longitud:', base64PDF.length);
 
           // Enviar a la API
           const uploadResponse = await fetch('/api/drive/subir', {
@@ -160,6 +163,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           });
 
           const uploadResult = await uploadResponse.json();
+          console.log('📥 Respuesta de subida:', uploadResult);
+
           if (uploadResult.success) {
             idPDFDrive = uploadResult.fileId;
             tienePDF = true;
@@ -190,6 +195,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         compartidoCon: '',
       };
 
+      console.log('📤 Creando actuación:', datos);
+
       const response = await fetch('/api/actuaciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -197,6 +204,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       });
 
       const resultado = await response.json();
+      console.log('📥 Respuesta de actuación:', resultado);
 
       if (resultado.success) {
         setMensaje('✅ Actuación agregada correctamente' + (tienePDF ? ' con PDF adjunto' : ''));
