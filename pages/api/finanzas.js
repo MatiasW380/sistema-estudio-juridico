@@ -1,51 +1,47 @@
 // pages/api/finanzas.js
-// API para gestionar movimientos financieros
+// API para gestionar finanzas
 
-import { getMovimientos, agregarMovimiento, getSaldo } from '../../lib/googleSheets';
+import { getFinanzas, agregarFinanza, getResumenFinanzas } from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
   console.log('🚀 API /api/finanzas ejecutándose...');
   
-  // GET: Listar movimientos
   if (req.method === 'GET') {
     try {
-      const { numeroSAC, fechaInicio, fechaFin, tipo } = req.query;
-      
-      if (!numeroSAC) {
-        return res.status(400).json({ error: 'numeroSAC es obligatorio' });
+      const { numeroSAC, categoria, estado, fechaInicio, fechaFin, resumen } = req.query;
+
+      if (resumen === 'true') {
+        const resultado = await getResumenFinanzas(categoria, fechaInicio, fechaFin);
+        return res.status(200).json({ resumen: resultado });
       }
 
-      // Si se pide saldo
-      if (req.query.saldo === 'true') {
-        const saldo = await getSaldo(numeroSAC);
-        return res.status(200).json({ saldo });
-      }
-
-      const movimientos = await getMovimientos(numeroSAC, fechaInicio, fechaFin, tipo);
-      return res.status(200).json({ movimientos });
+      const finanzas = await getFinanzas(numeroSAC, categoria, estado, fechaInicio, fechaFin);
+      return res.status(200).json({ finanzas });
     } catch (error) {
-      console.error('❌ Error al listar movimientos:', error);
-      return res.status(500).json({ error: 'Error al listar movimientos' });
+      console.error('❌ Error al listar finanzas:', error);
+      return res.status(500).json({ error: 'Error al listar finanzas' });
     }
   }
 
-  // POST: Agregar movimiento
   if (req.method === 'POST') {
     try {
-      const { numeroSAC, fechaRegistro, fechaVencimiento, tipo, detalle, montoDebe, montoHaber } = req.body;
+      const { numeroSAC, tipo, referencia, fecha, fechaVencimiento, concepto, montoTotal, montoPagado, estado, categoria } = req.body;
       
-      if (!numeroSAC || !fechaRegistro || !tipo) {
+      if (!numeroSAC || !fecha || !tipo || !categoria) {
         return res.status(400).json({ error: 'Faltan campos obligatorios' });
       }
 
-      const resultado = await agregarMovimiento(
+      const resultado = await agregarFinanza(
         numeroSAC,
-        fechaRegistro,
-        fechaVencimiento || '',
         tipo,
-        detalle || '',
-        montoDebe || '',
-        montoHaber || ''
+        referencia || '',
+        fecha,
+        fechaVencimiento || '',
+        concepto || '',
+        montoTotal || '',
+        montoPagado || '',
+        estado || 'Pendiente',
+        categoria
       );
 
       if (resultado) {
