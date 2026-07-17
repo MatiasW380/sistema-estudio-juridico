@@ -117,117 +117,64 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   });
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setMensaje('');
-  setCargando(true);
+    e.preventDefault();
+    setMensaje('');
+    setCargando(true);
 
-  if (!nuevaActuacion.fecha || !nuevaActuacion.contenido.trim()) {
-    setMensaje('⚠️ Fecha y Contenido son obligatorios');
-    setCargando(false);
-    return;
-  }
+    if (!nuevaActuacion.fecha || !nuevaActuacion.contenido.trim()) {
+      setMensaje('⚠️ Fecha y Contenido son obligatorios');
+      setCargando(false);
+      return;
+    }
 
-  if (nuevaActuacion.tipo === 'Otro' && !nuevaActuacion.tipoOtro.trim()) {
-    setMensaje('⚠️ Especificá el nombre del tipo cuando seleccionás "Otro"');
-    setCargando(false);
-    return;
-  }
+    if (nuevaActuacion.tipo === 'Otro' && !nuevaActuacion.tipoOtro.trim()) {
+      setMensaje('⚠️ Especificá el nombre del tipo cuando seleccionás "Otro"');
+      setCargando(false);
+      return;
+    }
 
-  try {
-    let idPDFDrive = '';
-    let tienePDF = false;
+    try {
+      let idPDFDrive = '';
+      let tienePDF = false;
 
-    // Si hay un PDF seleccionado, convertirlo a base64 y subirlo
-    if (pdfSeleccionado && expediente.ID_Carpeta_Drive) {
-      setSubiendoPDF(true);
-      try {
-        // Leer el archivo como base64
-        const reader = new FileReader();
-        const base64PDF = await new Promise((resolve) => {
-          reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-          reader.readAsDataURL(pdfSeleccionado);
-        });
+      // Si hay un PDF seleccionado, convertirlo a base64 y subirlo
+      if (pdfSeleccionado && expediente.ID_Carpeta_Drive) {
+        setSubiendoPDF(true);
+        try {
+          // Leer el archivo como base64
+          const reader = new FileReader();
+          const base64PDF = await new Promise((resolve) => {
+            reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+            reader.readAsDataURL(pdfSeleccionado);
+          });
 
-        // Enviar a la API
-        const uploadResponse = await fetch('/api/drive/subir', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            folderId: expediente.ID_Carpeta_Drive,
-            fileName: pdfSeleccionado.name,
-            fileBase64: base64PDF,
-          }),
-        });
+          // Enviar a la API
+          const uploadResponse = await fetch('/api/drive/subir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              folderId: expediente.ID_Carpeta_Drive,
+              fileName: pdfSeleccionado.name,
+              fileBase64: base64PDF,
+            }),
+          });
 
-        const uploadResult = await uploadResponse.json();
-        if (uploadResult.success) {
-          idPDFDrive = uploadResult.fileId;
-          tienePDF = true;
-          setMensaje('✅ PDF subido correctamente');
-        } else {
-          setMensaje('⚠️ Error al subir el PDF: ' + (uploadResult.error || 'Error desconocido'));
+          const uploadResult = await uploadResponse.json();
+          if (uploadResult.success) {
+            idPDFDrive = uploadResult.fileId;
+            tienePDF = true;
+            setMensaje('✅ PDF subido correctamente');
+          } else {
+            setMensaje('⚠️ Error al subir el PDF: ' + (uploadResult.error || 'Error desconocido'));
+          }
+        } catch (error) {
+          console.error('Error al subir PDF:', error);
+          setMensaje('⚠️ Error al subir el PDF: ' + error.message);
         }
-      } catch (error) {
-        console.error('Error al subir PDF:', error);
-        setMensaje('⚠️ Error al subir el PDF: ' + error.message);
+        setSubiendoPDF(false);
       }
-      setSubiendoPDF(false);
-    }
 
-    // Crear la actuación
-    const datos = {
-      numeroSAC: sac,
-      fecha: nuevaActuacion.fecha,
-      tipo: nuevaActuacion.tipo,
-      tipoOtro: nuevaActuacion.tipoOtro,
-      origen: nuevaActuacion.origen,
-      contenido: nuevaActuacion.contenido,
-      presentado: !nuevaActuacion.esBorrador,
-      tienePDF: tienePDF,
-      idPDFDrive: idPDFDrive,
-      esBorrador: nuevaActuacion.esBorrador,
-      creadoPor: sessionEmail || 'sistema',
-      compartidoCon: '',
-    };
-
-    const response = await fetch('/api/actuaciones', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos),
-    });
-
-    const resultado = await response.json();
-
-    if (resultado.success) {
-      setMensaje('✅ Actuación agregada correctamente' + (tienePDF ? ' con PDF adjunto' : ''));
-      setNuevaActuacion({
-        fecha: new Date().toISOString().split('T')[0],
-        tipo: 'Escrito',
-        tipoOtro: '',
-        origen: 'Yo',
-        contenido: '',
-        esBorrador: true,
-      });
-      setPdfSeleccionado(null);
-      setPdfNombre('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      setMostrarFormulario(false);
-      const reloadResponse = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
-      const reloadData = await reloadResponse.json();
-      if (reloadData.actuaciones) {
-        setActuaciones(reloadData.actuaciones);
-      }
-    } else {
-      setMensaje('❌ Error al agregar la actuación: ' + (resultado.error || 'Error desconocido'));
-    }
-  } catch (error) {
-    console.error('❌ Error en handleSubmit:', error);
-    setMensaje('❌ Error: ' + error.message);
-  } finally {
-    setCargando(false);
-    setSubiendoPDF(false);
-  }
-};
+      // Crear la actuación
       const datos = {
         numeroSAC: sac,
         fecha: nuevaActuacion.fecha,
