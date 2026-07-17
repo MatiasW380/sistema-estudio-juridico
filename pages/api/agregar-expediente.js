@@ -4,7 +4,7 @@
 import { appendToSheet, crearCarpetaExpediente, getClientes } from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
-  console.log('🚀 API /api/agregar-expediente ejecutándose...');
+  console.log('🚀 ====== API /api/agregar-expediente INICIADA ======');
   
   if (req.method !== 'POST') {
     console.log('❌ Método no permitido:', req.method);
@@ -21,64 +21,84 @@ export default async function handler(req, res) {
     console.log('  Fuero:', fuero);
 
     if (!clienteId || !nombre || !numeroSAC || !caratula) {
+      console.log('❌ Faltan campos obligatorios');
       return res.status(400).json({ 
         success: false, 
         error: 'Faltan campos obligatorios' 
       });
     }
 
-    // --- OBTENER DATOS DEL CLIENTE (DNI y Domicilio) ---
+    // Obtener DNI y Domicilio del cliente existente
+    console.log('🔍 Buscando datos del cliente...');
     const clientes = await getClientes();
     const cliente = clientes.find(c => c.ID_Cliente === clienteId);
     const dni = cliente?.DNI || '';
     const domicilio = cliente?.Domicilio || '';
+    console.log('📋 DNI:', dni);
+    console.log('📋 Domicilio:', domicilio);
 
-    console.log('📋 Datos del cliente:');
-    console.log('  DNI:', dni);
-    console.log('  Domicilio:', domicilio);
-
-    // --- CREAR CARPETA EN DRIVE ---
+    // CREAR CARPETA EN DRIVE
     console.log('📁 Creando carpeta en Drive...');
     let folderId = null;
     try {
       folderId = await crearCarpetaExpediente(numeroSAC, caratula);
       if (folderId) {
-        console.log(`✅ Carpeta creada con ID: ${folderId}`);
+        console.log(`✅ Carpeta creada con ID REAL de Drive: ${folderId}`);
       } else {
-        console.warn('⚠️ No se pudo crear la carpeta en Drive');
+        console.warn('⚠️ No se pudo crear la carpeta en Drive (folderId es null)');
       }
     } catch (error) {
       console.error('❌ Error al crear carpeta:', error);
     }
 
-    // --- PREPARAR FILA (10 COLUMNAS) ---
-    // Orden: ID_Cliente, Nombre_Cliente, Telefono, DNI, Domicilio, Numero_SAC, Caratula, Fuero, ID_Carpeta_Drive, Usuarios_Compartidos
+    // Preparar fila para Clientes_y_Expedientes
+    console.log('📤 Preparando fila para Sheets...');
     const fila = [
-      clienteId,                // ID_Cliente
-      nombre,                   // Nombre_Cliente
-      telefono || '',           // Telefono
-      dni,                      // DNI (heredado del cliente)
-      domicilio,                // Domicilio (heredado del cliente)
-      numeroSAC,                // Numero_SAC
-      caratula,                 // Caratula
-      fuero || '',              // Fuero
-      folderId || '',           // ID_Carpeta_Drive (ID real de la carpeta en Drive)
-      usuariosCompartidos || '', // Usuarios_Compartidos
+      clienteId,
+      nombre,
+      telefono || '',
+      dni,
+      domicilio,
+      numeroSAC,
+      caratula,
+      fuero || '',
+      folderId || '',  // ID_Carpeta_Drive (ID REAL de Google)
+      usuariosCompartidos || '',
     ];
 
-    console.log('📤 Fila a guardar:', fila);
+    console.log('📤 Fila a guardar:', JSON.stringify(fila));
 
-    // --- GUARDAR EN SHEETS ---
+    // Guardar en Google Sheets
+    console.log('📤 Guardando en Sheets...');
     const resultado = await appendToSheet('Clientes_y_Expedientes', fila);
 
     if (resultado) {
-      console.log('✅ Expediente agregado correctamente');
+      console.log('✅ Expediente agregado correctamente a Sheets');
+      console.log('📁 ID_Carpeta_Drive guardado:', folderId || 'vacío');
+      
+      // Crear actuación inicial
+      const fechaActual = new Date().toISOString().split('T')[0];
+      await agregarActuacion(
+        numeroSAC,
+        fechaActual,
+        'Apertura',
+        'Yo',
+        `Expediente iniciado: ${caratula}`,
+        false,
+        false,
+        '',
+        false,
+        'sistema',
+        ''
+      );
+      console.log('✅ Actuación inicial agregada');
+
       return res.status(200).json({ 
         success: true, 
         folderId: folderId || null,
         mensaje: folderId 
-          ? 'Expediente y carpeta creados' 
-          : 'Expediente creado, pero no se pudo crear la carpeta en Drive'
+          ? 'Expediente, carpeta y actuación inicial creados' 
+          : 'Expediente y actuación inicial creados, pero no se pudo crear la carpeta en Drive'
       });
     } else {
       console.error('❌ Error al agregar expediente a Sheets');
@@ -89,6 +109,7 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error('❌ Error en la API:', error);
+    console.error('❌ Stack:', error.stack);
     return res.status(500).json({ 
       success: false, 
       error: error.message || 'Error interno del servidor' 
