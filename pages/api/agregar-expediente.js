@@ -1,7 +1,7 @@
 // pages/api/agregar-expediente.js
 // API para agregar un nuevo expediente y crear su carpeta en Drive
 
-import { appendToSheet, crearCarpetaExpediente, getClientes } from '../../lib/googleSheets';
+import { appendToSheet, crearCarpetaExpediente, getClientes, agregarActuacion } from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
   console.log('🚀 ====== API /api/agregar-expediente INICIADA ======');
