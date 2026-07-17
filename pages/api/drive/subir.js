@@ -1,14 +1,14 @@
+// pages/api/drive/subir.js
+// API para subir un archivo a una carpeta de Drive
+
 import { getAccessToken } from '../../../lib/googleSheets';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '4mb', // Aseguramos que Vercel acepte el tamaño del base64
-    },
-  },
-};
+// ID de la carpeta raíz "SISTEMA DE GESTION" que ya compartiste
+const ROOT_FOLDER_ID = '1YwxPvkNfV9-U2FhcrcBrEHrfO-4oxty7';
 
 export default async function handler(req, res) {
+  console.log('🚀 API /api/drive/subir ejecutándose...');
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
@@ -20,50 +20,46 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'folderId, fileName y fileBase64 son obligatorios' });
     }
 
-    // 1. Obtener el token de acceso
+    console.log(`📄 Archivo recibido: ${fileName}`);
+    console.log(`📁 folderId recibido: ${folderId}`);
+
+    // Convertir base64 a buffer
+    const fileBuffer = Buffer.from(fileBase64, 'base64');
+
     const token = await getAccessToken();
     if (!token) {
       return res.status(500).json({ error: 'Error al obtener token de acceso' });
     }
 
-    // 2. Convertir el contenido base64 a Buffer binario
-    const fileBuffer = Buffer.from(fileBase64, 'base64');
-
-    // 3. Definir un delimitador único para separar la metadata del archivo
-    const boundary = 'PASO_A_PASO_DELIMITER_M_AND_M';
-    const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-
-    // 4. Construir la estructura multipart/related que exige Google Drive
+    // Subir archivo a Drive usando el ID de la carpeta raíz
+    const uploadUrl = `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
     const metadata = {
       name: fileName,
-      parents: [folderId],
+      parents: [ROOT_FOLDER_ID],  // Usar la carpeta raíz
     };
 
-    const multipartRequestBody = Buffer.concat([
-      Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`),
-      Buffer.from(`--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`),
-      fileBuffer,
-      Buffer.from(`\r\n--${boundary}--`) // Delimitador de cierre obligatorio
-    ]);
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', new Blob([fileBuffer], { type: 'application/pdf' }));
 
-    // 5. Realizar la petición HTTP con los encabezados correctos
+    console.log(`📤 Subiendo a carpeta raíz: ${ROOT_FOLDER_ID}`);
+
     const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-        'Content-Length': multipartRequestBody.length.toString(),
       },
-      body: multipartRequestBody,
+      body: formData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Error de Google Drive:', errorText);
+      console.error(`❌ Error de Google Drive: ${response.status} - ${errorText}`);
       return res.status(response.status).json({ error: `Error en Drive: ${errorText}` });
     }
 
     const data = await response.json();
+    console.log(`✅ Archivo subido: ${fileName} (ID: ${data.id})`);
     return res.status(200).json({ 
       success: true, 
       fileId: data.id,
