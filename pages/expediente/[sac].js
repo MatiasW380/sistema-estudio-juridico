@@ -147,7 +147,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       let idPDFDrive = '';
       let tienePDF = false;
 
-      if (pdfSeleccionado && expediente.ID_Carpeta_Drive) {
+      // === SECCIÓN DE SUBIDA DE PDF (MODIFICADA) ===
+      if (pdfSeleccionado) {
         setSubiendoPDF(true);
         try {
           const reader = new FileReader();
@@ -158,7 +159,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           });
 
           console.log('📤 Enviando a /api/drive/subir...');
-          console.log('📁 folderId:', expediente.ID_Carpeta_Drive);
           console.log('📄 fileName:', pdfSeleccionado.name);
           console.log('📄 base64 length:', base64PDF.length);
 
@@ -166,7 +166,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              folderId: expediente.ID_Carpeta_Drive,
               fileName: pdfSeleccionado.name,
               fileBase64: base64PDF,
             }),
@@ -846,30 +845,29 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             </div>
             <div style={{ marginTop: '15px' }}>
               <label><strong>Contenido *</strong></label>
-              <EditorTexto                initialValue={nuevaActuacion.contenido}
+              <EditorTexto
+                initialValue={nuevaActuacion.contenido}
                 onChange={(value) => setNuevaActuacion(prev => ({ ...prev, contenido: value }))}
                 minHeight="150px"
               />
             </div>
 
-            {/* Subida de PDF */}
-            {expediente.ID_Carpeta_Drive && (
-              <div style={{ marginTop: '15px' }}>
-                <label><strong>Adjuntar PDF (opcional)</strong></label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  ref={fileInputRef}
-                  style={{ display: 'block', marginTop: '5px' }}
-                />
-                {pdfNombre && (
-                  <span style={{ marginLeft: '10px', color: '#38a169' }}>
-                    ✅ {pdfNombre}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Subida de PDF (modificada) */}
+            <div style={{ marginTop: '15px' }}>
+              <label><strong>Adjuntar PDF (opcional)</strong></label>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                ref={fileInputRef}
+                style={{ display: 'block', marginTop: '5px' }}
+              />
+              {pdfNombre && (
+                <span style={{ marginLeft: '10px', color: '#38a169' }}>
+                  ✅ {pdfNombre}
+                </span>
+              )}
+            </div>
 
             {mensaje && (
               <div style={{ 
