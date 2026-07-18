@@ -1,7 +1,7 @@
 // pages/biblioteca.js
-// Módulo de biblioteca legal: modelos, jurisprudencia y leyes
+// Módulo de biblioteca legal: modelos, jurisprudencia y leyes (con expansión)
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import BotonInicio from '../components/BotonInicio';
 import { getModelos, getJurisprudencia, getLeyes } from '../lib/googleSheets';
@@ -32,6 +32,7 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [expandidos, setExpandidos] = useState({});
   const router = useRouter();
 
   // Estados para formularios
@@ -42,6 +43,14 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
   const handleChange = (e, setter) => {
     const { name, value } = e.target;
     setter(prev => ({ ...prev, [name]: value }));
+  };
+
+  const toggleExpandir = (id, tipo) => {
+    const key = `${tipo}_${id}`;
+    setExpandidos(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   const handleSubmitModelo = async (e) => {
@@ -147,6 +156,14 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
     } finally {
       setCargando(false);
     }
+  };
+
+  // Función para obtener el texto de vista previa (primeras líneas)
+  const getPreview = (texto, maxLineas = 2) => {
+    if (!texto) return '';
+    const lineas = texto.split('\n').filter(line => line.trim() !== '');
+    const primeras = lineas.slice(0, maxLineas);
+    return primeras.join('\n');
   };
 
   return (
@@ -295,29 +312,64 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
         </div>
       )}
 
-      {/* Listados */}
+      {/* Listados con expansión */}
       {activeTab === 'modelos' && (
         <div>
           <h3>📋 Modelos de Escritos</h3>
           {modelos.length === 0 ? <p>No hay modelos cargados.</p> : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr style={{ backgroundColor: '#edf2f7' }}>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>ID</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Nombre</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fuero</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Contenido</th>
-              </tr></thead>
-              <tbody>
-                {modelos.map((m, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{m.ID}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{m.Nombre}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{m.Fuero || '-'}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.Contenido?.substring(0, 100)}...</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div>
+              {modelos.map((m) => {
+                const key = `modelo_${m.ID}`;
+                const estaExpandido = expandidos[key] || false;
+                const preview = getPreview(m.Contenido, 2);
+                const tieneMas = m.Contenido && m.Contenido.split('\n').filter(l => l.trim() !== '').length > 2;
+
+                return (
+                  <div
+                    key={m.ID}
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      marginBottom: '10px',
+                      backgroundColor: '#f7fafc',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={() => toggleExpandir(m.ID, 'modelo')}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>{m.Nombre || 'Sin nombre'}</strong>
+                        {m.Fuero && <span style={{ marginLeft: '10px', color: '#4a5568' }}>({m.Fuero})</span>}
+                      </div>
+                      <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                        {estaExpandido ? '▲' : '▼'}
+                      </span>
+                    </div>
+                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>
+                      {preview ? (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>
+                          {preview}
+                          {tieneMas && !estaExpandido && (
+                            <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                          )}
+                        </div>
+                      ) : (
+                        <em style={{ color: '#a0aec0' }}>Sin contenido</em>
+                      )}
+                    </div>
+                    {estaExpandido && m.Contenido && (
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px' }}>
+                        {m.Contenido}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -326,26 +378,60 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
         <div>
           <h3>⚖️ Jurisprudencia</h3>
           {jurisprudencia.length === 0 ? <p>No hay jurisprudencia cargada.</p> : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr style={{ backgroundColor: '#edf2f7' }}>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>ID</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Tema</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Subtema</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Juzgado</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Cita</th>
-              </tr></thead>
-              <tbody>
-                {jurisprudencia.map((j, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{j.ID}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{j.Tema}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{j.Subtema || '-'}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{j.Juzgado || '-'}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.Cita?.substring(0, 80)}...</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div>
+              {jurisprudencia.map((j) => {
+                const key = `juris_${j.ID}`;
+                const estaExpandido = expandidos[key] || false;
+                const preview = getPreview(j.Cita, 2);
+                const tieneMas = j.Cita && j.Cita.split('\n').filter(l => l.trim() !== '').length > 2;
+
+                return (
+                  <div
+                    key={j.ID}
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      marginBottom: '10px',
+                      backgroundColor: '#f7fafc',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={() => toggleExpandir(j.ID, 'juris')}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>{j.Tema || 'Sin tema'}</strong>
+                        {j.Subtema && <span style={{ marginLeft: '10px', color: '#4a5568' }}>→ {j.Subtema}</span>}
+                        {j.Juzgado && <span style={{ marginLeft: '10px', color: '#718096', fontSize: '0.8rem' }}>({j.Juzgado})</span>}
+                      </div>
+                      <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                        {estaExpandido ? '▲' : '▼'}
+                      </span>
+                    </div>
+                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>
+                      {preview ? (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>
+                          {preview}
+                          {tieneMas && !estaExpandido && (
+                            <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                          )}
+                        </div>
+                      ) : (
+                        <em style={{ color: '#a0aec0' }}>Sin contenido</em>
+                      )}
+                    </div>
+                    {estaExpandido && j.Cita && (
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px' }}>
+                        {j.Cita}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -354,24 +440,59 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
         <div>
           <h3>📜 Leyes</h3>
           {leyes.length === 0 ? <p>No hay leyes cargadas.</p> : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr style={{ backgroundColor: '#edf2f7' }}>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>ID</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Número</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Jurisdicción</th>
-                <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Texto</th>
-              </tr></thead>
-              <tbody>
-                {leyes.map((l, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{l.ID}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{l.Numero}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{l.Jurisdiccion || '-'}</td>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.Texto?.substring(0, 80)}...</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div>
+              {leyes.map((l) => {
+                const key = `ley_${l.ID}`;
+                const estaExpandido = expandidos[key] || false;
+                const preview = getPreview(l.Texto, 2);
+                const tieneMas = l.Texto && l.Texto.split('\n').filter(line => line.trim() !== '').length > 2;
+
+                return (
+                  <div
+                    key={l.ID}
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      marginBottom: '10px',
+                      backgroundColor: '#f7fafc',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={() => toggleExpandir(l.ID, 'ley')}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>{l.Numero || 'Sin número'}</strong>
+                        {l.Jurisdiccion && <span style={{ marginLeft: '10px', color: '#4a5568' }}>({l.Jurisdiccion})</span>}
+                      </div>
+                      <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                        {estaExpandido ? '▲' : '▼'}
+                      </span>
+                    </div>
+                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>
+                      {preview ? (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>
+                          {preview}
+                          {tieneMas && !estaExpandido && (
+                            <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                          )}
+                        </div>
+                      ) : (
+                        <em style={{ color: '#a0aec0' }}>Sin contenido</em>
+                      )}
+                    </div>
+                    {estaExpandido && l.Texto && (
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px' }}>
+                        {l.Texto}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
