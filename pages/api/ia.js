@@ -1,14 +1,13 @@
 // pages/api/ia.js
 // API para generar escritos, resúmenes, análisis y sugerencias con Gemini
 
-import { getActuaciones, getConsultas, getModelos, getLeyes, getJurisprudencia, guardarCorreccionIA } from '../../lib/googleSheets';
+import { getActuaciones, getConsultas, getModelos, getLeyes, getJurisprudencia } from '../../lib/googleSheets';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
 
 export default async function handler(req, res) {
   console.log('🚀 ====== API /api/ia INICIADA ======');
-  console.log('📤 Método:', req.method);
 
   if (req.method !== 'POST') {
     console.log('❌ Método no permitido:', req.method);
@@ -16,12 +15,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { accion, numeroSAC, texto, tipo, usuario } = req.body;
+    const { accion, numeroSAC, texto, usuario } = req.body;
 
     console.log('📥 Datos recibidos:');
     console.log('  accion:', accion);
     console.log('  numeroSAC:', numeroSAC);
-    console.log('  texto:', texto ? 'SI (texto proporcionado)' : 'NO');
 
     if (!numeroSAC) {
       console.log('❌ numeroSAC faltante');
@@ -84,7 +82,6 @@ INSTRUCCIONES:
 4. Incorporá los hechos y la estrategia de las consultas.
 5. El tono debe ser el de un abogado experimentado de Córdoba.
 6. No inventes citas ni hechos que no estén en el contexto.
-7. Si no hay suficiente información, indicá qué falta.
 
 ESCRITO GENERADO:`;
         break;
@@ -184,6 +181,13 @@ ESTRATEGIA SUGERIDA:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Error en Gemini:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return res.status(429).json({ 
+          error: 'Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.' 
+        });
+      }
+      
       return res.status(response.status).json({ 
         error: `Error en Gemini: ${response.status}`,
         details: errorText 
