@@ -61,6 +61,24 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     compartidoCon: '',
   });
 
+  // Cargar parámetros de URL para "Agregar Plazo"
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const numeroSAC = params.get('numeroSAC');
+    const cliente = params.get('cliente');
+    const tipo = params.get('tipo');
+
+    if (numeroSAC || cliente || tipo) {
+      setNuevoEvento(prev => ({
+        ...prev,
+        numeroSAC: numeroSAC || '',
+        cliente: cliente || '',
+        tipo: tipo || 'Otro',
+      }));
+      setMostrarFormulario(true);
+    }
+  }, []);
+
   useEffect(() => {
     const cargarEventos = async () => {
       try {
@@ -252,10 +270,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     return eventos.filter(e => e.Fecha === fechaStr);
   };
 
-  const handleTareaClick = async (evento) => {
-    abrirModal(evento);
-  };
-
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -266,7 +280,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
       </div>
 
-      {/* Botones de vista */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <button onClick={() => setVista('calendario')} style={{ backgroundColor: vista === 'calendario' ? '#3182ce' : '#718096' }}>📅 Calendario</button>
         <button onClick={() => setVista('tareas')} style={{ backgroundColor: vista === 'tareas' ? '#3182ce' : '#718096' }}>✅ Tareas Pendientes ({tareas.length})</button>
