@@ -168,6 +168,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           });
 
           const uploadResult = await uploadResponse.json();
+          console.log('📥 Respuesta de subida:', uploadResult);
+
           if (uploadResult.success) {
             idPDFDrive = uploadResult.fileId;
             tienePDF = true;
