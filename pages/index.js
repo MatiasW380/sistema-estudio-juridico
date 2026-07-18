@@ -54,7 +54,7 @@ export default function Home() {
         Bienvenido, Matías. Tu sistema está funcionando correctamente.
       </p>
       <p style={{ marginTop: '10px', color: '#4a5568' }}>
-        Gestioná clientes, expedientes, usuarios, finanzas y plazos desde este panel.
+        Gestioná clientes, expedientes, usuarios, finanzas, agenda y biblioteca desde este panel.
       </p>
       <div style={{ marginTop: '30px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
         <a href="/clientes">
@@ -66,10 +66,12 @@ export default function Home() {
         <a href="/honorarios">
           <button>💰 Finanzas</button>
         </a>
-        <button>📅 Agenda</button>
-          <a href="/biblioteca">
-  <button>📚 Biblioteca</button>
-</a>
+        <a href="/agenda">
+          <button>📅 Agenda</button>
+        </a>
+        <a href="/biblioteca">
+          <button>📚 Biblioteca</button>
+        </a>
       </div>
     </div>
   );
