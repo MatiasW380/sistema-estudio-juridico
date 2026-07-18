@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError('');
     setCargando(true);
 
-    console.log('🔍 Intentando login con:', email, pin);
+    console.log('🔍 Intentando login con:', { email, pin });
 
     if (!email || !pin) {
       setError('Completá todos los campos');
@@ -36,10 +36,11 @@ export default function LoginPage() {
       console.log('📥 Resultado de verificarUsuario:', usuario);
 
       if (usuario) {
+        // Guardar sesión en cookie
         document.cookie = `user=${encodeURIComponent(JSON.stringify(usuario))}; path=/; max-age=86400`;
         router.push('/');
       } else {
-        setError('Email o PIN incorrecto');
+        setError('Email o PIN incorrecto. Revisá que los datos estén correctos en la hoja Usuarios.');
       }
     } catch (err) {
       console.error('❌ Error en handleSubmit:', err);
