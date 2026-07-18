@@ -174,7 +174,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     setCargando(true);
 
     try {
-      // Preparar los datos para enviar
       const datosActualizados = {
         id: eventoSeleccionado.ID,
         numeroSAC: eventoSeleccionado.Numero_SAC || '',
@@ -192,8 +191,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         compartidoCon: eventoSeleccionado.Compartido_Con || '',
       };
 
-      console.log('📤 Enviando actualización:', datosActualizados);
-
       const response = await fetch('/api/agenda', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -201,7 +198,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       });
 
       const resultado = await response.json();
-      console.log('📥 Respuesta:', resultado);
 
       if (resultado.success) {
         setMensaje('✅ Evento actualizado correctamente');
@@ -242,6 +238,28 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     setEventoSeleccionado({ ...evento });
     setMostrarModal(true);
     setMensaje('');
+  };
+
+  // Función para manejar clic en tarea pendiente
+  const handleTareaClick = (tarea) => {
+    if (tarea.Numero_SAC) {
+      router.push(`/expediente/${tarea.Numero_SAC}`);
+    } else if (tarea.Cliente) {
+      // Buscar cliente por nombre
+      fetch(`/api/clientes?nombre=${encodeURIComponent(tarea.Cliente)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.clientes && data.clientes.length > 0) {
+            router.push(`/clientes/${data.clientes[0].ID_Cliente}`);
+          } else {
+            alert('Cliente no encontrado');
+          }
+        })
+        .catch(() => alert('Error al buscar cliente'));
+    } else {
+      // Si no tiene expediente ni cliente, mostrar el modal de edición
+      abrirModal(tarea);
+    }
   };
 
   const cambiarMes = (delta) => {
@@ -599,7 +617,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                   transition: 'all 0.2s',
                   borderLeft: `4px solid ${getTipoColor(tarea.Tipo)}`
                 }}
-                onClick={() => abrirModal(tarea)}
+                onClick={() => handleTareaClick(tarea)}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
