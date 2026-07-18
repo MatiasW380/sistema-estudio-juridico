@@ -81,6 +81,8 @@ export default async function handler(req, res) {
     try {
       const { id, numeroSAC, cliente, tipo, titulo, descripcion, fecha, hora, horaFin, lugar, recordatorio, diasAntes, estado, compartidoCon } = req.body;
 
+      console.log('📥 Datos recibidos para PUT:', { id, numeroSAC, cliente, tipo, titulo, fecha });
+
       if (!id) {
         return res.status(400).json({ error: 'ID es obligatorio' });
       }
@@ -127,17 +129,29 @@ export default async function handler(req, res) {
 
       // Actualizar datos
       const updatedRow = [...rows[rowIndex]];
+      
+      // Mapeo de columnas (índices 0-based)
       const colMap = {
-        'Numero_SAC': 1, 'Cliente': 2, 'Tipo': 3, 'Titulo': 4, 'Descripción': 5,
-        'Fecha': 6, 'Hora': 7, 'Hora_Fin': 8, 'Lugar': 9, 'Recordatorio': 10,
-        'Dias_Antes': 11, 'Estado': 12, 'Compartido_Con': 14
+        'Numero_SAC': 1,
+        'Cliente': 2,
+        'Tipo': 3,
+        'Titulo': 4,
+        'Descripcion': 5,
+        'Fecha': 6,
+        'Hora': 7,
+        'Hora_Fin': 8,
+        'Lugar': 9,
+        'Recordatorio': 10,
+        'Dias_Antes': 11,
+        'Estado': 12,
+        'Compartido_Con': 14
       };
 
       if (numeroSAC !== undefined) updatedRow[colMap.Numero_SAC] = numeroSAC || '';
       if (cliente !== undefined) updatedRow[colMap.Cliente] = cliente || '';
       if (tipo !== undefined) updatedRow[colMap.Tipo] = tipo || 'Otro';
       if (titulo !== undefined) updatedRow[colMap.Titulo] = titulo || '';
-      if (descripcion !== undefined) updatedRow[colMap['Descripción']] = descripcion || '';
+      if (descripcion !== undefined) updatedRow[colMap.Descripcion] = descripcion || '';
       if (fecha !== undefined) updatedRow[colMap.Fecha] = fecha || '';
       if (hora !== undefined) updatedRow[colMap.Hora] = hora || '';
       if (horaFin !== undefined) updatedRow[colMap.Hora_Fin] = horaFin || '';
@@ -146,6 +160,8 @@ export default async function handler(req, res) {
       if (diasAntes !== undefined) updatedRow[colMap.Dias_Antes] = diasAntes || '1';
       if (estado !== undefined) updatedRow[colMap.Estado] = estado || 'Pendiente';
       if (compartidoCon !== undefined) updatedRow[colMap.Compartido_Con] = compartidoCon || '';
+
+      console.log('📤 Fila actualizada:', updatedRow);
 
       const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${rowIndex + 1}:Q${rowIndex + 1}?valueInputOption=USER_ENTERED`;
       const updateResponse = await fetch(updateUrl, {
@@ -158,8 +174,11 @@ export default async function handler(req, res) {
       });
 
       if (updateResponse.ok) {
+        console.log('✅ Evento actualizado correctamente');
         return res.status(200).json({ success: true });
       } else {
+        const errorText = await updateResponse.text();
+        console.error('❌ Error al actualizar:', errorText);
         return res.status(500).json({ error: 'Error al actualizar evento' });
       }
     } catch (error) {
@@ -181,7 +200,6 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Error al obtener token de acceso' });
       }
 
-      // Leer todos los eventos
       const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda`;
       const readResponse = await fetch(readUrl, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -203,7 +221,6 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Estructura de hoja incorrecta' });
       }
 
-      // Encontrar la fila
       let rowIndex = -1;
       for (let i = 1; i < rows.length; i++) {
         if (rows[i][idIndex] === id) {
@@ -216,7 +233,6 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Evento no encontrado' });
       }
 
-      // Eliminar la fila (vaciar celdas)
       const deleteUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${rowIndex + 1}:Q${rowIndex + 1}?valueInputOption=USER_ENTERED`;
       const deleteResponse = await fetch(deleteUrl, {
         method: 'PUT',
