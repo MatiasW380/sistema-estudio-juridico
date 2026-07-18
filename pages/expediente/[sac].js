@@ -339,11 +339,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }));
   };
 
-  const getResumen = (contenido, maxLineas = 2) => {
+  // FUNCIÓN CORREGIDA: toma los primeros 200 caracteres
+  const getResumen = (contenido, maxChars = 200) => {
     if (!contenido) return '';
-    const lineas = contenido.split('\n').filter(line => line.trim() !== '');
-    const primeras = lineas.slice(0, maxLineas);
-    return primeras.join('\n');
+    if (contenido.length <= maxChars) return contenido;
+    return contenido.substring(0, maxChars) + '...';
   };
 
   const getTipoColor = (tipo) => {
@@ -897,9 +897,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       ) : (
         <div>
           {actuaciones.map((act, index) => {
-            const resumen = getResumen(act.Contenido, 2);
+            const resumen = getResumen(act.Contenido, 200);
             const estaExpandido = expandidos[index] || false;
-            const tieneMas = act.Contenido && act.Contenido.split('\n').filter(l => l.trim() !== '').length > 2;
+            const tieneMas = act.Contenido && act.Contenido.length > 200;
             const esBorrador = act.Es_Borrador === 'SI';
             const esCreador = act.Creado_Por === sessionEmail;
             const puedeEditarAct = esBorrador && esCreador;
@@ -1077,7 +1077,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     </div>
 
-                    {/* Resumen del contenido (2 líneas) */}
+                    {/* Resumen del contenido (primeros 200 caracteres) */}
                     <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
                       {resumen ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>
