@@ -72,7 +72,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // Obtener el email de la sesión
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('='');
+      const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
     }, {});
