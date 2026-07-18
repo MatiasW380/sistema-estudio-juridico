@@ -11,22 +11,39 @@ export default async function handler(req, res) {
   console.log('📤 Método:', req.method);
 
   if (req.method !== 'POST') {
+    console.log('❌ Método no permitido:', req.method);
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
   try {
     const { accion, numeroSAC, texto, tipo, usuario } = req.body;
 
+    console.log('📥 Datos recibidos:');
+    console.log('  accion:', accion);
+    console.log('  numeroSAC:', numeroSAC);
+    console.log('  texto:', texto ? 'SI (texto proporcionado)' : 'NO');
+
     if (!numeroSAC) {
+      console.log('❌ numeroSAC faltante');
       return res.status(400).json({ error: 'numeroSAC es obligatorio' });
     }
 
     // 1. Recopilar contexto del expediente
-    const actuaciones = await getActuaciones(numeroSAC);
-    const consultas = await getConsultas(numeroSAC);
-    const modelos = await getModelos();
-    const leyes = await getLeyes();
-    const jurisprudencia = await getJurisprudencia();
+    console.log('📚 Recopilando contexto del expediente...');
+    const [actuaciones, consultas, modelos, leyes, jurisprudencia] = await Promise.all([
+      getActuaciones(numeroSAC),
+      getConsultas(numeroSAC),
+      getModelos(),
+      getLeyes(),
+      getJurisprudencia(),
+    ]);
+
+    console.log('📊 Contexto recopilado:');
+    console.log('  Actuaciones:', actuaciones.length);
+    console.log('  Consultas:', consultas.length);
+    console.log('  Modelos:', modelos.length);
+    console.log('  Leyes:', leyes.length);
+    console.log('  Jurisprudencia:', jurisprudencia.length);
 
     // 2. Construir el contexto
     const contexto = {
@@ -39,7 +56,6 @@ export default async function handler(req, res) {
 
     // 3. Construir prompt según la acción
     let prompt = '';
-    let systemInstruction = '';
 
     switch (accion) {
       case 'generar-escrito':
@@ -47,19 +63,19 @@ export default async function handler(req, res) {
 Eres un asistente legal experto en derecho argentino, especializado en la redacción de escritos judiciales para la provincia de Córdoba.
 
 CONTEXTO DEL EXPEDIENTE:
-${contexto.actuaciones}
+${contexto.actuaciones || 'No hay actuaciones registradas.'}
 
 CONSULTAS DEL CLIENTE Y ESTRATEGIA:
-${contexto.consultas}
+${contexto.consultas || 'No hay consultas registradas.'}
 
 MODELOS DE ESCRITOS DISPONIBLES (elige el más adecuado según el contexto):
-${contexto.modelos}
+${contexto.modelos || 'No hay modelos cargados.'}
 
 LEYES APLICABLES:
-${contexto.leyes}
+${contexto.leyes || 'No hay leyes cargadas.'}
 
 JURISPRUDENCIA APLICABLE:
-${contexto.jurisprudencia}
+${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
 
 INSTRUCCIONES:
 1. Redactá un escrito judicial completo, profesional y formal.
@@ -68,8 +84,9 @@ INSTRUCCIONES:
 4. Incorporá los hechos y la estrategia de las consultas.
 5. El tono debe ser el de un abogado experimentado de Córdoba.
 6. No inventes citas ni hechos que no estén en el contexto.
+7. Si no hay suficiente información, indicá qué falta.
 
-ESCIRTO GENERADO:`;
+ESCRITO GENERADO:`;
         break;
 
       case 'resumir':
@@ -77,10 +94,10 @@ ESCIRTO GENERADO:`;
 Eres un asistente legal experto. Resumí el siguiente expediente de manera clara y ejecutiva.
 
 ACTUACIONES:
-${contexto.actuaciones}
+${contexto.actuaciones || 'No hay actuaciones registradas.'}
 
 CONSULTAS:
-${contexto.consultas}
+${contexto.consultas || 'No hay consultas registradas.'}
 
 RESUMEN EJECUTIVO:
 - Partes del proceso
@@ -124,10 +141,10 @@ REVISIÓN:
 Basado en el estado actual del expediente, sugerí una estrategia jurídica:
 
 ACTUACIONES:
-${contexto.actuaciones}
+${contexto.actuaciones || 'No hay actuaciones registradas.'}
 
 CONSULTAS:
-${contexto.consultas}
+${contexto.consultas || 'No hay consultas registradas.'}
 
 ESTRATEGIA SUGERIDA:
 1. Próximos pasos.
@@ -138,10 +155,20 @@ ESTRATEGIA SUGERIDA:
         break;
 
       default:
+        console.log('❌ Acción no válida:', accion);
         return res.status(400).json({ error: 'Acción no válida' });
     }
 
-    // 4. Llamar a Gemini
+    // 4. Verificar que GEMINI_API_KEY existe
+    if (!GEMINI_API_KEY) {
+      console.error('❌ GEMINI_API_KEY no está configurada');
+      return res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en Vercel' });
+    }
+
+    // 5. Llamar a Gemini
+    console.log('📤 Enviando prompt a Gemini...');
+    console.log('📤 Longitud del prompt:', prompt.length);
+
     const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -156,14 +183,19 @@ ESTRATEGIA SUGERIDA:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Error en Gemini:', errorText);
-      return res.status(500).json({ error: 'Error al llamar a Gemini' });
+      console.error('❌ Error en Gemini:', response.status, errorText);
+      return res.status(response.status).json({ 
+        error: `Error en Gemini: ${response.status}`,
+        details: errorText 
+      });
     }
 
     const data = await response.json();
     const resultado = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar respuesta.';
 
-    // 5. Devolver resultado
+    console.log('✅ Gemini respondió exitosamente. Longitud:', resultado.length);
+
+    // 6. Devolver resultado
     return res.status(200).json({
       success: true,
       resultado,
