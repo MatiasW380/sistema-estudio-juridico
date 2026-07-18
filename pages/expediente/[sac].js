@@ -72,7 +72,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // Obtener el email de la sesión
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
+      const [key, value] = cookie.trim().split('='');
       acc[key] = value;
       return acc;
     }, {});
@@ -1077,7 +1077,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     </div>
 
-                    {/* Resumen del contenido (primeros 200 caracteres) */}
+                    {/* Resumen del contenido */}
                     <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
                       {resumen ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>
@@ -1091,18 +1091,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       )}
                     </div>
 
-                    {/* Contenido completo (expandido) */}
+                    {/* Contenido expandido */}
                     {estaExpandido && act.Contenido && (
-                      <div style={{ 
-                        marginTop: '12px', 
-                        paddingTop: '12px', 
-                        borderTop: '1px solid #e2e8f0',
-                        whiteSpace: 'pre-wrap',
-                        fontSize: '0.95rem',
-                        backgroundColor: 'white',
-                        padding: '12px',
-                        borderRadius: '4px'
-                      }}>
+                      <div 
+                        style={{ 
+                          marginTop: '12px', 
+                          paddingTop: '12px', 
+                          borderTop: '1px solid #e2e8f0',
+                          whiteSpace: 'pre-wrap',
+                          fontSize: '0.95rem',
+                          backgroundColor: 'white',
+                          padding: '12px',
+                          borderRadius: '4px'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {act.Contenido}
                       </div>
                     )}
