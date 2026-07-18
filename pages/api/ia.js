@@ -4,7 +4,7 @@
 import { getActuaciones, getConsultas, getModelos, getLeyes, getJurisprudencia, guardarCorreccionIA } from '../../lib/googleSheets';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export default async function handler(req, res) {
   console.log('🚀 ====== API /api/ia INICIADA ======');
