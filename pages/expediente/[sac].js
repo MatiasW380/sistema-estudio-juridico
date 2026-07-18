@@ -137,11 +137,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       let idPDFDrive = '';
       let tienePDF = false;
 
-      // Si hay un PDF seleccionado, convertirlo a base64 y subirlo
       if (pdfSeleccionado && expediente.ID_Carpeta_Drive) {
         setSubiendoPDF(true);
         try {
-          // Leer el archivo como base64
           const reader = new FileReader();
           const base64PDF = await new Promise((resolve, reject) => {
             reader.onload = (e) => resolve(e.target.result.split(',')[1]);
@@ -149,9 +147,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             reader.readAsDataURL(pdfSeleccionado);
           });
 
-          console.log('📄 PDF convertido a base64, longitud:', base64PDF.length);
-
-          // Enviar a la API
           const uploadResponse = await fetch('/api/drive/subir', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -163,8 +158,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           });
 
           const uploadResult = await uploadResponse.json();
-          console.log('📥 Respuesta de subida:', uploadResult);
-
           if (uploadResult.success) {
             idPDFDrive = uploadResult.fileId;
             tienePDF = true;
@@ -179,7 +172,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setSubiendoPDF(false);
       }
 
-      // Crear la actuación
       const datos = {
         numeroSAC: sac,
         fecha: nuevaActuacion.fecha,
@@ -195,8 +187,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         compartidoCon: '',
       };
 
-      console.log('📤 Creando actuación:', datos);
-
       const response = await fetch('/api/actuaciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,7 +194,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       });
 
       const resultado = await response.json();
-      console.log('📥 Respuesta de actuación:', resultado);
 
       if (resultado.success) {
         setMensaje('✅ Actuación agregada correctamente' + (tienePDF ? ' con PDF adjunto' : ''));
@@ -412,6 +401,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
 
+  // Función para agregar plazo desde el expediente
+  const agregarPlazo = () => {
+    router.push(`/agenda?numeroSAC=${sac}&cliente=${cliente.Nombre_Cliente}&tipo=Plazo`);
+  };
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -454,7 +448,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           {mostrarFormulario ? '❌ Cerrar Formulario' : '📝 Nueva Actuación'}
         </button>
         <button style={{ backgroundColor: '#3182ce' }}>🤖 Generar Escrito</button>
-        <button style={{ backgroundColor: '#ed8936' }}>📅 Agregar Plazo</button>
+        <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
+          📅 Agregar Plazo
+        </button>
         {expediente.ID_Carpeta_Drive && (
           <button style={{ backgroundColor: '#805ad5' }}>📥 Descargar Completo</button>
         )}
@@ -636,7 +632,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 }}
               >
                 {estaEditando ? (
-                  // Modo edición
                   <div onClick={(e) => e.stopPropagation()}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                       <div>
@@ -691,7 +686,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                     </div>
                   </div>
                 ) : (
-                  // Modo visualización
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
@@ -771,7 +765,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     </div>
 
-                    {/* Resumen del contenido */}
                     <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
                       {resumen ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>
@@ -785,7 +778,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       )}
                     </div>
 
-                    {/* Contenido expandido */}
                     {estaExpandido && act.Contenido && (
                       <div style={{ 
                         marginTop: '12px', 
@@ -801,7 +793,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     )}
 
-                    {/* PDF adjunto */}
                     {tienePDF && (
                       <div style={{ marginTop: '10px' }}>
                         <a 
@@ -816,7 +807,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     )}
 
-                    {/* Creado por */}
                     {act.Creado_Por && (
                       <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#a0aec0' }}>
                         👤 {act.Creado_Por}
