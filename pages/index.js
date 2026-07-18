@@ -19,10 +19,12 @@ export async function getServerSideProps(context) {
   }
 
   let usuario = '';
+  let usuarioEmail = '';
   if (userCookie) {
     try {
       const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
       usuario = userData.email || '';
+      usuarioEmail = userData.email || '';
     } catch (e) {}
   }
 
@@ -45,11 +47,12 @@ export async function getServerSideProps(context) {
     props: {
       tareasUrgentes: tareasUrgentes || [],
       usuario,
+      usuarioEmail,
     },
   };
 }
 
-export default function Home({ tareasUrgentes, usuario }) {
+export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
   const [tareas, setTareas] = useState(tareasUrgentes || []);
   const router = useRouter();
 
@@ -119,7 +122,12 @@ export default function Home({ tareasUrgentes, usuario }) {
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>🏛️ Sistema de Gestión Jurídica</h1>
+        <div>
+          <h1 style={{ marginBottom: '0' }}>🏛️ Sistema de Gestión Jurídica</h1>
+          <p style={{ marginTop: '4px', color: '#4a5568', fontSize: '0.95rem' }}>
+            👤 Usuario: <strong>{usuarioEmail || 'No identificado'}</strong>
+          </p>
+        </div>
         <button onClick={handleLogout} style={{ backgroundColor: '#e53e3e' }}>
           Cerrar sesión
         </button>
