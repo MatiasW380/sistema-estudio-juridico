@@ -7,7 +7,6 @@ import BotonInicio from '../components/BotonInicio';
 import { getAgenda, getTareasPendientes } from '../lib/googleSheets';
 
 export async function getServerSideProps(context) {
-  // Obtener usuario de la cookie
   const cookies = context.req.headers.cookie || '';
   const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
   let usuario = '';
@@ -37,8 +36,10 @@ export async function getServerSideProps(context) {
 export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIniciales, usuario }) {
   const [eventos, setEventos] = useState(eventosIniciales || []);
   const [tareas, setTareas] = useState(tareasIniciales || []);
-  const [vista, setVista] = useState('calendario'); // 'calendario' | 'tareas'
+  const [vista, setVista] = useState('calendario');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mesActual, setMesActual] = useState(new Date());
@@ -60,7 +61,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     compartidoCon: '',
   });
 
-  // Recargar eventos al cambiar de mes
   useEffect(() => {
     const cargarEventos = async () => {
       try {
@@ -126,13 +126,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
           compartidoCon: '',
         });
         setMostrarFormulario(false);
-        // Recargar eventos
-        const reload = await fetch(`/api/agenda?usuario=${encodeURIComponent(usuario)}`);
-        const data = await reload.json();
-        if (data.eventos) setEventos(data.eventos);
-        const tareasReload = await fetch(`/api/agenda?pendientes=true&usuario=${encodeURIComponent(usuario)}`);
-        const tareasData = await tareasReload.json();
-        if (tareasData.eventos) setTareas(tareasData.eventos);
+        recargarEventos();
       } else {
         setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
       }
@@ -143,14 +137,81 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     }
   };
 
-  // Navegación del mes
+  const recargarEventos = async () => {
+    try {
+      const response = await fetch(`/api/agenda?usuario=${encodeURIComponent(usuario)}`);
+      const data = await response.json();
+      if (data.eventos) setEventos(data.eventos);
+      const tareasResponse = await fetch(`/api/agenda?pendientes=true&usuario=${encodeURIComponent(usuario)}`);
+      const tareasData = await tareasResponse.json();
+      if (tareasData.eventos) setTareas(tareasData.eventos);
+    } catch (error) {
+      console.error('Error al recargar eventos:', error);
+    }
+  };
+
+  const handleEditar = async (e) => {
+    e.preventDefault();
+    setMensaje('');
+    setCargando(true);
+
+    try {
+      const response = await fetch('/api/agenda', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: eventoSeleccionado.ID,
+          ...eventoSeleccionado,
+        }),
+      });
+
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensaje('✅ Evento actualizado correctamente');
+        setMostrarModal(false);
+        recargarEventos();
+      } else {
+        setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      setMensaje('❌ Error: ' + error.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handleEliminar = async () => {
+    if (!confirm('¿Estás seguro de eliminar este evento?')) return;
+
+    try {
+      const response = await fetch(`/api/agenda?id=${eventoSeleccionado.ID}`, {
+        method: 'DELETE',
+      });
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensaje('✅ Evento eliminado correctamente');
+        setMostrarModal(false);
+        recargarEventos();
+      } else {
+        setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      setMensaje('❌ Error: ' + error.message);
+    }
+  };
+
+  const abrirModal = (evento) => {
+    setEventoSeleccionado({ ...evento });
+    setMostrarModal(true);
+    setMensaje('');
+  };
+
   const cambiarMes = (delta) => {
     const nuevoMes = new Date(mesActual);
     nuevoMes.setMonth(nuevoMes.getMonth() + delta);
     setMesActual(nuevoMes);
   };
 
-  // Obtener días del mes
   const obtenerDiasMes = (fecha) => {
     const year = fecha.getFullYear();
     const month = fecha.getMonth();
@@ -158,14 +219,12 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     const ultimoDia = new Date(year, month + 1, 0);
     const dias = [];
     
-    // Días del mes anterior para completar la primera semana
     const primerDiaSemana = primerDia.getDay();
     for (let i = primerDiaSemana - 1; i >= 0; i--) {
       const dia = new Date(year, month, -i);
       dias.push({ fecha: dia, esOtroMes: true });
     }
     
-    // Días del mes actual
     for (let i = 1; i <= ultimoDia.getDate(); i++) {
       const dia = new Date(year, month, i);
       dias.push({ fecha: dia, esOtroMes: false });
@@ -178,7 +237,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
   const nombreMes = mesActual.toLocaleString('es-AR', { month: 'long', year: 'numeric' });
   const hoy = new Date().toISOString().split('T')[0];
 
-  // Función para obtener el color según el tipo
   const getTipoColor = (tipo) => {
     const colores = {
       'Entrevista': '#38a169',
@@ -190,32 +248,12 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     return colores[tipo] || '#718096';
   };
 
-  // Función para obtener eventos de un día
   const getEventosDelDia = (fechaStr) => {
     return eventos.filter(e => e.Fecha === fechaStr);
   };
 
-  // Función para manejar clic en tarjeta de tarea
   const handleTareaClick = async (evento) => {
-    if (evento.Numero_SAC) {
-      router.push(`/expediente/${evento.Numero_SAC}`);
-    } else if (evento.Cliente) {
-      // Buscar cliente por nombre
-      try {
-        const response = await fetch(`/api/clientes?nombre=${encodeURIComponent(evento.Cliente)}`);
-        const data = await response.json();
-        if (data.clientes && data.clientes.length > 0) {
-          router.push(`/clientes/${data.clientes[0].ID_Cliente}`);
-        } else {
-          alert('Cliente no encontrado');
-        }
-      } catch (error) {
-        console.error('Error al buscar cliente:', error);
-        alert('Error al buscar cliente');
-      }
-    } else {
-      alert('Evento sin expediente ni cliente vinculado');
-    }
+    abrirModal(evento);
   };
 
   return (
@@ -230,24 +268,9 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
 
       {/* Botones de vista */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button
-          onClick={() => setVista('calendario')}
-          style={{ backgroundColor: vista === 'calendario' ? '#3182ce' : '#718096' }}
-        >
-          📅 Calendario
-        </button>
-        <button
-          onClick={() => setVista('tareas')}
-          style={{ backgroundColor: vista === 'tareas' ? '#3182ce' : '#718096' }}
-        >
-          ✅ Tareas Pendientes ({tareas.length})
-        </button>
-        <button
-          onClick={() => setMostrarFormulario(!mostrarFormulario)}
-          style={{ backgroundColor: '#38a169' }}
-        >
-          + Nuevo Evento
-        </button>
+        <button onClick={() => setVista('calendario')} style={{ backgroundColor: vista === 'calendario' ? '#3182ce' : '#718096' }}>📅 Calendario</button>
+        <button onClick={() => setVista('tareas')} style={{ backgroundColor: vista === 'tareas' ? '#3182ce' : '#718096' }}>✅ Tareas Pendientes ({tareas.length})</button>
+        <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>+ Nuevo Evento</button>
       </div>
 
       {/* Formulario para nuevo evento */}
@@ -333,6 +356,83 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         </div>
       )}
 
+      {/* Modal de edición/eliminación */}
+      {mostrarModal && eventoSeleccionado && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }} onClick={() => setMostrarModal(false)}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2>📅 {eventoSeleccionado.Titulo}</h2>
+            <form onSubmit={handleEditar}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label><strong>Tipo</strong></label>
+                  <select name="tipo" value={eventoSeleccionado.Tipo || 'Otro'} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Tipo: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                    <option value="Entrevista">Entrevista</option>
+                    <option value="Plazo">Plazo</option>
+                    <option value="Audiencia">Audiencia</option>
+                    <option value="Pericia">Pericia</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label><strong>Fecha</strong></label>
+                  <input type="date" value={eventoSeleccionado.Fecha || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Fecha: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                </div>
+                <div>
+                  <label><strong>Hora</strong></label>
+                  <input type="time" value={eventoSeleccionado.Hora || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Hora: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                </div>
+                <div>
+                  <label><strong>Estado</strong></label>
+                  <select value={eventoSeleccionado.Estado || 'Pendiente'} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Estado: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Completado">Completado</option>
+                    <option value="Cancelado">Cancelado</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Título</strong></label>
+                <input type="text" value={eventoSeleccionado.Titulo || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Titulo: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+              </div>
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Descripción</strong></label>
+                <textarea value={eventoSeleccionado['Descripción'] || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, 'Descripción': e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }} />
+              </div>
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Lugar</strong></label>
+                <input type="text" value={eventoSeleccionado.Lugar || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Lugar: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+              </div>
+              {mensaje && <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>{mensaje}</div>}
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>{cargando ? 'Guardando...' : '💾 Guardar Cambios'}</button>
+                <button type="button" onClick={handleEliminar} style={{ backgroundColor: '#e53e3e' }}>🗑️ Eliminar</button>
+                <button type="button" onClick={() => { setMostrarModal(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>❌ Cerrar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Vista de calendario */}
       {vista === 'calendario' && (
         <div>
@@ -342,24 +442,10 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
             <button onClick={() => cambiarMes(1)} style={{ backgroundColor: '#718096' }}>Mes siguiente →</button>
           </div>
 
-          {/* Cuadrícula del calendario */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(7, 1fr)', 
-            gap: '2px',
-            backgroundColor: '#e2e8f0',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            overflow: 'hidden'
-          }}>
-            {/* Días de la semana */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', backgroundColor: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
             {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
-              <div key={d} style={{ backgroundColor: '#edf2f7', padding: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                {d}
-              </div>
+              <div key={d} style={{ backgroundColor: '#edf2f7', padding: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem' }}>{d}</div>
             ))}
-
-            {/* Días del mes */}
             {diasMes.map((dia, index) => {
               const fechaStr = dia.fecha.toISOString().split('T')[0];
               const eventosDia = getEventosDelDia(fechaStr);
@@ -367,50 +453,39 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
               const esOtroMes = dia.esOtroMes;
 
               return (
-                <div 
-                  key={index}
-                  style={{
-                    backgroundColor: esOtroMes ? '#f7fafc' : esHoy ? '#ebf8ff' : 'white',
-                    minHeight: '80px',
-                    padding: '6px',
-                    border: esHoy ? '2px solid #3182ce' : 'none',
-                    opacity: esOtroMes ? 0.5 : 1,
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onClick={() => {
-                    setNuevoEvento(prev => ({ ...prev, fecha: fechaStr }));
-                    setMostrarFormulario(true);
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!esOtroMes) e.currentTarget.style.backgroundColor = '#edf2f7';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!esOtroMes) e.currentTarget.style.backgroundColor = esHoy ? '#ebf8ff' : 'white';
-                  }}
-                >
+                <div key={index} style={{
+                  backgroundColor: esOtroMes ? '#f7fafc' : esHoy ? '#ebf8ff' : 'white',
+                  minHeight: '80px',
+                  padding: '6px',
+                  border: esHoy ? '2px solid #3182ce' : 'none',
+                  opacity: esOtroMes ? 0.5 : 1,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onClick={() => {
+                  setNuevoEvento(prev => ({ ...prev, fecha: fechaStr }));
+                  setMostrarFormulario(true);
+                }}
+                onMouseEnter={(e) => { if (!esOtroMes) e.currentTarget.style.backgroundColor = '#edf2f7'; }}
+                onMouseLeave={(e) => { if (!esOtroMes) e.currentTarget.style.backgroundColor = esHoy ? '#ebf8ff' : 'white'; }}>
                   <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{dia.fecha.getDate()}</div>
                   {eventosDia.map((ev, idx) => (
-                    <div 
-                      key={idx}
-                      style={{
-                        backgroundColor: getTipoColor(ev.Tipo),
-                        color: 'white',
-                        fontSize: '0.65rem',
-                        padding: '2px 4px',
-                        borderRadius: '3px',
-                        marginTop: '2px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        cursor: 'pointer'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Mostrar detalle del evento
-                        alert(`📅 ${ev.Tipo}\n📌 ${ev.Titulo}\n📝 ${ev.Descripcion || 'Sin descripción'}\n📍 ${ev.Lugar || 'Sin lugar'}`);
-                      }}
-                    >
+                    <div key={idx} style={{
+                      backgroundColor: getTipoColor(ev.Tipo),
+                      color: 'white',
+                      fontSize: '0.65rem',
+                      padding: '2px 4px',
+                      borderRadius: '3px',
+                      marginTop: '2px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      cursor: 'pointer'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirModal(ev);
+                    }}>
                       {ev.Titulo}
                     </div>
                   ))}
@@ -430,48 +505,28 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {tareas.map((tarea) => (
-                <div
-                  key={tarea.ID}
-                  style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '15px',
-                    backgroundColor: '#f7fafc',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    borderLeft: `4px solid ${getTipoColor(tarea.Tipo)}`
-                  }}
-                  onClick={() => handleTareaClick(tarea)}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
-                >
+                <div key={tarea.ID} style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  backgroundColor: '#f7fafc',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  borderLeft: `4px solid ${getTipoColor(tarea.Tipo)}`
+                }}
+                onClick={() => abrirModal(tarea)}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <strong>{tarea.Titulo}</strong>
-                      <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>
-                        {tarea.Tipo}
-                      </span>
-                      {tarea.Numero_SAC && (
-                        <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
-                          SAC: {tarea.Numero_SAC}
-                        </span>
-                      )}
-                      {tarea.Cliente && (
-                        <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>
-                          👤 {tarea.Cliente}
-                        </span>
-                      )}
+                      <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>{tarea.Tipo}</span>
+                      {tarea.Numero_SAC && <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>SAC: {tarea.Numero_SAC}</span>}
+                      {tarea.Cliente && <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>👤 {tarea.Cliente}</span>}
                     </div>
-                    <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>
-                      {tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}
-                    </span>
+                    <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>{tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}</span>
                   </div>
-                  {tarea.Descripcion && (
-                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>
-                      {tarea.Descripcion.substring(0, 100)}
-                      {tarea.Descripcion.length > 100 && '...'}
-                    </div>
-                  )}
+                  {tarea['Descripción'] && <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>{tarea['Descripción'].substring(0, 100)}{tarea['Descripción'].length > 100 && '...'}</div>}
                 </div>
               ))}
             </div>
