@@ -361,6 +361,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       'Admisión de Apelación': '#dd6b20',
       'Cédula de Notificación': '#9f7aea',
       'Demanda': '#38a169',
+      'Dictamen': '#d69e2e',
       'Otro': '#718096',
     };
     return colores[tipo] || '#718096';
@@ -374,6 +375,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       'Perito': '#9f7aea',
       'Respuesta a Oficio': '#38a169',
       'Equipo Técnico': '#805ad5',
+      'Representante Complementario': '#2b6cb0',
     };
     return colores[origen] || '#4a5568';
   };
@@ -400,6 +402,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     'Admisión de Apelación',
     'Cédula de Notificación',
     'Demanda',
+    'Dictamen',
     'Otro'
   ];
 
@@ -409,10 +412,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     'Otra Parte',
     'Perito',
     'Respuesta a Oficio',
-    'Equipo Técnico'
+    'Equipo Técnico',
+    'Representante Complementario'
   ];
 
   const puedeEditar = (act) => {
+    // Solo puede editar si es BORRADOR y el CREADOR es el usuario actual
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
 
@@ -1072,6 +1077,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     </div>
 
+                    {/* Resumen del contenido (2 líneas) */}
                     <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
                       {resumen ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>
@@ -1085,6 +1091,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       )}
                     </div>
 
+                    {/* Contenido completo (expandido) */}
                     {estaExpandido && act.Contenido && (
                       <div style={{ 
                         marginTop: '12px', 
