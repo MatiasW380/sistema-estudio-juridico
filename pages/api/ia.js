@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     switch (accion) {
       case 'resumir':
         prompt = `
-Eres un asistente legal experto. Resumí el siguiente expediente de manera clara y ejecutiva.
+Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva.
 
 ACTUACIONES:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -71,13 +71,12 @@ RESUMEN EJECUTIVO:
 - Hechos principales
 - Estado actual (etapa procesal)
 - Próximos pasos sugeridos
-- Riesgos y oportunidades del caso
 `;
         break;
 
       case 'analizar-sentencia':
         prompt = `
-Eres un asistente legal experto en derecho argentino, especializado en análisis de sentencias y apelaciones.
+Eres un asistente legal experto de la Ciudad de Cordoba en Argentina, especializado en análisis de sentencias y apelaciones.
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -97,7 +96,7 @@ ${texto || 'No se proporcionó texto de sentencia'}
 INSTRUCCIONES:
 Analizá la sentencia proporcionada y generá un informe detallado que incluya:
 
-1. **Argumentos principales del tribunal:** Resumí los fundamentos clave de la decisión.
+1. **Argumentos principales de las partes y del tribunal:** Resumí los fundamentos clave de la decisión.
 2. **Contradicciones internas:** Identificá si hay contradicciones en los argumentos del tribunal.
 3. **Errores de procedimiento o de fondo:** Detectá posibles errores en la aplicación de la ley o en el procedimiento.
 4. **Puntos apelables:** Identificá los puntos que podrían ser apelados, **fundamentándolos con la jurisprudencia y doctrina del sistema** (citá literalmente las fuentes disponibles).
@@ -110,7 +109,7 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
 
       case 'estrategia':
         prompt = `
-Eres un asistente legal experto en derecho argentino. Sugerí una estrategia jurídica para el siguiente expediente.
+Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente.
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
