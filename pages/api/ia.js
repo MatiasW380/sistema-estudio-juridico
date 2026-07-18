@@ -1,5 +1,5 @@
 // pages/api/ia.js
-// API para generar escritos, resúmenes, análisis y sugerencias con Gemini
+// API para generar resúmenes, análisis de sentencias y estrategias con Gemini
 
 import { getActuaciones, getConsultas, getModelos, getLeyes, getJurisprudencia } from '../../lib/googleSheets';
 
@@ -56,36 +56,6 @@ export default async function handler(req, res) {
     let prompt = '';
 
     switch (accion) {
-      case 'generar-escrito':
-        prompt = `
-Eres un asistente legal experto en derecho argentino, especializado en la redacción de escritos judiciales para la provincia de Córdoba.
-
-CONTEXTO DEL EXPEDIENTE:
-${contexto.actuaciones || 'No hay actuaciones registradas.'}
-
-CONSULTAS DEL CLIENTE Y ESTRATEGIA:
-${contexto.consultas || 'No hay consultas registradas.'}
-
-MODELOS DE ESCRITOS DISPONIBLES (elige el más adecuado según el contexto):
-${contexto.modelos || 'No hay modelos cargados.'}
-
-LEYES APLICABLES:
-${contexto.leyes || 'No hay leyes cargadas.'}
-
-JURISPRUDENCIA APLICABLE:
-${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
-
-INSTRUCCIONES:
-1. Redactá un escrito judicial completo, profesional y formal.
-2. Usá el modelo de escrito más adecuado como base.
-3. Citá las leyes y jurisprudencia relevantes de manera LITERAL (copiá el texto exacto).
-4. Incorporá los hechos y la estrategia de las consultas.
-5. El tono debe ser el de un abogado experimentado de Córdoba.
-6. No inventes citas ni hechos que no estén en el contexto.
-
-ESCRITO GENERADO:`;
-        break;
-
       case 'resumir':
         prompt = `
 Eres un asistente legal experto. Resumí el siguiente expediente de manera clara y ejecutiva.
@@ -101,53 +71,67 @@ RESUMEN EJECUTIVO:
 - Hechos principales
 - Estado actual (etapa procesal)
 - Próximos pasos sugeridos
+- Riesgos y oportunidades del caso
 `;
         break;
 
       case 'analizar-sentencia':
         prompt = `
-Analizá la siguiente sentencia y proporcioná un análisis detallado:
+Eres un asistente legal experto en derecho argentino, especializado en análisis de sentencias y apelaciones.
 
+CONTEXTO DEL EXPEDIENTE:
+${contexto.actuaciones || 'No hay actuaciones registradas.'}
+
+CONSULTAS DEL CLIENTE Y ESTRATEGIA:
+${contexto.consultas || 'No hay consultas registradas.'}
+
+LEYES APLICABLES:
+${contexto.leyes || 'No hay leyes cargadas.'}
+
+JURISPRUDENCIA Y DOCTRINA APLICABLE (USALA PARA FUNDAR EL ANÁLISIS):
+${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
+
+TEXTO DE LA SENTENCIA A ANALIZAR:
 ${texto || 'No se proporcionó texto de sentencia'}
 
-ANÁLISIS:
-1. Argumentos principales del tribunal.
-2. Puntos débiles o contradicciones.
-3. Posibles errores.
-4. Estrategias de apelación.
-5. Riesgos y oportunidades.
-`;
-        break;
+INSTRUCCIONES:
+Analizá la sentencia proporcionada y generá un informe detallado que incluya:
 
-      case 'detectar-errores':
-        prompt = `
-Revisá el siguiente texto legal y detectá posibles errores:
+1. **Argumentos principales del tribunal:** Resumí los fundamentos clave de la decisión.
+2. **Contradicciones internas:** Identificá si hay contradicciones en los argumentos del tribunal.
+3. **Errores de procedimiento o de fondo:** Detectá posibles errores en la aplicación de la ley o en el procedimiento.
+4. **Puntos apelables:** Identificá los puntos que podrían ser apelados, **fundamentándolos con la jurisprudencia y doctrina del sistema** (citá literalmente las fuentes disponibles).
+5. **Fortalezas y debilidades:** Evaluá la solidez de la sentencia y los posibles argumentos en contra.
+6. **Recomendación final:** Sugerí si vale la pena apelar y por qué.
 
-${texto || 'No se proporcionó texto'}
-
-REVISIÓN:
-1. Errores formales (plazos, términos, etc.).
-2. Contradicciones internas.
-3. Omisiones relevantes.
-4. Sugerencias de mejora.
+El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba.
 `;
         break;
 
       case 'estrategia':
         prompt = `
-Basado en el estado actual del expediente, sugerí una estrategia jurídica:
+Eres un asistente legal experto en derecho argentino. Sugerí una estrategia jurídica para el siguiente expediente.
 
-ACTUACIONES:
+CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
 
-CONSULTAS:
+CONSULTAS DEL CLIENTE Y ESTRATEGIA:
 ${contexto.consultas || 'No hay consultas registradas.'}
 
+LEYES APLICABLES:
+${contexto.leyes || 'No hay leyes cargadas.'}
+
+JURISPRUDENCIA APLICABLE:
+${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
+
 ESTRATEGIA SUGERIDA:
-1. Próximos pasos.
-2. Argumentos clave a desarrollar.
-3. Riesgos y mitigaciones.
-4. Plazos a considerar.
+1. **Próximos pasos:** Qué acciones tomar en el corto plazo.
+2. **Argumentos clave:** Cuáles son los argumentos más fuertes para desarrollar.
+3. **Riesgos y mitigaciones:** Qué riesgos existen y cómo enfrentarlos.
+4. **Plazos a considerar:** Fechas clave a tener en cuenta.
+5. **Recomendación final:** Un resumen ejecutivo de la estrategia.
+
+El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba.
 `;
         break;
 
