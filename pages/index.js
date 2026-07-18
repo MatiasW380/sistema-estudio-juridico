@@ -51,7 +51,7 @@ export default function Home() {
         </button>
       </div>
       <p style={{ marginTop: '20px', fontSize: '1.2rem' }}>
-        Bienvenido, Matías. Tu sistema está funcionando correctamente.
+        Bienvenido. Tu sistema está funcionando correctamente.
       </p>
       <p style={{ marginTop: '10px', color: '#4a5568' }}>
         Gestioná clientes, expedientes, usuarios, finanzas, agenda y biblioteca desde este panel.
