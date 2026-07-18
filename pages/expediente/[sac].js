@@ -54,7 +54,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [sessionEmail, setSessionEmail] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
-  const fileInputRef = useRef(null);
   const router = useRouter();
 
   // Estados para IA
@@ -63,8 +62,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [resultadoIA, setResultadoIA] = useState('');
   const [editandoIA, setEditandoIA] = useState(false);
   const [cargandoIA, setCargandoIA] = useState(false);
-  const [textoIAPersonalizado, setTextoIAPersonalizado] = useState('');
   const [editorIA, setEditorIA] = useState('');
+  const [sentencias, setSentencias] = useState([]);
+  const [sentenciaSeleccionada, setSentenciaSeleccionada] = useState(null);
+  const [mostrarSeleccionSentencia, setMostrarSeleccionSentencia] = useState(false);
+  const [guardarAnalisis, setGuardarAnalisis] = useState(false);
 
   // Obtener el email de la sesión
   useEffect(() => {
@@ -308,6 +310,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       'Cédula de Notificación': '#9f7aea',
       'Demanda': '#38a169',
       'Dictamen': '#d69e2e',
+      'Análisis': '#805ad5',
       'Otro': '#718096',
     };
     return colores[tipo] || '#718096';
@@ -346,6 +349,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     'Cédula de Notificación',
     'Demanda',
     'Dictamen',
+    'Análisis',
     'Otro'
   ];
 
@@ -375,28 +379,41 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setResultadoIA('');
     setEditandoIA(false);
     setAccionIA(accion);
+    setGuardarAnalisis(false);
+    setMostrarSeleccionSentencia(false);
 
     try {
+      // Si es analizar-sentencia, buscar sentencias en el expediente
+      if (accion === 'analizar-sentencia') {
+        const sentenciasEncontradas = actuaciones.filter(a => 
+          a.Tipo === 'Sentencia' || a.Tipo === 'Resolución'
+        );
+
+        if (sentenciasEncontradas.length === 0) {
+          setMensaje('⚠️ No hay sentencias o resoluciones en este expediente.');
+          setCargandoIA(false);
+          return;
+        }
+
+        if (sentenciasEncontradas.length === 1) {
+          // Si hay una sola, analizarla automáticamente
+          await ejecutarAnalisisSentencia(sentenciasEncontradas[0].Contenido);
+          return;
+        }
+
+        // Si hay más de una, mostrar lista para seleccionar
+        setSentencias(sentenciasEncontradas);
+        setMostrarSeleccionSentencia(true);
+        setCargandoIA(false);
+        return;
+      }
+
+      // Para otras acciones (resumir, estrategia)
       const body = {
         accion,
         numeroSAC: sac,
         usuario: sessionEmail,
       };
-
-      if (accion === 'analizar-sentencia' || accion === 'detectar-errores') {
-        const sentencia = actuaciones.find(a => a.Tipo === 'Sentencia' || a.Tipo === 'Resolución');
-        if (sentencia) {
-          body.texto = sentencia.Contenido;
-          console.log('📄 Sentencia encontrada, longitud:', body.texto.length);
-        } else if (textoIAPersonalizado) {
-          body.texto = textoIAPersonalizado;
-          console.log('📄 Usando texto personalizado, longitud:', body.texto.length);
-        } else {
-          setMensaje('⚠️ No hay sentencia en el expediente. Pegá el texto manualmente.');
-          setCargandoIA(false);
-          return;
-        }
-      }
 
       console.log('📤 Enviando a /api/ia:', { accion, numeroSAC: sac });
 
@@ -405,8 +422,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-
-      console.log('📥 Respuesta status:', response.status);
 
       const data = await response.json();
       console.log('📥 Respuesta data:', data);
@@ -424,8 +439,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           errorMsg = '⚠️ Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.';
         } else if (response.status === 403) {
           errorMsg = '⚠️ API Key inválida o sin permisos. Verificá tu clave en Google AI Studio.';
-        } else if (response.status === 500) {
-          errorMsg = '⚠️ Error en el servidor. Revisá los logs de Vercel.';
         }
         
         console.error('❌ Error en IA:', errorMsg);
@@ -439,9 +452,66 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   };
 
-  const guardarEscritoIA = async () => {
+  const ejecutarAnalisisSentencia = async (textoSentencia) => {
+    setCargandoIA(true);
+    setMensaje('');
+
+    try {
+      const body = {
+        accion: 'analizar-sentencia',
+        numeroSAC: sac,
+        texto: textoSentencia,
+        usuario: sessionEmail,
+      };
+
+      console.log('📤 Enviando a /api/ia (análisis de sentencia)...');
+
+      const response = await fetch('/api/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+      console.log('📥 Respuesta data:', data);
+
+      if (data.success) {
+        setResultadoIA(data.resultado);
+        setEditorIA(data.resultado);
+        setEditandoIA(true);
+        setMostrarIA(true);
+        setGuardarAnalisis(true);
+        setMensaje('✅ Análisis de sentencia completado');
+      } else {
+        let errorMsg = data.error || 'Error desconocido';
+        
+        if (response.status === 429) {
+          errorMsg = '⚠️ Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.';
+        }
+        
+        console.error('❌ Error en IA:', errorMsg);
+        setMensaje('❌ Error en IA: ' + errorMsg);
+      }
+    } catch (error) {
+      console.error('❌ Error en ejecutarAnalisisSentencia:', error);
+      setMensaje('❌ Error: ' + error.message);
+    } finally {
+      setCargandoIA(false);
+    }
+  };
+
+  const guardarAnalisisIA = async () => {
     if (!editorIA.trim()) {
       setMensaje('⚠️ No hay contenido para guardar');
+      return;
+    }
+
+    if (!confirm('¿Guardar este análisis como actuación en el expediente?')) {
+      setMensaje('❌ Análisis descartado');
+      setMostrarIA(false);
+      setResultadoIA('');
+      setEditorIA('');
+      setGuardarAnalisis(false);
       return;
     }
 
@@ -450,7 +520,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const datos = {
         numeroSAC: sac,
         fecha: new Date().toISOString().split('T')[0],
-        tipo: 'Escrito',
+        tipo: 'Análisis',
         origen: 'Yo',
         contenido: editorIA,
         presentado: false,
@@ -471,10 +541,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Escrito guardado como borrador');
+        setMensaje('✅ Análisis guardado como actuación');
         setMostrarIA(false);
         setResultadoIA('');
         setEditorIA('');
+        setGuardarAnalisis(false);
         const reloadResponse = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
         const reloadData = await reloadResponse.json();
         if (reloadData.actuaciones) {
@@ -547,7 +618,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </div>
       </div>
 
-      {/* Botones de acción - SIN PDF */}
+      {/* Botones de acción */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button 
           onClick={toggleFormulario} 
@@ -559,13 +630,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           {mostrarFormulario ? '❌ Cerrar Formulario' : '📝 Nueva Actuación'}
         </button>
         <button 
-          onClick={() => ejecutarIA('generar-escrito')} 
-          style={{ backgroundColor: '#3182ce' }}
-          disabled={cargandoIA}
-        >
-          {cargandoIA ? 'Generando...' : '🤖 Generar Escrito'}
-        </button>
-        <button 
           onClick={() => ejecutarIA('resumir')} 
           style={{ backgroundColor: '#805ad5' }}
           disabled={cargandoIA}
@@ -574,17 +638,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </button>
         <button 
           onClick={() => ejecutarIA('analizar-sentencia')} 
-          style={{ backgroundColor: '#ed8936' }}
-          disabled={cargandoIA}
-        >
-          {cargandoIA ? 'Analizando...' : '⚖️ Analizar Sentencia'}
-        </button>
-        <button 
-          onClick={() => ejecutarIA('detectar-errores')} 
           style={{ backgroundColor: '#e53e3e' }}
           disabled={cargandoIA}
         >
-          {cargandoIA ? 'Revisando...' : '🔍 Revisar'}
+          {cargandoIA ? 'Analizando...' : '⚖️ Analizar Sentencia'}
         </button>
         <button 
           onClick={() => ejecutarIA('estrategia')} 
@@ -597,6 +654,68 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           📅 Agregar Plazo
         </button>
       </div>
+
+      {/* Modal de selección de sentencia */}
+      {mostrarSeleccionSentencia && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }} onClick={() => setMostrarSeleccionSentencia(false)}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '90%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2>⚖️ Seleccionar Sentencia</h2>
+            <p style={{ color: '#4a5568', marginBottom: '15px' }}>
+              Hay múltiples sentencias en este expediente. Seleccioná cuál querés analizar:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {sentencias.map((sent, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setMostrarSeleccionSentencia(false);
+                    ejecutarAnalisisSentencia(sent.Contenido);
+                  }}
+                  style={{
+                    backgroundColor: '#f7fafc',
+                    padding: '12px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    textAlign: 'left',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                >
+                  <strong>{sent.Tipo}</strong> - {sent.Fecha}
+                  <div style={{ fontSize: '0.85rem', color: '#4a5568', marginTop: '4px' }}>
+                    {sent.Contenido?.substring(0, 100)}...
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setMostrarSeleccionSentencia(false)}
+              style={{ marginTop: '15px', backgroundColor: '#718096' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de IA */}
       {mostrarIA && (
@@ -626,25 +745,22 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h2>
-                {accionIA === 'generar-escrito' && '🤖 Generar Escrito'}
                 {accionIA === 'resumir' && '📄 Resumen del Expediente'}
                 {accionIA === 'analizar-sentencia' && '⚖️ Análisis de Sentencia'}
-                {accionIA === 'detectar-errores' && '🔍 Revisión de Errores'}
                 {accionIA === 'estrategia' && '💡 Estrategia Sugerida'}
               </h2>
               <div style={{ display: 'flex', gap: '10px' }}>
                 {editandoIA && (
                   <>
-                    <button 
-                      onClick={async () => {
-                        await guardarCorreccionIA();
-                        await guardarEscritoIA();
-                      }} 
-                      style={{ backgroundColor: '#38a169' }}
-                      disabled={cargando}
-                    >
-                      {cargando ? 'Guardando...' : '💾 Guardar como Borrador'}
-                    </button>
+                    {guardarAnalisis && (
+                      <button 
+                        onClick={guardarAnalisisIA} 
+                        style={{ backgroundColor: '#38a169' }}
+                        disabled={cargando}
+                      >
+                        {cargando ? 'Guardando...' : '💾 Guardar como Actuación'}
+                      </button>
+                    )}
                     <button 
                       onClick={guardarCorreccionIA} 
                       style={{ backgroundColor: '#ed8936' }}
@@ -654,7 +770,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   </>
                 )}
                 <button 
-                  onClick={() => { setMostrarIA(false); setResultadoIA(''); setEditorIA(''); }} 
+                  onClick={() => { setMostrarIA(false); setResultadoIA(''); setEditorIA(''); setGuardarAnalisis(false); }} 
                   style={{ backgroundColor: '#718096' }}
                 >
                   ❌ Cerrar
@@ -670,10 +786,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   minHeight="300px"
                 />
                 <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#a0aec0' }}>
-                  {accionIA === 'generar-escrito' && '💡 Podés editar el texto antes de guardarlo como borrador.'}
                   {accionIA === 'resumir' && '💡 Podés editar el resumen antes de guardarlo.'}
-                  {accionIA === 'analizar-sentencia' && '💡 El análisis se muestra a continuación.'}
-                  {accionIA === 'detectar-errores' && '💡 La revisión se muestra a continuación.'}
+                  {accionIA === 'analizar-sentencia' && '💡 Podés editar el análisis antes de guardarlo como actuación.'}
                   {accionIA === 'estrategia' && '💡 Podés editar la estrategia antes de guardarla.'}
                 </div>
               </>
@@ -698,7 +812,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </div>
       )}
 
-      {/* Formulario para nueva actuación - SIN PDF */}
+      {/* Formulario para nueva actuación */}
       {mostrarFormulario && (
         <div style={{ 
           backgroundColor: '#f7fafc', 
@@ -999,7 +1113,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       </div>
                     </div>
 
-                    {/* Resumen del contenido */}
                     <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
                       {resumen ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>
@@ -1013,7 +1126,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       )}
                     </div>
 
-                    {/* Contenido expandido */}
                     {estaExpandido && act.Contenido && (
                       <div 
                         style={{ 
