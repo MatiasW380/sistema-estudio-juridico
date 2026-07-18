@@ -109,7 +109,7 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
 
       case 'estrategia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente.
+Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente teniendo en cuenta especialmente la ultima consulta realizada.
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
