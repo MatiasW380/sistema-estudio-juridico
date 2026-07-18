@@ -15,31 +15,41 @@ export default async function handler(req, res) {
   console.log('🚀 API /api/drive/subir ejecutándose...');
   
   if (req.method !== 'POST') {
+    console.log('❌ Método no permitido:', req.method);
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
   try {
     const { folderId, fileName, fileBase64 } = req.body;
     
+    console.log('📥 Datos recibidos:');
+    console.log('  folderId:', folderId);
+    console.log('  fileName:', fileName);
+    console.log('  fileBase64 length:', fileBase64?.length || 0);
+
     if (!folderId || !fileName || !fileBase64) {
-      console.error('❌ Faltan campos:', { folderId, fileName, fileBase64: !!fileBase64 });
+      console.error('❌ Faltan campos');
       return res.status(400).json({ error: 'folderId, fileName y fileBase64 son obligatorios' });
     }
-
-    console.log(`📄 Archivo recibido: ${fileName} (${fileBase64.length} caracteres base64)`);
 
     // Convertir base64 a buffer
     const fileBuffer = Buffer.from(fileBase64, 'base64');
     console.log(`📄 Buffer creado: ${fileBuffer.length} bytes`);
 
+    console.log('🔑 Obteniendo token de acceso...');
     const token = await getAccessToken();
     if (!token) {
       console.error('❌ Error al obtener token de acceso');
       return res.status(500).json({ error: 'Error al obtener token de acceso' });
     }
+    console.log('✅ Token obtenido');
 
     // Subir archivo a Drive
-    const uploadUrl = `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+    const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    console.log('📤 Subiendo a Drive...');
+    console.log('📁 Carpeta destino:', folderId);
+    console.log('📄 Nombre archivo:', fileName);
+
     const metadata = {
       name: fileName,
       parents: [folderId],
@@ -49,8 +59,6 @@ export default async function handler(req, res) {
     formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     formData.append('file', new Blob([fileBuffer], { type: 'application/pdf' }));
 
-    console.log(`📤 Subiendo archivo a carpeta: ${folderId}`);
-
     const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
@@ -59,16 +67,18 @@ export default async function handler(req, res) {
       body: formData,
     });
 
+    console.log('📥 Respuesta de Drive status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Error en Google Drive: ${response.status} - ${errorText}`);
       return res.status(response.status).json({ 
-        error: `Error en Drive: ${errorText}` 
+        error: `Error en Drive (${response.status}): ${errorText.substring(0, 200)}` 
       });
     }
 
     const data = await response.json();
-    console.log(`✅ Archivo subido: ${fileName} (ID: ${data.id})`);
+    console.log(`✅ Archivo subido exitosamente: ${fileName} (ID: ${data.id})`);
     
     return res.status(200).json({ 
       success: true, 
