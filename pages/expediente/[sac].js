@@ -17,7 +17,10 @@ export async function getServerSideProps(context) {
     for (const c of clientes) {
       const exp = c.expedientes?.find(e => e.Numero_SAC === sac);
       if (exp) {
-        expediente = exp;
+        expediente = {
+          ...exp,
+          Usuarios_Compartidos: exp.Usuarios_Compartidos || '', // Asegurar que esté definido
+        };
         cliente = c;
         break;
       }
@@ -643,6 +646,32 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             <p style={{ color: '#4a5568', margin: 0 }}>
               Cliente: {cliente.Nombre_Cliente} | Carátula: {expediente.Caratula || 'No registrada'}
             </p>
+            {/* Usuarios compartidos */}
+            {expediente.Usuarios_Compartidos && (
+              <div style={{ 
+                marginTop: '8px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '5px', 
+                flexWrap: 'wrap',
+                fontSize: '0.85rem'
+              }}>
+                <span style={{ color: '#4a5568' }}>👥 Compartido con:</span>
+                {expediente.Usuarios_Compartidos.split(',').map((email, idx) => (
+                  <span 
+                    key={idx} 
+                    style={{ 
+                      backgroundColor: '#e2e8f0', 
+                      padding: '2px 10px', 
+                      borderRadius: '12px',
+                      color: '#2d3748'
+                    }}
+                  >
+                    {email.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
