@@ -1,5 +1,7 @@
 // pages/api/drive/subir.js
-// API para subir un archivo usando OAuth 2.0 (cuenta personal)
+// API para subir un archivo usando la cuenta de servicio con una carpeta fija
+
+import { getAccessToken } from '../../../lib/googleSheets';
 
 export const config = {
   api: {
@@ -9,23 +11,8 @@ export const config = {
   },
 };
 
-// Obtener un token de acceso OAuth 2.0 (usando el refresh token)
-async function getOAuthToken() {
-  try {
-    // Leer el refresh token de la hoja de configuración
-    // Por ahora, usamos un placeholder
-    console.log('🔑 Obteniendo token OAuth 2.0...');
-    
-    // NOTA: Este es un enfoque simplificado.
-    // La implementación completa requiere almacenar el refresh token
-    // de un usuario que haya autorizado la aplicación.
-    
-    return null; // Placeholder
-  } catch (error) {
-    console.error('❌ Error al obtener token OAuth:', error);
-    return null;
-  }
-}
+// === ID DE LA CARPETA FIJA EN DRIVE ===
+const UPLOAD_FOLDER_ID = '1uMFzw4XRgD5yWhd_pcVi3VhR-Dq63L2R';
 
 export default async function handler(req, res) {
   console.log('🚀 API /api/drive/subir ejecutándose...');
@@ -36,40 +23,70 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { folderId, fileName, fileBase64 } = req.body;
+    const { fileName, fileBase64 } = req.body;
     
     console.log('📥 Datos recibidos:');
-    console.log('  folderId:', folderId);
     console.log('  fileName:', fileName);
     console.log('  fileBase64 length:', fileBase64?.length || 0);
 
-    if (!folderId || !fileName || !fileBase64) {
+    if (!fileName || !fileBase64) {
       console.error('❌ Faltan campos');
-      return res.status(400).json({ error: 'folderId, fileName y fileBase64 son obligatorios' });
+      return res.status(400).json({ error: 'fileName y fileBase64 son obligatorios' });
     }
 
     // Convertir base64 a buffer
     const fileBuffer = Buffer.from(fileBase64, 'base64');
     console.log(`📄 Buffer creado: ${fileBuffer.length} bytes`);
 
-    // === USAR OAUTH 2.0 (cuenta personal) ===
-    // Por ahora, como no tenemos implementado OAuth, 
-    // intentamos usar el token de la cuenta de servicio con un enfoque alternativo.
-    // Este es un placeholder para mostrar la estructura.
+    console.log('🔑 Obteniendo token de acceso...');
+    const token = await getAccessToken();
+    if (!token) {
+      console.error('❌ Error al obtener token de acceso');
+      return res.status(500).json({ error: 'Error al obtener token de acceso' });
+    }
+    console.log('✅ Token obtenido');
+
+    // === USAR CARPETA FIJA ===
+    console.log('📁 Usando carpeta fija:', UPLOAD_FOLDER_ID);
+
+    // Subir archivo a Drive
+    const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    console.log('📤 Subiendo a Drive...');
+
+    const metadata = {
+      name: fileName,
+      parents: [UPLOAD_FOLDER_ID],
+    };
+
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', new Blob([fileBuffer], { type: 'application/pdf' }));
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    console.log('📥 Respuesta de Drive status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Error en Google Drive: ${response.status} - ${errorText}`);
+      return res.status(response.status).json({ 
+        error: `Error en Drive (${response.status}): ${errorText.substring(0, 200)}` 
+      });
+    }
+
+    const data = await response.json();
+    console.log(`✅ Archivo subido exitosamente: ${fileName} (ID: ${data.id})`);
     
-    // NOTA: La implementación completa requiere:
-    // 1. Configurar OAuth 2.0 en Google Cloud Console.
-    // 2. Almacenar el refresh token de un usuario autorizado.
-    // 3. Usar ese refresh token para generar tokens de acceso.
-    
-    console.log('⚠️ OAuth 2.0 no está completamente implementado.');
-    console.log('📌 Se requiere:');
-    console.log('  1. Configurar OAuth 2.0 en Google Cloud Console.');
-    console.log('  2. Almacenar el refresh token.');
-    console.log('  3. Generar tokens de acceso con el refresh token.');
-    
-    return res.status(501).json({ 
-      error: 'Funcionalidad en desarrollo. Se requiere OAuth 2.0 para cuentas personales.' 
+    return res.status(200).json({ 
+      success: true, 
+      fileId: data.id,
+      webViewLink: `https://drive.google.com/file/d/${data.id}/view`
     });
 
   } catch (error) {
