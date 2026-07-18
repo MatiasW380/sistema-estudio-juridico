@@ -123,7 +123,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     tipoOtro: '',
     origen: 'Yo',
     contenido: '',
-    esBorrador: true,
+    estado: 'Borrador',
   });
 
   const handleSubmit = async (e) => {
@@ -189,10 +189,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         tipoOtro: nuevaActuacion.tipoOtro,
         origen: nuevaActuacion.origen,
         contenido: nuevaActuacion.contenido,
-        presentado: !nuevaActuacion.esBorrador,
+        presentado: nuevaActuacion.estado === 'Presentado',
+        enviado: nuevaActuacion.estado === 'Enviado',
         tienePDF: tienePDF,
         idPDFDrive: idPDFDrive,
-        esBorrador: nuevaActuacion.esBorrador,
+        esBorrador: nuevaActuacion.estado === 'Borrador',
         creadoPor: sessionEmail || 'sistema',
         compartidoCon: '',
       };
@@ -213,7 +214,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           tipoOtro: '',
           origen: 'Yo',
           contenido: '',
-          esBorrador: true,
+          estado: 'Borrador',
         });
         setPdfSeleccionado(null);
         setPdfNombre('');
@@ -358,6 +359,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       'Admisión de la Demanda': '#38a169',
       'Decreto de Autos': '#2b6cb0',
       'Admisión de Apelación': '#dd6b20',
+      'Cédula de Notificación': '#9f7aea',
+      'Demanda': '#38a169',
       'Otro': '#718096',
     };
     return colores[tipo] || '#718096';
@@ -386,16 +389,17 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const tiposActuacion = [
     'Escrito',
     'Decreto',
-    'Cedula de Notificacion',
-    'Demanda',
     'Pericia',
     'Proveído',
+    'Apertura',
     'Sentencia',
     'Resolución',
     'Fijación de Audiencia',
     'Admisión de la Demanda',
     'Decreto de Autos',
     'Admisión de Apelación',
+    'Cédula de Notificación',
+    'Demanda',
     'Otro'
   ];
 
@@ -466,7 +470,16 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setMostrarIA(true);
         setMensaje(`✅ ${accion} completado correctamente`);
       } else {
-        const errorMsg = data.error || 'Error desconocido';
+        let errorMsg = data.error || 'Error desconocido';
+        
+        if (response.status === 429) {
+          errorMsg = '⚠️ Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.';
+        } else if (response.status === 403) {
+          errorMsg = '⚠️ API Key inválida o sin permisos. Verificá tu clave en Google AI Studio.';
+        } else if (response.status === 500) {
+          errorMsg = '⚠️ Error en el servidor. Revisá los logs de Vercel.';
+        }
+        
         console.error('❌ Error en IA:', errorMsg);
         setMensaje('❌ Error en IA: ' + errorMsg);
       }
@@ -493,6 +506,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         origen: 'Yo',
         contenido: editorIA,
         presentado: false,
+        enviado: false,
         tienePDF: false,
         idPDFDrive: '',
         esBorrador: true,
@@ -805,13 +819,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               <div>
                 <label><strong>Estado</strong></label>
                 <select
-                  name="esBorrador"
-                  value={nuevaActuacion.esBorrador ? 'SI' : 'NO'}
-                  onChange={(e) => setNuevaActuacion(prev => ({ ...prev, esBorrador: e.target.value === 'SI' }))}
+                  name="estado"
+                  value={nuevaActuacion.estado}
+                  onChange={handleChange}
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 >
-                  <option value="SI">Borrador</option>
-                  <option value="NO">Presentado</option>
+                  <option value="Borrador">Borrador</option>
+                  <option value="Presentado">Presentado</option>
+                  <option value="Enviado">Enviado</option>
                 </select>
               </div>
             </div>
@@ -994,7 +1009,19 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                             ✅ Presentado
                           </span>
                         )}
-                        {esBorrador && act.Presentado !== 'SI' && (
+                        {act.Enviado === 'SI' && (
+                          <span style={{ 
+                            marginLeft: '10px', 
+                            backgroundColor: '#805ad5', 
+                            color: 'white', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '0.8rem' 
+                          }}>
+                            📨 Enviado
+                          </span>
+                        )}
+                        {esBorrador && act.Presentado !== 'SI' && act.Enviado !== 'SI' && (
                           <span style={{ 
                             marginLeft: '10px', 
                             backgroundColor: '#ed8936', 
