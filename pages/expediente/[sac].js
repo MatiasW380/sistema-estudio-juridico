@@ -68,6 +68,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [mostrarSeleccionSentencia, setMostrarSeleccionSentencia] = useState(false);
   const [guardarAnalisis, setGuardarAnalisis] = useState(false);
 
+  // Estados para compartir
+  const [mostrarModalCompartir, setMostrarModalCompartir] = useState(false);
+  const [emailCompartir, setEmailCompartir] = useState('');
+  const [mensajeCompartir, setMensajeCompartir] = useState('');
+
   // Obtener el email de la sesión
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
@@ -383,7 +388,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setMostrarSeleccionSentencia(false);
 
     try {
-      // Si es analizar-sentencia, buscar sentencias en el expediente
       if (accion === 'analizar-sentencia') {
         const sentenciasEncontradas = actuaciones.filter(a => 
           a.Tipo === 'Sentencia' || a.Tipo === 'Resolución'
@@ -396,19 +400,16 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         }
 
         if (sentenciasEncontradas.length === 1) {
-          // Si hay una sola, analizarla automáticamente
           await ejecutarAnalisisSentencia(sentenciasEncontradas[0].Contenido);
           return;
         }
 
-        // Si hay más de una, mostrar lista para seleccionar
         setSentencias(sentenciasEncontradas);
         setMostrarSeleccionSentencia(true);
         setCargandoIA(false);
         return;
       }
 
-      // Para otras acciones (resumir, estrategia)
       const body = {
         accion,
         numeroSAC: sac,
@@ -588,6 +589,50 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     router.push(`/agenda?numeroSAC=${sac}&cliente=${cliente.Nombre_Cliente}&tipo=Plazo`);
   };
 
+  // ==========================================
+  // FUNCIONES PARA COMPARTIR
+  // ==========================================
+
+  const compartirExpediente = async () => {
+    if (!emailCompartir.trim()) {
+      setMensajeCompartir('⚠️ Ingresá un email válido');
+      return;
+    }
+
+    try {
+      const compartidosActuales = expediente.Usuarios_Compartidos ? expediente.Usuarios_Compartidos.split(',').map(e => e.trim()) : [];
+      
+      if (compartidosActuales.includes(emailCompartir.trim())) {
+        setMensajeCompartir('⚠️ El usuario ya está compartido');
+        return;
+      }
+
+      const nuevosCompartidos = [...compartidosActuales, emailCompartir.trim()];
+      const nuevoValor = nuevosCompartidos.join(', ');
+
+      const response = await fetch('/api/actualizar-expediente', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numeroSAC: sac,
+          usuariosCompartidos: nuevoValor,
+        }),
+      });
+
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensajeCompartir('✅ Expediente compartido correctamente');
+        setEmailCompartir('');
+        setTimeout(() => router.reload(), 1500);
+      } else {
+        setMensajeCompartir('❌ Error al compartir: ' + (resultado.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error al compartir:', error);
+      setMensajeCompartir('❌ Error: ' + error.message);
+    }
+  };
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -652,6 +697,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </button>
         <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
           📅 Agregar Plazo
+        </button>
+        <button 
+          onClick={() => setMostrarModalCompartir(true)} 
+          style={{ backgroundColor: '#9f7aea' }}
+        >
+          👥 Compartir
         </button>
       </div>
 
@@ -808,6 +859,62 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {mensaje}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de compartir */}
+      {mostrarModalCompartir && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }} onClick={() => setMostrarModalCompartir(false)}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2>👥 Compartir Expediente</h2>
+            <p style={{ color: '#4a5568', marginBottom: '15px' }}>
+              Ingresá el email del usuario con quien querés compartir este expediente.
+            </p>
+            <input
+              type="email"
+              value={emailCompartir}
+              onChange={(e) => setEmailCompartir(e.target.value)}
+              placeholder="email@ejemplo.com"
+              style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '10px' }}
+            />
+            {mensajeCompartir && (
+              <div style={{ 
+                padding: '10px', 
+                borderRadius: '8px', 
+                backgroundColor: mensajeCompartir.includes('✅') ? '#c6f6d5' : '#fed7d7', 
+                color: mensajeCompartir.includes('✅') ? '#22543d' : '#9b2c2c',
+                marginBottom: '10px'
+              }}>
+                {mensajeCompartir}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={compartirExpediente} style={{ backgroundColor: '#3182ce' }}>
+                Compartir
+              </button>
+              <button onClick={() => { setMostrarModalCompartir(false); setMensajeCompartir(''); }} style={{ backgroundColor: '#718096' }}>
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
