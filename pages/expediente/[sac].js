@@ -72,7 +72,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // Obtener el email de la sesión
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      cconst [key, value] = cookie.trim().split('=');
+      const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
     }, {});
@@ -339,7 +339,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }));
   };
 
-  // FUNCIÓN CORREGIDA: toma los primeros 200 caracteres
   const getResumen = (contenido, maxChars = 200) => {
     if (!contenido) return '';
     if (contenido.length <= maxChars) return contenido;
@@ -417,7 +416,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   ];
 
   const puedeEditar = (act) => {
-    // Solo puede editar si es BORRADOR y el CREADOR es el usuario actual
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
 
