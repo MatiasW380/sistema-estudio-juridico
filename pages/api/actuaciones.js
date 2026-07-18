@@ -34,12 +34,24 @@ export default async function handler(req, res) {
         origen, 
         contenido, 
         presentado, 
+        enviado,
         tienePDF, 
         idPDFDrive, 
         esBorrador, 
         creadoPor, 
         compartidoCon 
       } = req.body;
+      
+      console.log('📥 API actuaciones - Datos recibidos:', { 
+        numeroSAC, 
+        fecha, 
+        tipo, 
+        origen, 
+        contenido: contenido ? `${contenido.substring(0, 50)}...` : '',
+        presentado, 
+        enviado,
+        esBorrador 
+      });
       
       if (!numeroSAC || !fecha || !contenido) {
         return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -57,6 +69,7 @@ export default async function handler(req, res) {
         origen || 'Yo',
         contenido,
         presentado || false,
+        enviado || false,
         tienePDF || false,
         idPDFDrive || '',
         esBorrador || true,
@@ -147,7 +160,7 @@ export default async function handler(req, res) {
       if (esBorradorIndex !== -1) updatedRow[esBorradorIndex] = esBorrador ? 'SI' : 'NO';
 
       // Escribir la fila actualizada
-      const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Actuaciones!A${rowIndex + 1}:L${rowIndex + 1}?valueInputOption=USER_ENTERED`;
+      const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Actuaciones!A${rowIndex + 1}:M${rowIndex + 1}?valueInputOption=USER_ENTERED`;
       const updateResponse = await fetch(updateUrl, {
         method: 'PUT',
         headers: {
@@ -228,14 +241,14 @@ export default async function handler(req, res) {
       }
 
       // Eliminar la fila (vaciar celdas)
-      const deleteUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Actuaciones!A${rowIndex + 1}:L${rowIndex + 1}?valueInputOption=USER_ENTERED`;
+      const deleteUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Actuaciones!A${rowIndex + 1}:M${rowIndex + 1}?valueInputOption=USER_ENTERED`;
       const deleteResponse = await fetch(deleteUrl, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ values: [Array(12).fill('')] })
+        body: JSON.stringify({ values: [Array(13).fill('')] })
       });
 
       if (deleteResponse.ok) {
