@@ -174,16 +174,35 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     setCargando(true);
 
     try {
+      // Preparar los datos para enviar
+      const datosActualizados = {
+        id: eventoSeleccionado.ID,
+        numeroSAC: eventoSeleccionado.Numero_SAC || '',
+        cliente: eventoSeleccionado.Cliente || '',
+        tipo: eventoSeleccionado.Tipo || 'Otro',
+        titulo: eventoSeleccionado.Titulo || '',
+        descripcion: eventoSeleccionado['Descripción'] || '',
+        fecha: eventoSeleccionado.Fecha || '',
+        hora: eventoSeleccionado.Hora || '',
+        horaFin: eventoSeleccionado.Hora_Fin || '',
+        lugar: eventoSeleccionado.Lugar || '',
+        recordatorio: eventoSeleccionado.Recordatorio || 'SI',
+        diasAntes: eventoSeleccionado.Dias_Antes || '1',
+        estado: eventoSeleccionado.Estado || 'Pendiente',
+        compartidoCon: eventoSeleccionado.Compartido_Con || '',
+      };
+
+      console.log('📤 Enviando actualización:', datosActualizados);
+
       const response = await fetch('/api/agenda', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: eventoSeleccionado.ID,
-          ...eventoSeleccionado,
-        }),
+        body: JSON.stringify(datosActualizados),
       });
 
       const resultado = await response.json();
+      console.log('📥 Respuesta:', resultado);
+
       if (resultado.success) {
         setMensaje('✅ Evento actualizado correctamente');
         setMostrarModal(false);
@@ -192,6 +211,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
+      console.error('❌ Error en handleEditar:', error);
       setMensaje('❌ Error: ' + error.message);
     } finally {
       setCargando(false);
@@ -398,7 +418,11 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div>
                   <label><strong>Tipo</strong></label>
-                  <select name="tipo" value={eventoSeleccionado.Tipo || 'Otro'} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Tipo: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                  <select 
+                    value={eventoSeleccionado.Tipo || 'Otro'} 
+                    onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Tipo: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  >
                     <option value="Entrevista">Entrevista</option>
                     <option value="Plazo">Plazo</option>
                     <option value="Audiencia">Audiencia</option>
@@ -408,32 +432,80 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                 </div>
                 <div>
                   <label><strong>Fecha</strong></label>
-                  <input type="date" value={eventoSeleccionado.Fecha || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Fecha: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                  <input 
+                    type="date" 
+                    value={eventoSeleccionado.Fecha || ''} 
+                    onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Fecha: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
                 </div>
                 <div>
                   <label><strong>Hora</strong></label>
-                  <input type="time" value={eventoSeleccionado.Hora || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Hora: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                  <input 
+                    type="time" 
+                    value={eventoSeleccionado.Hora || ''} 
+                    onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Hora: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
                 </div>
                 <div>
                   <label><strong>Estado</strong></label>
-                  <select value={eventoSeleccionado.Estado || 'Pendiente'} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Estado: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                  <select 
+                    value={eventoSeleccionado.Estado || 'Pendiente'} 
+                    onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Estado: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  >
                     <option value="Pendiente">Pendiente</option>
                     <option value="Completado">Completado</option>
                     <option value="Cancelado">Cancelado</option>
                   </select>
                 </div>
+                <div>
+                  <label><strong>N° SAC</strong></label>
+                  <input 
+                    type="text" 
+                    value={eventoSeleccionado.Numero_SAC || ''} 
+                    onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Numero_SAC: e.target.value })}
+                    placeholder="Ej: 123456"
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
+                <div>
+                  <label><strong>Cliente</strong></label>
+                  <input 
+                    type="text" 
+                    value={eventoSeleccionado.Cliente || ''} 
+                    onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Cliente: e.target.value })}
+                    placeholder="Nombre del cliente"
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Título</strong></label>
-                <input type="text" value={eventoSeleccionado.Titulo || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Titulo: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                <input 
+                  type="text" 
+                  value={eventoSeleccionado.Titulo || ''} 
+                  onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Titulo: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Descripción</strong></label>
-                <textarea value={eventoSeleccionado['Descripción'] || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, 'Descripción': e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }} />
+                <textarea 
+                  value={eventoSeleccionado['Descripción'] || ''} 
+                  onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, 'Descripción': e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }}
+                />
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Lugar</strong></label>
-                <input type="text" value={eventoSeleccionado.Lugar || ''} onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Lugar: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                <input 
+                  type="text" 
+                  value={eventoSeleccionado.Lugar || ''} 
+                  onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Lugar: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
               </div>
               {mensaje && <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>{mensaje}</div>}
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
