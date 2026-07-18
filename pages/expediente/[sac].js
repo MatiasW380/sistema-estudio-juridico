@@ -416,6 +416,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // ==========================================
 
   const ejecutarIA = async (accion) => {
+    console.log('🔍 ejecutarIA llamado con accion:', accion);
     setCargandoIA(true);
     setMensaje('');
     setResultadoIA('');
@@ -430,12 +431,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       };
 
       if (accion === 'analizar-sentencia' || accion === 'detectar-errores') {
-        // Buscar una sentencia en las actuaciones
         const sentencia = actuaciones.find(a => a.Tipo === 'Sentencia' || a.Tipo === 'Resolución');
         if (sentencia) {
           body.texto = sentencia.Contenido;
+          console.log('📄 Sentencia encontrada, longitud:', body.texto.length);
         } else if (textoIAPersonalizado) {
           body.texto = textoIAPersonalizado;
+          console.log('📄 Usando texto personalizado, longitud:', body.texto.length);
         } else {
           setMensaje('⚠️ No hay sentencia en el expediente. Pegá el texto manualmente.');
           setCargandoIA(false);
@@ -443,24 +445,32 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         }
       }
 
+      console.log('📤 Enviando a /api/ia:', { accion, numeroSAC: sac });
+
       const response = await fetch('/api/ia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
+      console.log('📥 Respuesta status:', response.status);
+
       const data = await response.json();
+      console.log('📥 Respuesta data:', data);
 
       if (data.success) {
         setResultadoIA(data.resultado);
         setEditorIA(data.resultado);
         setEditandoIA(true);
         setMostrarIA(true);
+        setMensaje(`✅ ${accion} completado correctamente`);
       } else {
-        setMensaje('❌ Error en IA: ' + (data.error || 'Error desconocido'));
+        const errorMsg = data.error || 'Error desconocido';
+        console.error('❌ Error en IA:', errorMsg);
+        setMensaje('❌ Error en IA: ' + errorMsg);
       }
     } catch (error) {
-      console.error('Error en IA:', error);
+      console.error('❌ Error en ejecutarIA:', error);
       setMensaje('❌ Error: ' + error.message);
     } finally {
       setCargandoIA(false);
@@ -475,7 +485,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
     setCargando(true);
     try {
-      // Crear actuación en borrador con el contenido generado
       const datos = {
         numeroSAC: sac,
         fecha: new Date().toISOString().split('T')[0],
