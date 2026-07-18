@@ -26,10 +26,8 @@ export async function getServerSideProps(context) {
     } catch (e) {}
   }
 
-  // Obtener tareas pendientes (todas)
   const tareas = await getTareasPendientes(usuario);
 
-  // Filtrar tareas urgentes (próximos 5 días)
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const cincoDias = new Date(hoy);
@@ -41,7 +39,6 @@ export async function getServerSideProps(context) {
     return fechaPlazo >= hoy && fechaPlazo <= cincoDias;
   });
 
-  // Ordenar por fecha (más próximo primero)
   tareasUrgentes.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
 
   return {
@@ -73,7 +70,6 @@ export default function Home({ tareasUrgentes, usuario }) {
     router.push('/login');
   };
 
-  // Función para obtener el color según la urgencia
   const getUrgenciaColor = (fechaStr) => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -81,9 +77,9 @@ export default function Home({ tareasUrgentes, usuario }) {
     fechaPlazo.setHours(0, 0, 0, 0);
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
-    if (diff < 0) return '#e53e3e'; // Vencido
-    if (diff <= 2) return '#ed8936'; // Próximo (0-2 días)
-    return '#d69e2e'; // Lejano (3-5 días)
+    if (diff < 0) return '#e53e3e';
+    if (diff <= 2) return '#ed8936';
+    return '#d69e2e';
   };
 
   const getUrgenciaTexto = (fechaStr) => {
@@ -103,7 +99,6 @@ export default function Home({ tareasUrgentes, usuario }) {
     if (tarea.Numero_SAC) {
       router.push(`/expediente/${tarea.Numero_SAC}`);
     } else if (tarea.Cliente) {
-      // Buscar cliente por nombre
       try {
         const response = await fetch(`/api/clientes?nombre=${encodeURIComponent(tarea.Cliente)}`);
         const data = await response.json();
@@ -117,7 +112,6 @@ export default function Home({ tareasUrgentes, usuario }) {
         alert('Error al buscar cliente');
       }
     } else {
-      // Si no tiene expediente ni cliente, ir a la agenda
       router.push('/agenda');
     }
   };
@@ -130,13 +124,6 @@ export default function Home({ tareasUrgentes, usuario }) {
           Cerrar sesión
         </button>
       </div>
-
-      <p style={{ marginTop: '20px', fontSize: '1.2rem' }}>
-        Bienvenido, Matías. Tu sistema está funcionando correctamente.
-      </p>
-      <p style={{ marginTop: '10px', color: '#4a5568' }}>
-        Gestioná clientes, expedientes, usuarios, finanzas, agenda y biblioteca desde este panel.
-      </p>
 
       <div style={{ marginTop: '30px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
         <a href="/clientes">
