@@ -416,6 +416,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   ];
 
   const puedeEditar = (act) => {
+    // Permite editar si es BORRADOR y el CREADOR es el usuario actual
+    // O si es de tipo APERTURA (para cambiarle la fecha)
+    if (act.Tipo === 'Apertura') return true;
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
 
@@ -900,7 +903,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             const tieneMas = act.Contenido && act.Contenido.length > 200;
             const esBorrador = act.Es_Borrador === 'SI';
             const esCreador = act.Creado_Por === sessionEmail;
-            const puedeEditarAct = esBorrador && esCreador;
+            const esApertura = act.Tipo === 'Apertura';
+            const puedeEditarAct = esApertura || (esBorrador && esCreador);
             const estaEditando = editando === index;
             const tienePDF = act.Tiene_PDF === 'SI' && act.ID_PDF_Drive;
 
