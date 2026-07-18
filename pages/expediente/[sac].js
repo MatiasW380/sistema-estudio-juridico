@@ -1,10 +1,11 @@
 // pages/expediente/[sac].js
-// Página de detalle de un expediente con feed de actuaciones (expandible, editable, con PDF)
+// Página de detalle de un expediente con actuaciones y herramientas IA
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
+import EditorTexto from '../../components/EditorTexto';
 
 export async function getServerSideProps(context) {
   const { sac } = context.params;
@@ -58,6 +59,15 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [pdfNombre, setPdfNombre] = useState('');
   const fileInputRef = useRef(null);
   const router = useRouter();
+
+  // Estados para IA
+  const [mostrarIA, setMostrarIA] = useState(false);
+  const [accionIA, setAccionIA] = useState('');
+  const [resultadoIA, setResultadoIA] = useState('');
+  const [editandoIA, setEditandoIA] = useState(false);
+  const [cargandoIA, setCargandoIA] = useState(false);
+  const [textoIAPersonalizado, setTextoIAPersonalizado] = useState('');
+  const [editorIA, setEditorIA] = useState('');
 
   // Obtener el email de la sesión
   useEffect(() => {
@@ -401,7 +411,136 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
 
-  // Función para agregar plazo desde el expediente
+  // ==========================================
+  // FUNCIONES DE IA
+  // ==========================================
+
+  const ejecutarIA = async (accion) => {
+    setCargandoIA(true);
+    setMensaje('');
+    setResultadoIA('');
+    setEditandoIA(false);
+    setAccionIA(accion);
+
+    try {
+      const body = {
+        accion,
+        numeroSAC: sac,
+        usuario: sessionEmail,
+      };
+
+      if (accion === 'analizar-sentencia' || accion === 'detectar-errores') {
+        // Buscar una sentencia en las actuaciones
+        const sentencia = actuaciones.find(a => a.Tipo === 'Sentencia' || a.Tipo === 'Resolución');
+        if (sentencia) {
+          body.texto = sentencia.Contenido;
+        } else if (textoIAPersonalizado) {
+          body.texto = textoIAPersonalizado;
+        } else {
+          setMensaje('⚠️ No hay sentencia en el expediente. Pegá el texto manualmente.');
+          setCargandoIA(false);
+          return;
+        }
+      }
+
+      const response = await fetch('/api/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResultadoIA(data.resultado);
+        setEditorIA(data.resultado);
+        setEditandoIA(true);
+        setMostrarIA(true);
+      } else {
+        setMensaje('❌ Error en IA: ' + (data.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error en IA:', error);
+      setMensaje('❌ Error: ' + error.message);
+    } finally {
+      setCargandoIA(false);
+    }
+  };
+
+  const guardarEscritoIA = async () => {
+    if (!editorIA.trim()) {
+      setMensaje('⚠️ No hay contenido para guardar');
+      return;
+    }
+
+    setCargando(true);
+    try {
+      // Crear actuación en borrador con el contenido generado
+      const datos = {
+        numeroSAC: sac,
+        fecha: new Date().toISOString().split('T')[0],
+        tipo: 'Escrito',
+        origen: 'Yo',
+        contenido: editorIA,
+        presentado: false,
+        tienePDF: false,
+        idPDFDrive: '',
+        esBorrador: true,
+        creadoPor: sessionEmail || 'sistema',
+        compartidoCon: '',
+      };
+
+      const response = await fetch('/api/actuaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos),
+      });
+
+      const resultado = await response.json();
+
+      if (resultado.success) {
+        setMensaje('✅ Escrito guardado como borrador');
+        setMostrarIA(false);
+        setResultadoIA('');
+        setEditorIA('');
+        const reloadResponse = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
+        const reloadData = await reloadResponse.json();
+        if (reloadData.actuaciones) {
+          setActuaciones(reloadData.actuaciones);
+        }
+      } else {
+        setMensaje('❌ Error al guardar: ' + (resultado.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      setMensaje('❌ Error: ' + error.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const guardarCorreccionIA = async () => {
+    if (!resultadoIA || !editorIA || resultadoIA === editorIA) return;
+
+    try {
+      await fetch('/api/correcciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numeroSAC: sac,
+          tipo: accionIA === 'generar-escrito' ? 'Escrito' : accionIA,
+          promptOriginal: '',
+          textoGenerado: resultadoIA,
+          textoCorregido: editorIA,
+          usuario: sessionEmail,
+        }),
+      });
+      console.log('✅ Corrección guardada');
+    } catch (error) {
+      console.error('Error al guardar corrección:', error);
+    }
+  };
+
   const agregarPlazo = () => {
     router.push(`/agenda?numeroSAC=${sac}&cliente=${cliente.Nombre_Cliente}&tipo=Plazo`);
   };
@@ -447,7 +586,41 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         >
           {mostrarFormulario ? '❌ Cerrar Formulario' : '📝 Nueva Actuación'}
         </button>
-        <button style={{ backgroundColor: '#3182ce' }}>🤖 Generar Escrito</button>
+        <button 
+          onClick={() => ejecutarIA('generar-escrito')} 
+          style={{ backgroundColor: '#3182ce' }}
+          disabled={cargandoIA}
+        >
+          {cargandoIA ? 'Generando...' : '🤖 Generar Escrito'}
+        </button>
+        <button 
+          onClick={() => ejecutarIA('resumir')} 
+          style={{ backgroundColor: '#805ad5' }}
+          disabled={cargandoIA}
+        >
+          {cargandoIA ? 'Generando...' : '📄 Resumir'}
+        </button>
+        <button 
+          onClick={() => ejecutarIA('analizar-sentencia')} 
+          style={{ backgroundColor: '#ed8936' }}
+          disabled={cargandoIA}
+        >
+          {cargandoIA ? 'Analizando...' : '⚖️ Analizar Sentencia'}
+        </button>
+        <button 
+          onClick={() => ejecutarIA('detectar-errores')} 
+          style={{ backgroundColor: '#e53e3e' }}
+          disabled={cargandoIA}
+        >
+          {cargandoIA ? 'Revisando...' : '🔍 Revisar'}
+        </button>
+        <button 
+          onClick={() => ejecutarIA('estrategia')} 
+          style={{ backgroundColor: '#38a169' }}
+          disabled={cargandoIA}
+        >
+          {cargandoIA ? 'Pensando...' : '💡 Estrategia'}
+        </button>
         <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
           📅 Agregar Plazo
         </button>
@@ -455,6 +628,106 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           <button style={{ backgroundColor: '#805ad5' }}>📥 Descargar Completo</button>
         )}
       </div>
+
+      {/* Modal de IA */}
+      {mostrarIA && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }} onClick={() => {
+          if (!editandoIA) setMostrarIA(false);
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '800px',
+            width: '95%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h2>
+                {accionIA === 'generar-escrito' && '🤖 Generar Escrito'}
+                {accionIA === 'resumir' && '📄 Resumen del Expediente'}
+                {accionIA === 'analizar-sentencia' && '⚖️ Análisis de Sentencia'}
+                {accionIA === 'detectar-errores' && '🔍 Revisión de Errores'}
+                {accionIA === 'estrategia' && '💡 Estrategia Sugerida'}
+              </h2>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {editandoIA && (
+                  <>
+                    <button 
+                      onClick={async () => {
+                        await guardarCorreccionIA();
+                        await guardarEscritoIA();
+                      }} 
+                      style={{ backgroundColor: '#38a169' }}
+                      disabled={cargando}
+                    >
+                      {cargando ? 'Guardando...' : '💾 Guardar como Borrador'}
+                    </button>
+                    <button 
+                      onClick={guardarCorreccionIA} 
+                      style={{ backgroundColor: '#ed8936' }}
+                    >
+                      📝 Guardar Corrección
+                    </button>
+                  </>
+                )}
+                <button 
+                  onClick={() => { setMostrarIA(false); setResultadoIA(''); setEditorIA(''); }} 
+                  style={{ backgroundColor: '#718096' }}
+                >
+                  ❌ Cerrar
+                </button>
+              </div>
+            </div>
+
+            {editandoIA ? (
+              <>
+                <EditorTexto 
+                  initialValue={editorIA}
+                  onChange={(value) => setEditorIA(value)}
+                  minHeight="300px"
+                />
+                <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#a0aec0' }}>
+                  {accionIA === 'generar-escrito' && '💡 Podés editar el texto antes de guardarlo como borrador.'}
+                  {accionIA === 'resumir' && '💡 Podés editar el resumen antes de guardarlo.'}
+                  {accionIA === 'analizar-sentencia' && '💡 El análisis se muestra a continuación.'}
+                  {accionIA === 'detectar-errores' && '💡 La revisión se muestra a continuación.'}
+                  {accionIA === 'estrategia' && '💡 Podés editar la estrategia antes de guardarla.'}
+                </div>
+              </>
+            ) : (
+              <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.6', maxHeight: '500px', overflow: 'auto' }}>
+                {resultadoIA || 'Generando respuesta...'}
+              </div>
+            )}
+
+            {mensaje && (
+              <div style={{ 
+                marginTop: '15px', 
+                padding: '10px', 
+                borderRadius: '8px', 
+                backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', 
+                color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' 
+              }}>
+                {mensaje}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Formulario para nueva actuación */}
       {mostrarFormulario && (
@@ -534,13 +807,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             </div>
             <div style={{ marginTop: '15px' }}>
               <label><strong>Contenido *</strong></label>
-              <textarea
-                name="contenido"
-                value={nuevaActuacion.contenido}
-                onChange={handleChange}
-                placeholder="Escribí el contenido del escrito o resumen..."
-                style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '100px' }}
-                required
+              <EditorTexto
+                initialValue={nuevaActuacion.contenido}
+                onChange={(value) => setNuevaActuacion(prev => ({ ...prev, contenido: value }))}
+                minHeight="150px"
               />
             </div>
 
