@@ -157,6 +157,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             reader.readAsDataURL(pdfSeleccionado);
           });
 
+          console.log('📤 Enviando a /api/drive/subir...');
+          console.log('📁 folderId:', expediente.ID_Carpeta_Drive);
+          console.log('📄 fileName:', pdfSeleccionado.name);
+          console.log('📄 base64 length:', base64PDF.length);
+
           const uploadResponse = await fetch('/api/drive/subir', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -168,18 +173,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           });
 
           const uploadResult = await uploadResponse.json();
-          console.log('📥 Respuesta de subida:', uploadResult);
+          console.log('📥 Respuesta de subida (status):', uploadResponse.status);
+          console.log('📥 Respuesta de subida (data):', uploadResult);
 
           if (uploadResult.success) {
             idPDFDrive = uploadResult.fileId;
             tienePDF = true;
             setMensaje('✅ PDF subido correctamente');
           } else {
-            setMensaje('⚠️ Error al subir el PDF: ' + (uploadResult.error || 'Error desconocido'));
+            const errorMsg = uploadResult.error || 'Error desconocido al subir el PDF';
+            setMensaje('❌ Error al subir el PDF: ' + errorMsg);
+            console.error('❌ Error en subida:', errorMsg);
           }
         } catch (error) {
-          console.error('Error al subir PDF:', error);
-          setMensaje('⚠️ Error al subir el PDF: ' + error.message);
+          console.error('❌ Error al subir PDF:', error);
+          setMensaje('❌ Error al subir el PDF: ' + error.message);
         }
         setSubiendoPDF(false);
       }
@@ -418,8 +426,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   ];
 
   const puedeEditar = (act) => {
-    // Permite editar si es BORRADOR y el CREADOR es el usuario actual
-    // O si es de tipo APERTURA (para cambiarle la fecha)
     if (act.Tipo === 'Apertura') return true;
     return act.Es_Borrador === 'SI' && act.Creado_Por === sessionEmail;
   };
@@ -840,8 +846,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             </div>
             <div style={{ marginTop: '15px' }}>
               <label><strong>Contenido *</strong></label>
-              <EditorTexto
-                initialValue={nuevaActuacion.contenido}
+              <EditorTexto                initialValue={nuevaActuacion.contenido}
                 onChange={(value) => setNuevaActuacion(prev => ({ ...prev, contenido: value }))}
                 minHeight="150px"
               />
