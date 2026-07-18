@@ -54,9 +54,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [sessionEmail, setSessionEmail] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [subiendoPDF, setSubiendoPDF] = useState(false);
-  const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
-  const [pdfNombre, setPdfNombre] = useState('');
   const fileInputRef = useRef(null);
   const router = useRouter();
 
@@ -109,14 +106,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setNuevaActuacion(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPdfSeleccionado(file);
-      setPdfNombre(file.name);
-    }
-  };
-
   const [nuevaActuacion, setNuevaActuacion] = useState({
     fecha: new Date().toISOString().split('T')[0],
     tipo: 'Escrito',
@@ -144,53 +133,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
 
     try {
-      let idPDFDrive = '';
-      let tienePDF = false;
-
-      // === SECCIÓN DE SUBIDA DE PDF (MODIFICADA) ===
-      if (pdfSeleccionado) {
-        setSubiendoPDF(true);
-        try {
-          const reader = new FileReader();
-          const base64PDF = await new Promise((resolve, reject) => {
-            reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-            reader.onerror = (e) => reject(e);
-            reader.readAsDataURL(pdfSeleccionado);
-          });
-
-          console.log('📤 Enviando a /api/drive/subir...');
-          console.log('📄 fileName:', pdfSeleccionado.name);
-          console.log('📄 base64 length:', base64PDF.length);
-
-          const uploadResponse = await fetch('/api/drive/subir', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fileName: pdfSeleccionado.name,
-              fileBase64: base64PDF,
-            }),
-          });
-
-          const uploadResult = await uploadResponse.json();
-          console.log('📥 Respuesta de subida (status):', uploadResponse.status);
-          console.log('📥 Respuesta de subida (data):', uploadResult);
-
-          if (uploadResult.success) {
-            idPDFDrive = uploadResult.fileId;
-            tienePDF = true;
-            setMensaje('✅ PDF subido correctamente');
-          } else {
-            const errorMsg = uploadResult.error || 'Error desconocido al subir el PDF';
-            setMensaje('❌ Error al subir el PDF: ' + errorMsg);
-            console.error('❌ Error en subida:', errorMsg);
-          }
-        } catch (error) {
-          console.error('❌ Error al subir PDF:', error);
-          setMensaje('❌ Error al subir el PDF: ' + error.message);
-        }
-        setSubiendoPDF(false);
-      }
-
       const datos = {
         numeroSAC: sac,
         fecha: nuevaActuacion.fecha,
@@ -200,8 +142,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         contenido: nuevaActuacion.contenido,
         presentado: nuevaActuacion.estado === 'Presentado',
         enviado: nuevaActuacion.estado === 'Enviado',
-        tienePDF: tienePDF,
-        idPDFDrive: idPDFDrive,
+        tienePDF: false,
+        idPDFDrive: '',
         esBorrador: nuevaActuacion.estado === 'Borrador',
         creadoPor: sessionEmail || 'sistema',
         compartidoCon: '',
@@ -216,7 +158,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Actuación agregada correctamente' + (tienePDF ? ' con PDF adjunto' : ''));
+        setMensaje('✅ Actuación agregada correctamente');
         setNuevaActuacion({
           fecha: new Date().toISOString().split('T')[0],
           tipo: 'Escrito',
@@ -225,9 +167,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           contenido: '',
           estado: 'Borrador',
         });
-        setPdfSeleccionado(null);
-        setPdfNombre('');
-        if (fileInputRef.current) fileInputRef.current.value = '';
         setMostrarFormulario(false);
         const reloadResponse = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
         const reloadData = await reloadResponse.json();
@@ -242,7 +181,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       setMensaje('❌ Error: ' + error.message);
     } finally {
       setCargando(false);
-      setSubiendoPDF(false);
     }
   };
 
@@ -391,9 +329,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const toggleFormulario = () => {
     setMostrarFormulario(!mostrarFormulario);
     setMensaje('');
-    setPdfSeleccionado(null);
-    setPdfNombre('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const tiposActuacion = [
@@ -612,7 +547,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </div>
       </div>
 
-      {/* Botones de acción */}
+      {/* Botones de acción - SIN PDF */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button 
           onClick={toggleFormulario} 
@@ -661,9 +596,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
           📅 Agregar Plazo
         </button>
-        {expediente.ID_Carpeta_Drive && (
-          <button style={{ backgroundColor: '#805ad5' }}>📥 Descargar Completo</button>
-        )}
       </div>
 
       {/* Modal de IA */}
@@ -766,7 +698,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </div>
       )}
 
-      {/* Formulario para nueva actuación */}
+      {/* Formulario para nueva actuación - SIN PDF */}
       {mostrarFormulario && (
         <div style={{ 
           backgroundColor: '#f7fafc', 
@@ -852,23 +784,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               />
             </div>
 
-            {/* Subida de PDF (modificada) */}
-            <div style={{ marginTop: '15px' }}>
-              <label><strong>Adjuntar PDF (opcional)</strong></label>
-              <input
-                type="file"
-                accept=".pdf"
-                onChange={handleFileChange}
-                ref={fileInputRef}
-                style={{ display: 'block', marginTop: '5px' }}
-              />
-              {pdfNombre && (
-                <span style={{ marginLeft: '10px', color: '#38a169' }}>
-                  ✅ {pdfNombre}
-                </span>
-              )}
-            </div>
-
             {mensaje && (
               <div style={{ 
                 marginTop: '15px', 
@@ -881,8 +796,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               </div>
             )}
             <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando || subiendoPDF}>
-                {subiendoPDF ? 'Subiendo PDF...' : cargando ? 'Guardando...' : 'Guardar Actuación'}
+              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                {cargando ? 'Guardando...' : 'Guardar Actuación'}
               </button>
               <button 
                 type="button" 
