@@ -58,6 +58,38 @@ export default function FichaCliente({ cliente, expedientes }) {
   });
 
   // ==========================================
+  // ESTADOS PARA CONSULTAS
+  // ==========================================
+  const [consultas, setConsultas] = useState([]);
+  const [expandidosConsultas, setExpandidosConsultas] = useState({});
+  const [mostrarFormularioConsultas, setMostrarFormularioConsultas] = useState(false);
+  const [cargandoConsultas, setCargandoConsultas] = useState(false);
+  const [mensajeConsultas, setMensajeConsultas] = useState('');
+  const [sessionEmail, setSessionEmail] = useState('');
+  const [nuevaConsulta, setNuevaConsulta] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    numeroSAC: '',
+    notas: '',
+  });
+
+  // ==========================================
+  // OBTENER EMAIL DE SESIÓN
+  // ==========================================
+  useEffect(() => {
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    if (cookies.user) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(cookies.user));
+        setSessionEmail(userData.email || '');
+      } catch (e) {}
+    }
+  }, []);
+
+  // ==========================================
   // FUNCIONES PARA FINANZAS
   // ==========================================
 
@@ -74,7 +106,6 @@ export default function FichaCliente({ cliente, expedientes }) {
       todosMovimientos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
       setMovimientos(todosMovimientos);
 
-      // Calcular saldo
       let totalDebe = 0;
       let totalHaber = 0;
       todosMovimientos.forEach(m => {
@@ -161,6 +192,83 @@ export default function FichaCliente({ cliente, expedientes }) {
   useEffect(() => {
     if (activeTab === 'finanzas' && expedientes.length > 0) {
       cargarMovimientos();
+    }
+  }, [activeTab, expedientes]);
+
+  // ==========================================
+  // FUNCIONES PARA CONSULTAS
+  // ==========================================
+
+  const cargarConsultas = async () => {
+    try {
+      let todasLasConsultas = [];
+      for (const exp of expedientes) {
+        const res = await fetch(`/api/consultas?numeroSAC=${exp.Numero_SAC}`);
+        const data = await res.json();
+        if (data.consultas) {
+          todasLasConsultas = [...todasLasConsultas, ...data.consultas];
+        }
+      }
+      todasLasConsultas.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+      setConsultas(todasLasConsultas);
+    } catch (error) {
+      console.error('Error al cargar consultas:', error);
+    }
+  };
+
+  const handleChangeConsulta = (e) => {
+    const { name, value } = e.target;
+    setNuevaConsulta(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitConsulta = async (e) => {
+    e.preventDefault();
+    setMensajeConsultas('');
+    setCargandoConsultas(true);
+
+    if (!nuevaConsulta.notas.trim()) {
+      setMensajeConsultas('⚠️ Las notas son obligatorias');
+      setCargandoConsultas(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/consultas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numeroSAC: nuevaConsulta.numeroSAC,
+          fecha: nuevaConsulta.fecha || new Date().toISOString().split('T')[0],
+          abogado: sessionEmail,
+          notas: nuevaConsulta.notas,
+        }),
+      });
+
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensajeConsultas('✅ Consulta agregada correctamente');
+        setNuevaConsulta({
+          fecha: new Date().toISOString().split('T')[0],
+          numeroSAC: '',
+          notas: '',
+        });
+        setMostrarFormularioConsultas(false);
+        cargarConsultas();
+      } else {
+        setMensajeConsultas('❌ Error al agregar consulta: ' + (resultado.error || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error en handleSubmitConsulta:', error);
+      setMensajeConsultas('❌ Error: ' + error.message);
+    } finally {
+      setCargandoConsultas(false);
+    }
+  };
+
+  // Cargar consultas al cambiar a la pestaña consultas
+  useEffect(() => {
+    if (activeTab === 'consultas') {
+      cargarConsultas();
     }
   }, [activeTab, expedientes]);
 
@@ -488,12 +596,167 @@ export default function FichaCliente({ cliente, expedientes }) {
 
         {activeTab === 'consultas' && (
           <div>
-            <h2>📝 Historial de Consultas</h2>
-            <p style={{ color: '#4a5568', marginBottom: '15px' }}>Registro de reuniones y conversaciones con el cliente.</p>
-            <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', textAlign: 'center', color: '#4a5568' }}>
-              <p>🔜 Próximamente: carga y visualización de consultas.</p>
-              <p style={{ fontSize: '0.9rem' }}>Podrás agregar notas de cada reunión con fecha y abogado que atendió.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>📝 Historial de Consultas</h2>
+              <button 
+                onClick={() => setMostrarFormularioConsultas(!mostrarFormularioConsultas)}
+                style={{ backgroundColor: '#38a169' }}
+              >
+                + Agregar Consulta
+              </button>
             </div>
+
+            {/* Formulario para nueva consulta */}
+            {mostrarFormularioConsultas && (
+              <div style={{
+                backgroundColor: '#f7fafc',
+                padding: '20px',
+                borderRadius: '8px',
+                marginTop: '15px',
+                marginBottom: '20px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <h3>📝 Nueva Consulta</h3>
+                <form onSubmit={handleSubmitConsulta}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div>
+                      <label><strong>Fecha</strong></label>
+                      <input
+                        type="date"
+                        name="fecha"
+                        value={nuevaConsulta.fecha}
+                        onChange={handleChangeConsulta}
+                      />
+                    </div>
+                    <div>
+                      <label><strong>Expediente (N° SAC)</strong></label>
+                      <select
+                        name="numeroSAC"
+                        value={nuevaConsulta.numeroSAC}
+                        onChange={handleChangeConsulta}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                      >
+                        <option value="">Sin expediente</option>
+                        {expedientes.map((exp, idx) => (
+                          <option key={idx} value={exp.Numero_SAC}>
+                            {exp.Numero_SAC} - {exp.Caratula}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '15px' }}>
+                    <label><strong>Notas de la consulta *</strong></label>
+                    <textarea
+                      name="notas"
+                      value={nuevaConsulta.notas}
+                      onChange={handleChangeConsulta}
+                      placeholder="Escribí lo que hablaste con el cliente y tu estrategia..."
+                      style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '120px' }}
+                      required
+                    />
+                  </div>
+                  {mensajeConsultas && (
+                    <div style={{ 
+                      marginTop: '15px', 
+                      padding: '10px', 
+                      borderRadius: '8px', 
+                      backgroundColor: mensajeConsultas.includes('✅') ? '#c6f6d5' : '#fed7d7', 
+                      color: mensajeConsultas.includes('✅') ? '#22543d' : '#9b2c2c' 
+                    }}>
+                      {mensajeConsultas}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargandoConsultas}>
+                      {cargandoConsultas ? 'Guardando...' : 'Guardar Consulta'}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { setMostrarFormularioConsultas(false); setMensajeConsultas(''); }} 
+                      style={{ backgroundColor: '#718096' }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Lista de consultas */}
+            {consultas.length === 0 ? (
+              <p style={{ color: '#4a5568' }}>No hay consultas registradas para este cliente.</p>
+            ) : (
+              <div>
+                {consultas.map((consulta, index) => {
+                  const estaExpandida = expandidosConsultas[index] || false;
+                  const resumen = consulta.Notas_Consulta?.substring(0, 150) || '';
+                  const tieneMas = consulta.Notas_Consulta && consulta.Notas_Consulta.length > 150;
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        marginBottom: '10px',
+                        backgroundColor: '#f7fafc',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => {
+                        setExpandidosConsultas(prev => ({
+                          ...prev,
+                          [index]: !prev[index]
+                        }));
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>{consulta.Fecha || 'Sin fecha'}</strong>
+                          {consulta.Numero_SAC && (
+                            <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
+                              SAC: {consulta.Numero_SAC}
+                            </span>
+                          )}
+                          {consulta.Abogado_Atendio && (
+                            <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.8rem' }}>
+                              👤 {consulta.Abogado_Atendio}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                          {estaExpandida ? '▲' : '▼'}
+                        </span>
+                      </div>
+                      <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
+                        {resumen}
+                        {tieneMas && !estaExpandida && (
+                          <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                        )}
+                      </div>
+                      {estaExpandida && consulta.Notas_Consulta && (
+                        <div style={{ 
+                          marginTop: '12px', 
+                          paddingTop: '12px', 
+                          borderTop: '1px solid #e2e8f0',
+                          whiteSpace: 'pre-wrap',
+                          fontSize: '0.95rem',
+                          backgroundColor: 'white',
+                          padding: '12px',
+                          borderRadius: '4px'
+                        }}>
+                          {consulta.Notas_Consulta}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
