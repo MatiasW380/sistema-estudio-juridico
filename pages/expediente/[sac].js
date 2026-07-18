@@ -1,7 +1,7 @@
 // pages/expediente/[sac].js
-// Página de detalle de un expediente con actuaciones y herramientas IA
+// Página de detalle de un expediente con actuaciones, plazos y herramientas IA
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
@@ -19,7 +19,7 @@ export async function getServerSideProps(context) {
       if (exp) {
         expediente = {
           ...exp,
-          Usuarios_Compartidos: exp.Usuarios_Compartidos || '', // Asegurar que esté definido
+          Usuarios_Compartidos: exp.Usuarios_Compartidos || '',
         };
         cliente = c;
         break;
@@ -49,8 +49,66 @@ export async function getServerSideProps(context) {
   }
 }
 
+// Componente PlazoCard
+const PlazoCard = ({ plazo, onClick, vencido, completado }) => {
+  const getColor = () => {
+    if (completado) return '#38a169';
+    if (vencido) return '#e53e3e';
+    const hoy = new Date();
+    const fechaPlazo = new Date(plazo.Fecha);
+    const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
+    if (diff <= 3) return '#ed8936';
+    return '#3182ce';
+  };
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${getColor()}`,
+        borderRadius: '8px',
+        padding: '15px',
+        marginBottom: '10px',
+        backgroundColor: vencido ? '#fff5f5' : completado ? '#f0fff4' : '#f7fafc',
+        cursor: 'pointer',
+        transition: 'all 0.2s'
+      }}
+      onClick={onClick}
+      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = vencido ? '#fff5f5' : completado ? '#f0fff4' : '#f7fafc'}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <strong>{plazo.Titulo || 'Sin título'}</strong>
+          <span style={{ marginLeft: '10px', color: '#4a5568' }}>
+            {plazo.Tipo || 'Otro'}
+          </span>
+          {plazo.Estado === 'Completado' && (
+            <span style={{ marginLeft: '10px', backgroundColor: '#38a169', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
+              Completado
+            </span>
+          )}
+          {vencido && (
+            <span style={{ marginLeft: '10px', backgroundColor: '#e53e3e', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
+              Vencido
+            </span>
+          )}
+        </div>
+        <span style={{ color: '#4a5568' }}>
+          {plazo.Fecha} {plazo.Hora ? `- ${plazo.Hora}` : ''}
+        </span>
+      </div>
+      {plazo.Descripcion && (
+        <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>
+          {plazo.Descripcion}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function ExpedientePage({ sac, expediente, cliente, actuaciones: actuacionesIniciales }) {
   const [actuaciones, setActuaciones] = useState(actuacionesIniciales || []);
+  const [activeTab, setActiveTab] = useState('actuaciones');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [expandidos, setExpandidos] = useState({});
   const [editando, setEditando] = useState(null);
@@ -67,7 +125,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [cargandoIA, setCargandoIA] = useState(false);
   const [editorIA, setEditorIA] = useState('');
   const [sentencias, setSentencias] = useState([]);
-  const [sentenciaSeleccionada, setSentenciaSeleccionada] = useState(null);
   const [mostrarSeleccionSentencia, setMostrarSeleccionSentencia] = useState(false);
   const [guardarAnalisis, setGuardarAnalisis] = useState(false);
 
@@ -75,6 +132,17 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [mostrarModalCompartir, setMostrarModalCompartir] = useState(false);
   const [emailCompartir, setEmailCompartir] = useState('');
   const [mensajeCompartir, setMensajeCompartir] = useState('');
+
+  // Estados para plazos
+  const [plazos, setPlazos] = useState([]);
+  const [cargandoPlazos, setCargandoPlazos] = useState(false);
+  const [mostrarModalEditarPlazo, setMostrarModalEditarPlazo] = useState(false);
+  const [plazoSeleccionado, setPlazoSeleccionado] = useState(null);
+
+  // Filtrar plazos
+  const plazosPendientes = plazos.filter(p => p.Estado !== 'Completado' && new Date(p.Fecha) >= new Date());
+  const plazosVencidos = plazos.filter(p => p.Estado !== 'Completado' && new Date(p.Fecha) < new Date());
+  const plazosCompletados = plazos.filter(p => p.Estado === 'Completado');
 
   // Obtener el email de la sesión
   useEffect(() => {
@@ -106,6 +174,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     };
     cargarActuaciones();
   }, [sac]);
+
+  // Cargar plazos al entrar a la pestaña
+  useEffect(() => {
+    if (activeTab === 'plazos') {
+      cargarPlazos();
+    }
+  }, [activeTab, sac]);
 
   const volver = () => {
     router.push(`/clientes/${cliente.ID_Cliente}`);
@@ -636,6 +711,30 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   };
 
+  // ==========================================
+  // FUNCIONES PARA PLAZOS
+  // ==========================================
+
+  const cargarPlazos = async () => {
+    setCargandoPlazos(true);
+    try {
+      const response = await fetch(`/api/agenda?numeroSAC=${sac}`);
+      const data = await response.json();
+      if (data.eventos) {
+        setPlazos(data.eventos);
+      }
+    } catch (error) {
+      console.error('Error al cargar plazos:', error);
+    } finally {
+      setCargandoPlazos(false);
+    }
+  };
+
+  const abrirModalEditarPlazo = (plazo) => {
+    setPlazoSeleccionado(plazo);
+    setMostrarModalEditarPlazo(true);
+  };
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -646,7 +745,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             <p style={{ color: '#4a5568', margin: 0 }}>
               Cliente: {cliente.Nombre_Cliente} | Carátula: {expediente.Caratula || 'No registrada'}
             </p>
-            {/* Usuarios compartidos */}
             {expediente.Usuarios_Compartidos && (
               <div style={{ 
                 marginTop: '8px', 
@@ -692,49 +790,493 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         </div>
       </div>
 
-      {/* Botones de acción */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <button 
-          onClick={toggleFormulario} 
-          style={{ 
-            backgroundColor: mostrarFormulario ? '#e53e3e' : '#38a169',
-            cursor: 'pointer'
+      {/* Pestañas */}
+      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setActiveTab('actuaciones')}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: activeTab === 'actuaciones' ? '#3182ce' : 'transparent',
+            color: activeTab === 'actuaciones' ? 'white' : '#4a5568',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: 'bold'
           }}
         >
-          {mostrarFormulario ? '❌ Cerrar Formulario' : '📝 Nueva Actuación'}
+          📋 Actuaciones ({actuaciones.length})
         </button>
-        <button 
-          onClick={() => ejecutarIA('resumir')} 
-          style={{ backgroundColor: '#805ad5' }}
-          disabled={cargandoIA}
+        <button
+          onClick={() => setActiveTab('plazos')}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: activeTab === 'plazos' ? '#3182ce' : 'transparent',
+            color: activeTab === 'plazos' ? 'white' : '#4a5568',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
         >
-          {cargandoIA ? 'Generando...' : '📄 Resumir'}
-        </button>
-        <button 
-          onClick={() => ejecutarIA('analizar-sentencia')} 
-          style={{ backgroundColor: '#e53e3e' }}
-          disabled={cargandoIA}
-        >
-          {cargandoIA ? 'Analizando...' : '⚖️ Analizar Sentencia'}
-        </button>
-        <button 
-          onClick={() => ejecutarIA('estrategia')} 
-          style={{ backgroundColor: '#38a169' }}
-          disabled={cargandoIA}
-        >
-          {cargandoIA ? 'Pensando...' : '💡 Estrategia'}
-        </button>
-        <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
-          📅 Agregar Plazo
-        </button>
-        <button 
-          onClick={() => setMostrarModalCompartir(true)} 
-          style={{ backgroundColor: '#9f7aea' }}
-        >
-          👥 Compartir
+          📅 Plazos
         </button>
       </div>
 
+      {/* Contenido de las pestañas */}
+      <div style={{ minHeight: '300px' }}>
+        {/* Pestaña Actuaciones */}
+        {activeTab === 'actuaciones' && (
+          <div>
+            {/* Botones de acción */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={toggleFormulario} 
+                style={{ 
+                  backgroundColor: mostrarFormulario ? '#e53e3e' : '#38a169',
+                  cursor: 'pointer'
+                }}
+              >
+                {mostrarFormulario ? '❌ Cerrar Formulario' : '📝 Nueva Actuación'}
+              </button>
+              <button 
+                onClick={() => ejecutarIA('resumir')} 
+                style={{ backgroundColor: '#805ad5' }}
+                disabled={cargandoIA}
+              >
+                {cargandoIA ? 'Generando...' : '📄 Resumir'}
+              </button>
+              <button 
+                onClick={() => ejecutarIA('analizar-sentencia')} 
+                style={{ backgroundColor: '#e53e3e' }}
+                disabled={cargandoIA}
+              >
+                {cargandoIA ? 'Analizando...' : '⚖️ Analizar Sentencia'}
+              </button>
+              <button 
+                onClick={() => ejecutarIA('estrategia')} 
+                style={{ backgroundColor: '#38a169' }}
+                disabled={cargandoIA}
+              >
+                {cargandoIA ? 'Pensando...' : '💡 Estrategia'}
+              </button>
+              <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
+                📅 Agregar Plazo
+              </button>
+              <button 
+                onClick={() => setMostrarModalCompartir(true)} 
+                style={{ backgroundColor: '#9f7aea' }}
+              >
+                👥 Compartir
+              </button>
+            </div>
+
+            {/* Formulario para nueva actuación */}
+            {mostrarFormulario && (
+              <div style={{ 
+                backgroundColor: '#f7fafc', 
+                padding: '20px', 
+                borderRadius: '8px', 
+                marginBottom: '20px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <h3>📝 Nueva Actuación</h3>
+                <form onSubmit={handleSubmit}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div>
+                      <label><strong>Fecha *</strong></label>
+                      <input
+                        type="date"
+                        name="fecha"
+                        value={nuevaActuacion.fecha}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label><strong>Tipo *</strong></label>
+                      <select
+                        name="tipo"
+                        value={nuevaActuacion.tipo}
+                        onChange={handleChange}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                        required
+                      >
+                        {tiposActuacion.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {nuevaActuacion.tipo === 'Otro' && (
+                      <div>
+                        <label><strong>Especificar Tipo *</strong></label>
+                        <input
+                          type="text"
+                          name="tipoOtro"
+                          value={nuevaActuacion.tipoOtro}
+                          onChange={handleChange}
+                          placeholder="Ej: Oficio, Nota, etc."
+                          style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                          required
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label><strong>Origen</strong></label>
+                      <select
+                        name="origen"
+                        value={nuevaActuacion.origen}
+                        onChange={handleChange}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                      >
+                        {origenes.map(o => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label><strong>Estado *</strong></label>
+                      <select
+                        name="estado"
+                        value={nuevaActuacion.estado}
+                        onChange={handleChange}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                      >
+                        <option value="Borrador">Borrador</option>
+                        <option value="Presentado">Presentado</option>
+                        <option value="Enviado">Enviado</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '15px' }}>
+                    <label><strong>Contenido *</strong></label>
+                    <EditorTexto
+                      initialValue={nuevaActuacion.contenido}
+                      onChange={(value) => setNuevaActuacion(prev => ({ ...prev, contenido: value }))}
+                      minHeight="150px"
+                    />
+                  </div>
+
+                  {mensaje && (
+                    <div style={{ 
+                      marginTop: '15px', 
+                      padding: '10px', 
+                      borderRadius: '8px', 
+                      backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', 
+                      color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' 
+                    }}>
+                      {mensaje}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                      {cargando ? 'Guardando...' : 'Guardar Actuación'}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={toggleFormulario} 
+                      style={{ backgroundColor: '#718096' }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Feed de actuaciones */}
+            <h2>📋 Historial de Actuaciones ({actuaciones.length})</h2>
+            {actuaciones.length === 0 ? (
+              <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
+            ) : (
+              <div>
+                {actuaciones.map((act, index) => {
+                  const resumen = getResumen(act.Contenido, 200);
+                  const estaExpandido = expandidos[index] || false;
+                  const tieneMas = act.Contenido && act.Contenido.length > 200;
+                  const esBorrador = act.Es_Borrador === 'SI';
+                  const esCreador = act.Creado_Por === sessionEmail;
+                  const esApertura = act.Tipo === 'Apertura';
+                  const puedeEditarAct = esApertura || (esBorrador && esCreador);
+                  const estaEditando = editando === index;
+                  const tienePDF = act.Tiene_PDF === 'SI' && act.ID_PDF_Drive;
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        marginBottom: '10px',
+                        backgroundColor: esBorrador ? '#fefcbf' : '#f7fafc',
+                        borderLeft: `4px solid ${getTipoColor(act.Tipo)}`,
+                        cursor: estaEditando ? 'default' : 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => !estaEditando && toggleExpandir(index)}
+                      onMouseEnter={(e) => {
+                        if (!estaEditando) {
+                          e.currentTarget.style.backgroundColor = esBorrador ? '#fde68a' : '#edf2f7';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!estaEditando) {
+                          e.currentTarget.style.backgroundColor = esBorrador ? '#fefcbf' : '#f7fafc';
+                        }
+                      }}
+                    >
+                      {estaEditando ? (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            <div>
+                              <label><strong>Fecha</strong></label>
+                              <input
+                                id={`edit_fecha_${index}`}
+                                type="date"
+                                defaultValue={act.Fecha}
+                                style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                              />
+                            </div>
+                            <div>
+                              <label><strong>Tipo</strong></label>
+                              <select
+                                id={`edit_tipo_${index}`}
+                                defaultValue={act.Tipo}
+                                style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                              >
+                                {tiposActuacion.map(t => (
+                                  <option key={t} value={t}>{t}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label><strong>Origen</strong></label>
+                              <select
+                                id={`edit_origen_${index}`}
+                                defaultValue={act.Origen || 'Yo'}
+                                style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                              >
+                                {origenes.map(o => (
+                                  <option key={o} value={o}>{o}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label><strong>Contenido</strong></label>
+                            <textarea
+                              id={`edit_contenido_${index}`}
+                              defaultValue={act.Contenido || ''}
+                              style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '80px' }}
+                            />
+                          </div>
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                            <button onClick={() => editarActuacion(act, index)} style={{ backgroundColor: '#38a169' }}>
+                              💾 Guardar
+                            </button>
+                            <button onClick={() => setEditando(null)} style={{ backgroundColor: '#718096' }}>
+                              ❌ Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <strong style={{ color: getTipoColor(act.Tipo) }}>
+                                {act.Tipo || 'Actuación'}
+                              </strong>
+                              <span style={{ 
+                                marginLeft: '10px', 
+                                backgroundColor: getOrigenColor(act.Origen), 
+                                color: 'white', 
+                                padding: '2px 10px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.8rem' 
+                              }}>
+                                {act.Origen || 'Sin origen'}
+                              </span>
+                              {act.Presentado === 'SI' && (
+                                <span style={{ 
+                                  marginLeft: '10px', 
+                                  backgroundColor: '#38a169', 
+                                  color: 'white', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.8rem' 
+                                }}>
+                                  ✅ Presentado
+                                </span>
+                              )}
+                              {act.Enviado === 'SI' && (
+                                <span style={{ 
+                                  marginLeft: '10px', 
+                                  backgroundColor: '#805ad5', 
+                                  color: 'white', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.8rem' 
+                                }}>
+                                  📨 Enviado
+                                </span>
+                              )}
+                              {esBorrador && act.Presentado !== 'SI' && act.Enviado !== 'SI' && (
+                                <span style={{ 
+                                  marginLeft: '10px', 
+                                  backgroundColor: '#ed8936', 
+                                  color: 'white', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.8rem' 
+                                }}>
+                                  📝 Borrador
+                                </span>
+                              )}
+                              {tienePDF && (
+                                <span style={{ 
+                                  marginLeft: '10px', 
+                                  backgroundColor: '#805ad5', 
+                                  color: 'white', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.8rem' 
+                                }}>
+                                  📎 PDF
+                                </span>
+                              )}
+                              <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
+                                {act.Fecha || 'Sin fecha'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {puedeEditarAct && (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); editarActuacion(act, index); }}
+                                    style={{ backgroundColor: '#ed8936', padding: '4px 8px', fontSize: '0.75rem' }}
+                                  >
+                                    ✏️ Editar
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); eliminarActuacion(act); }}
+                                    style={{ backgroundColor: '#e53e3e', padding: '4px 8px', fontSize: '0.75rem' }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </>
+                              )}
+                              <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
+                                {estaExpandido ? '▲' : '▼'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
+                            {resumen ? (
+                              <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {resumen}
+                                {tieneMas && !estaExpandido && (
+                                  <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
+                                )}
+                              </div>
+                            ) : (
+                              <em style={{ color: '#a0aec0' }}>Sin contenido</em>
+                            )}
+                          </div>
+
+                          {estaExpandido && act.Contenido && (
+                            <div 
+                              style={{ 
+                                marginTop: '12px', 
+                                paddingTop: '12px', 
+                                borderTop: '1px solid #e2e8f0',
+                                whiteSpace: 'pre-wrap',
+                                fontSize: '0.95rem',
+                                backgroundColor: 'white',
+                                padding: '12px',
+                                borderRadius: '4px'
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {act.Contenido}
+                            </div>
+                          )}
+
+                          {tienePDF && (
+                            <div style={{ marginTop: '10px' }}>
+                              <a 
+                                href={`https://drive.google.com/file/d/${act.ID_PDF_Drive}/view`}
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ color: '#3182ce', fontSize: '0.9rem' }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                📎 Ver PDF adjunto
+                              </a>
+                            </div>
+                          )}
+
+                          {act.Creado_Por && (
+                            <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#a0aec0' }}>
+                              👤 {act.Creado_Por}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pestaña Plazos */}
+        {activeTab === 'plazos' && (
+          <div>
+            <h2>📅 Plazos del Expediente</h2>
+            {cargandoPlazos ? (
+              <p>Cargando plazos...</p>
+            ) : plazos.length === 0 ? (
+              <p style={{ color: '#4a5568' }}>No hay plazos registrados para este expediente.</p>
+            ) : (
+              <div>
+                {/* Plazos vencidos */}
+                {plazosVencidos.length > 0 && (
+                  <>
+                    <h3 style={{ color: '#e53e3e' }}>🔴 Vencidos ({plazosVencidos.length})</h3>
+                    {plazosVencidos.map((plazo, index) => (
+                      <PlazoCard key={index} plazo={plazo} onClick={() => abrirModalEditarPlazo(plazo)} vencido />
+                    ))}
+                  </>
+                )}
+                
+                {/* Plazos pendientes */}
+                {plazosPendientes.length > 0 && (
+                  <>
+                    <h3>⏳ Pendientes ({plazosPendientes.length})</h3>
+                    {plazosPendientes.map((plazo, index) => (
+                      <PlazoCard key={index} plazo={plazo} onClick={() => abrirModalEditarPlazo(plazo)} />
+                    ))}
+                  </>
+                )}
+                
+                {/* Plazos completados */}
+                {plazosCompletados.length > 0 && (
+                  <>
+                    <h3>✅ Completados ({plazosCompletados.length})</h3>
+                    {plazosCompletados.map((plazo, index) => (
+                      <PlazoCard key={index} plazo={plazo} onClick={() => abrirModalEditarPlazo(plazo)} completado />
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modales que ya existían */}
       {/* Modal de selección de sentencia */}
       {mostrarSeleccionSentencia && (
         <div style={{
@@ -945,365 +1487,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Formulario para nueva actuación */}
-      {mostrarFormulario && (
-        <div style={{ 
-          backgroundColor: '#f7fafc', 
-          padding: '20px', 
-          borderRadius: '8px', 
-          marginBottom: '20px',
-          border: '1px solid #e2e8f0'
-        }}>
-          <h3>📝 Nueva Actuación</h3>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div>
-                <label><strong>Fecha *</strong></label>
-                <input
-                  type="date"
-                  name="fecha"
-                  value={nuevaActuacion.fecha}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div>
-                <label><strong>Tipo *</strong></label>
-                <select
-                  name="tipo"
-                  value={nuevaActuacion.tipo}
-                  onChange={handleChange}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                  required
-                >
-                  {tiposActuacion.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-              {nuevaActuacion.tipo === 'Otro' && (
-                <div>
-                  <label><strong>Especificar Tipo *</strong></label>
-                  <input
-                    type="text"
-                    name="tipoOtro"
-                    value={nuevaActuacion.tipoOtro}
-                    onChange={handleChange}
-                    placeholder="Ej: Oficio, Nota, etc."
-                    style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                    required
-                  />
-                </div>
-              )}
-              <div>
-                <label><strong>Origen</strong></label>
-                <select
-                  name="origen"
-                  value={nuevaActuacion.origen}
-                  onChange={handleChange}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                >
-                  {origenes.map(o => (
-                    <option key={o} value={o}>{o}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label><strong>Estado *</strong></label>
-                <select
-                  name="estado"
-                  value={nuevaActuacion.estado}
-                  onChange={handleChange}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                >
-                  <option value="Borrador">Borrador</option>
-                  <option value="Presentado">Presentado</option>
-                  <option value="Enviado">Enviado</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ marginTop: '15px' }}>
-              <label><strong>Contenido *</strong></label>
-              <EditorTexto
-                initialValue={nuevaActuacion.contenido}
-                onChange={(value) => setNuevaActuacion(prev => ({ ...prev, contenido: value }))}
-                minHeight="150px"
-              />
-            </div>
-
-            {mensaje && (
-              <div style={{ 
-                marginTop: '15px', 
-                padding: '10px', 
-                borderRadius: '8px', 
-                backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', 
-                color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' 
-              }}>
-                {mensaje}
-              </div>
-            )}
-            <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-                {cargando ? 'Guardando...' : 'Guardar Actuación'}
-              </button>
-              <button 
-                type="button" 
-                onClick={toggleFormulario} 
-                style={{ backgroundColor: '#718096' }}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Feed de actuaciones */}
-      <h2>📋 Historial de Actuaciones ({actuaciones.length})</h2>
-      {actuaciones.length === 0 ? (
-        <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
-      ) : (
-        <div>
-          {actuaciones.map((act, index) => {
-            const resumen = getResumen(act.Contenido, 200);
-            const estaExpandido = expandidos[index] || false;
-            const tieneMas = act.Contenido && act.Contenido.length > 200;
-            const esBorrador = act.Es_Borrador === 'SI';
-            const esCreador = act.Creado_Por === sessionEmail;
-            const esApertura = act.Tipo === 'Apertura';
-            const puedeEditarAct = esApertura || (esBorrador && esCreador);
-            const estaEditando = editando === index;
-            const tienePDF = act.Tiene_PDF === 'SI' && act.ID_PDF_Drive;
-
-            return (
-              <div
-                key={index}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  marginBottom: '10px',
-                  backgroundColor: esBorrador ? '#fefcbf' : '#f7fafc',
-                  borderLeft: `4px solid ${getTipoColor(act.Tipo)}`,
-                  cursor: estaEditando ? 'default' : 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => !estaEditando && toggleExpandir(index)}
-                onMouseEnter={(e) => {
-                  if (!estaEditando) {
-                    e.currentTarget.style.backgroundColor = esBorrador ? '#fde68a' : '#edf2f7';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!estaEditando) {
-                    e.currentTarget.style.backgroundColor = esBorrador ? '#fefcbf' : '#f7fafc';
-                  }
-                }}
-              >
-                {estaEditando ? (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                      <div>
-                        <label><strong>Fecha</strong></label>
-                        <input
-                          id={`edit_fecha_${index}`}
-                          type="date"
-                          defaultValue={act.Fecha}
-                          style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                        />
-                      </div>
-                      <div>
-                        <label><strong>Tipo</strong></label>
-                        <select
-                          id={`edit_tipo_${index}`}
-                          defaultValue={act.Tipo}
-                          style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                        >
-                          {tiposActuacion.map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label><strong>Origen</strong></label>
-                        <select
-                          id={`edit_origen_${index}`}
-                          defaultValue={act.Origen || 'Yo'}
-                          style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                        >
-                          {origenes.map(o => (
-                            <option key={o} value={o}>{o}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label><strong>Contenido</strong></label>
-                      <textarea
-                        id={`edit_contenido_${index}`}
-                        defaultValue={act.Contenido || ''}
-                        style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '80px' }}
-                      />
-                    </div>
-                    <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-                      <button onClick={() => editarActuacion(act, index)} style={{ backgroundColor: '#38a169' }}>
-                        💾 Guardar
-                      </button>
-                      <button onClick={() => setEditando(null)} style={{ backgroundColor: '#718096' }}>
-                        ❌ Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <strong style={{ color: getTipoColor(act.Tipo) }}>
-                          {act.Tipo || 'Actuación'}
-                        </strong>
-                        <span style={{ 
-                          marginLeft: '10px', 
-                          backgroundColor: getOrigenColor(act.Origen), 
-                          color: 'white', 
-                          padding: '2px 10px', 
-                          borderRadius: '12px', 
-                          fontSize: '0.8rem' 
-                        }}>
-                          {act.Origen || 'Sin origen'}
-                        </span>
-                        {act.Presentado === 'SI' && (
-                          <span style={{ 
-                            marginLeft: '10px', 
-                            backgroundColor: '#38a169', 
-                            color: 'white', 
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            fontSize: '0.8rem' 
-                          }}>
-                            ✅ Presentado
-                          </span>
-                        )}
-                        {act.Enviado === 'SI' && (
-                          <span style={{ 
-                            marginLeft: '10px', 
-                            backgroundColor: '#805ad5', 
-                            color: 'white', 
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            fontSize: '0.8rem' 
-                          }}>
-                            📨 Enviado
-                          </span>
-                        )}
-                        {esBorrador && act.Presentado !== 'SI' && act.Enviado !== 'SI' && (
-                          <span style={{ 
-                            marginLeft: '10px', 
-                            backgroundColor: '#ed8936', 
-                            color: 'white', 
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            fontSize: '0.8rem' 
-                          }}>
-                            📝 Borrador
-                          </span>
-                        )}
-                        {tienePDF && (
-                          <span style={{ 
-                            marginLeft: '10px', 
-                            backgroundColor: '#805ad5', 
-                            color: 'white', 
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            fontSize: '0.8rem' 
-                          }}>
-                            📎 PDF
-                          </span>
-                        )}
-                        <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
-                          {act.Fecha || 'Sin fecha'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {puedeEditarAct && (
-                          <>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); editarActuacion(act, index); }}
-                              style={{ backgroundColor: '#ed8936', padding: '4px 8px', fontSize: '0.75rem' }}
-                            >
-                              ✏️ Editar
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); eliminarActuacion(act); }}
-                              style={{ backgroundColor: '#e53e3e', padding: '4px 8px', fontSize: '0.75rem' }}
-                            >
-                              🗑️
-                            </button>
-                          </>
-                        )}
-                        <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
-                          {estaExpandido ? '▲' : '▼'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
-                      {resumen ? (
-                        <div style={{ whiteSpace: 'pre-wrap' }}>
-                          {resumen}
-                          {tieneMas && !estaExpandido && (
-                            <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
-                          )}
-                        </div>
-                      ) : (
-                        <em style={{ color: '#a0aec0' }}>Sin contenido</em>
-                      )}
-                    </div>
-
-                    {estaExpandido && act.Contenido && (
-                      <div 
-                        style={{ 
-                          marginTop: '12px', 
-                          paddingTop: '12px', 
-                          borderTop: '1px solid #e2e8f0',
-                          whiteSpace: 'pre-wrap',
-                          fontSize: '0.95rem',
-                          backgroundColor: 'white',
-                          padding: '12px',
-                          borderRadius: '4px'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {act.Contenido}
-                      </div>
-                    )}
-
-                    {tienePDF && (
-                      <div style={{ marginTop: '10px' }}>
-                        <a 
-                          href={`https://drive.google.com/file/d/${act.ID_PDF_Drive}/view`}
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          style={{ color: '#3182ce', fontSize: '0.9rem' }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          📎 Ver PDF adjunto
-                        </a>
-                      </div>
-                    )}
-
-                    {act.Creado_Por && (
-                      <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#a0aec0' }}>
-                        👤 {act.Creado_Por}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
         </div>
       )}
     </div>
