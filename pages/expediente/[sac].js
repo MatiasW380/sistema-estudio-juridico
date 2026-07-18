@@ -386,9 +386,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const tiposActuacion = [
     'Escrito',
     'Decreto',
+    'Cedula de Notificacion',
+    'Demanda',
     'Pericia',
     'Proveído',
-    'Apertura',
     'Sentencia',
     'Resolución',
     'Fijación de Audiencia',
