@@ -147,7 +147,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // Obtener el email de la sesión
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('='');
+      const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
     }, {});
@@ -805,21 +805,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           }}
         >
           📋 Actuaciones ({actuaciones.length})
-        </button>
         <button
-          onClick={() => setActiveTab('plazos')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'plazos' ? '#3182ce' : 'transparent',
-            color: activeTab === 'plazos' ? 'white' : '#4a5568',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          📅 Plazos ({plazosPendientes.length + plazosVencidos.length})
-        </button>
+  onClick={() => setActiveTab('plazos')}
+  style={{
+    padding: '10px 20px',
+    backgroundColor: activeTab === 'plazos' ? '#3182ce' : 'transparent',
+    color: activeTab === 'plazos' ? 'white' : '#4a5568',
+    border: 'none',
+    borderRadius: '8px 8px 0 0',
+    cursor: 'pointer',
+    fontWeight: 'bold'
+  }}
+>
+  📅 Plazos ({plazosPendientes.length + plazosVencidos.length})
+</button>
+    
       </div>
 
       {/* Contenido de las pestañas */}
