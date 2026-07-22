@@ -1,9 +1,9 @@
 // pages/index.js
-// Página de inicio con verificación de sesión y tareas urgentes
+// Página de inicio con verificación de sesión y tareas urgentes mejoradas
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getTareasPendientes } from '../lib/googleSheets';
+import { getTareasPendientes, getClientes } from '../lib/googleSheets';
 
 export async function getServerSideProps(context) {
   const cookies = context.req.headers.cookie || '';
@@ -29,6 +29,21 @@ export async function getServerSideProps(context) {
   }
 
   const tareas = await getTareasPendientes(usuario);
+  // CAMBIO 2: Obtener clientes para enriquecer las tareas
+  const clientes = await getClientes(usuario);
+  
+  // Crear mapa de SAC -> Cliente para búsqueda rápida
+  const sacToCliente = new Map();
+  clientes.forEach(cliente => {
+    if (cliente.expedientes) {
+      cliente.expedientes.forEach(exp => {
+        sacToCliente.set(exp.Numero_SAC, {
+          id: cliente.ID_Cliente,
+          nombre: cliente.Nombre_Cliente
+        });
+      });
+    }
+  });
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -41,11 +56,21 @@ export async function getServerSideProps(context) {
     return fechaPlazo >= hoy && fechaPlazo <= cincoDias;
   });
 
-  tareasUrgentes.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+  // CAMBIO 2: Enriquecer tareas con datos del cliente
+  const tareasEnriquecidas = tareasUrgentes.map(t => {
+    const clienteData = sacToCliente.get(t.Numero_SAC);
+    return {
+      ...t,
+      Cliente_ID: clienteData?.id || null,
+      Cliente_Nombre: clienteData?.nombre || t.Cliente || null
+    };
+  });
+
+  tareasEnriquecidas.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
 
   return {
     props: {
-      tareasUrgentes: tareasUrgentes || [],
+      tareasUrgentes: tareasEnriquecidas || [],
       usuario,
       usuarioEmail,
     },
@@ -98,10 +123,18 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
     return `${diff} días`;
   };
 
+  // CAMBIO 2: Mejorar handleTareaClick para mostrar cliente Y expediente
   const handleTareaClick = async (tarea) => {
+    // Si tiene SAC, ir al expediente
     if (tarea.Numero_SAC) {
       router.push(`/expediente/${tarea.Numero_SAC}`);
-    } else if (tarea.Cliente) {
+    } 
+    // Si tiene ID de cliente desde el enriquecimiento, ir al cliente
+    else if (tarea.Cliente_ID) {
+      router.push(`/clientes/${tarea.Cliente_ID}`);
+    }
+    // Fallback: buscar cliente por nombre
+    else if (tarea.Cliente) {
       try {
         const response = await fetch(`/api/clientes?nombre=${encodeURIComponent(tarea.Cliente)}`);
         const data = await response.json();
@@ -251,13 +284,17 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
                         SAC: {tarea.Numero_SAC}
                       </span>
                     )}
-                    {tarea.Cliente && !tarea.Numero_SAC && (
+                    {/* CAMBIO 2: Mostrar nombre del cliente enriquecido */}
+                    {tarea.Cliente_Nombre && (
                       <span style={{ 
                         marginLeft: '10px', 
-                        color: '#4a5568', 
-                        fontSize: '0.8rem' 
+                        backgroundColor: '#38a169', 
+                        color: 'white', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '0.7rem' 
                       }}>
-                        👤 {tarea.Cliente}
+                        👤 {tarea.Cliente_Nombre}
                       </span>
                     )}
                   </div>
