@@ -1,5 +1,5 @@
 // pages/biblioteca.js
-// Módulo de biblioteca legal: modelos, jurisprudencia y leyes (con expansión)
+// Módulo de biblioteca legal: modelos, jurisprudencia y leyes (con expansión, búsqueda y copiar)
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
@@ -33,6 +33,8 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const [expandidos, setExpandidos] = useState({});
+  // CAMBIO 4: Estados para búsqueda de jurisprudencia
+  const [terminoBusquedaJuris, setTerminoBusquedaJuris] = useState('');
   const router = useRouter();
 
   // Estados para formularios
@@ -166,6 +168,19 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
     return primeras.join('\n');
   };
 
+  // CAMBIO 4: Función para filtrar jurisprudencia
+  const getJurisprudenciaFiltrada = () => {
+    if (!terminoBusquedaJuris.trim()) return jurisprudencia;
+    
+    const termino = terminoBusquedaJuris.toLowerCase();
+    return jurisprudencia.filter(j => 
+      (j.Tema && j.Tema.toLowerCase().includes(termino)) ||
+      (j.Subtema && j.Subtema.toLowerCase().includes(termino)) ||
+      (j.Juzgado && j.Juzgado.toLowerCase().includes(termino)) ||
+      (j.Cita && j.Cita.toLowerCase().includes(termino))
+    );
+  };
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -248,7 +263,7 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Contenido *</strong></label>
-                <textarea name="contenido" value={nuevoModelo.contenido} onChange={(e) => handleChange(e, setNuevoModelo)} placeholder="Escribí el modelo del escrito..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '150px' }} required />
+                <textarea name="contenido" value={nuevoModelo.contenido} onChange={(e) => handleChange(e, setNuevoModelo)} placeholder="Escribí el modelo del escrito..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '150px' }} />
               </div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
                 <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar Modelo'}</button>
@@ -276,7 +291,7 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Cita *</strong></label>
-                <textarea name="cita" value={nuevaJurisprudencia.cita} onChange={(e) => handleChange(e, setNuevaJurisprudencia)} placeholder="Escribí la cita jurisprudencial..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '100px' }} required />
+                <textarea name="cita" value={nuevaJurisprudencia.cita} onChange={(e) => handleChange(e, setNuevaJurisprudencia)} placeholder="Escribí la cita jurisprudencial..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '150px' }} />
               </div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
                 <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar Jurisprudencia'}</button>
@@ -300,7 +315,7 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Texto *</strong></label>
-                <textarea name="texto" value={nuevaLey.texto} onChange={(e) => handleChange(e, setNuevaLey)} placeholder="Escribí el texto de la ley..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '100px' }} required />
+                <textarea name="texto" value={nuevaLey.texto} onChange={(e) => handleChange(e, setNuevaLey)} placeholder="Escribí el texto de la ley..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '150px' }} />
               </div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
                 <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar Ley'}</button>
@@ -308,7 +323,9 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
               </div>
             </form>
           )}
-          {mensaje && <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>{mensaje}</div>}
+          {mensaje && <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>
+            {mensaje}
+          </div>}
         </div>
       )}
 
@@ -362,7 +379,7 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
                       )}
                     </div>
                     {estaExpandido && m.Contenido && (
-                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px' }}>
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px', userSelect: 'text' }}>
                         {m.Contenido}
                       </div>
                     )}
@@ -377,9 +394,25 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
       {activeTab === 'jurisprudencia' && (
         <div>
           <h3>⚖️ Jurisprudencia</h3>
-          {jurisprudencia.length === 0 ? <p>No hay jurisprudencia cargada.</p> : (
+          {/* CAMBIO 4: Agregar buscador de jurisprudencia */}
+          <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={terminoBusquedaJuris}
+              onChange={(e) => setTerminoBusquedaJuris(e.target.value)}
+              placeholder="🔍 Buscar por tema, subtema, juzgado o cita..."
+              style={{ flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+            />
+            <button 
+              onClick={() => setTerminoBusquedaJuris('')}
+              style={{ backgroundColor: '#718096', padding: '10px 15px' }}
+            >
+              Limpiar
+            </button>
+          </div>
+          {getJurisprudenciaFiltrada().length === 0 ? <p>No hay jurisprudencia cargada {terminoBusquedaJuris && 'que coincida con la búsqueda'}.</p> : (
             <div>
-              {jurisprudencia.map((j) => {
+              {getJurisprudenciaFiltrada().map((j) => {
                 const key = `juris_${j.ID}`;
                 const estaExpandido = expandidos[key] || false;
                 const preview = getPreview(j.Cita, 2);
@@ -423,8 +456,9 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
                         <em style={{ color: '#a0aec0' }}>Sin contenido</em>
                       )}
                     </div>
+                    {/* CAMBIO 4: Permitir seleccionar y copiar el texto expandido */}
                     {estaExpandido && j.Cita && (
-                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px' }}>
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px', userSelect: 'text', cursor: 'text' }}>
                         {j.Cita}
                       </div>
                     )}
@@ -485,7 +519,7 @@ export default function BibliotecaPage({ modelos: modelosIniciales, jurisprudenc
                       )}
                     </div>
                     {estaExpandido && l.Texto && (
-                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px' }}>
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', fontSize: '0.95rem', backgroundColor: 'white', padding: '12px', borderRadius: '4px', userSelect: 'text', cursor: 'text' }}>
                         {l.Texto}
                       </div>
                     )}
