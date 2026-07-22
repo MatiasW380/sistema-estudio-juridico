@@ -1,14 +1,15 @@
 // pages/honorarios.js
-// Página de gestión de honorarios y aportes
+// Página de gestión de honorarios y aportes con nombre del cliente
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import BotonInicio from '../components/BotonInicio';
-import { getFinanzas, getResumenFinanzas } from '../lib/googleSheets';
+import { getFinanzasConCliente, getResumenFinanzas } from '../lib/googleSheets';
 
 export async function getServerSideProps() {
   try {
-    const finanzas = await getFinanzas();
+    // CAMBIO 3: Usar getFinanzasConCliente() en lugar de getFinanzas()
+    const finanzas = await getFinanzasConCliente();
     const resumen = await getResumenFinanzas();
     return { props: { finanzas: finanzas || [], resumen: resumen || {} } };
   } catch (error) {
@@ -21,6 +22,7 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
   const [finanzas, setFinanzas] = useState(finanzasIniciales);
   const [filtroCategoria, setFiltroCategoria] = useState('Todos');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [filtroCliente, setFiltroCliente] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [resumen, setResumen] = useState(resumenInicial);
@@ -40,7 +42,14 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
       const response = await fetch(`/api/finanzas?${params.toString()}`);
       const data = await response.json();
       if (data.finanzas) {
-        setFinanzas(data.finanzas);
+        // CAMBIO 3: Filtrar por cliente en el cliente si es necesario
+        let finanzasFiltradas = data.finanzas;
+        if (filtroCliente.trim()) {
+          finanzasFiltradas = finanzasFiltradas.filter(f => 
+            f.Nombre_Cliente?.toLowerCase().includes(filtroCliente.toLowerCase())
+          );
+        }
+        setFinanzas(finanzasFiltradas);
       }
 
       // Actualizar resumen
@@ -90,6 +99,17 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
         borderRadius: '8px',
         alignItems: 'center'
       }}>
+        {/* CAMBIO 3: Agregar filtro por cliente */}
+        <div>
+          <label><strong>Cliente</strong></label>
+          <input
+            type="text"
+            value={filtroCliente}
+            onChange={(e) => setFiltroCliente(e.target.value)}
+            placeholder="Buscar por nombre..."
+            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
+          />
+        </div>
         <div>
           <label><strong>Categoría</strong></label>
           <select
@@ -136,9 +156,10 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
         <button onClick={() => {
           setFiltroCategoria('Todos');
           setFiltroEstado('Todos');
+          setFiltroCliente('');
           setFechaInicio('');
           setFechaFin('');
-          aplicarFiltros();
+          setFinanzas(finanzasIniciales);
         }} style={{ backgroundColor: '#718096' }}>Limpiar</button>
       </div>
 
@@ -151,6 +172,8 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
           <thead>
             <tr style={{ backgroundColor: '#edf2f7' }}>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fecha</th>
+              {/* CAMBIO 3: Agregar columna Cliente */}
+              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Cliente</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Categoría</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Tipo</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Concepto</th>
@@ -163,6 +186,10 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             {finanzas.map((f, index) => (
               <tr key={index}>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Fecha || ''}</td>
+                {/* CAMBIO 3: Mostrar nombre del cliente */}
+                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
+                  <strong>{f.Nombre_Cliente || 'Sin cliente'}</strong>
+                </td>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Categoria || ''}</td>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Tipo || ''}</td>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Concepto || ''}</td>
