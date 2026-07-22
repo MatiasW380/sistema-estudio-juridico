@@ -1,22 +1,34 @@
 // pages/clientes/index.js
 // Página para listar clientes con buscador y eliminar
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes, buscarClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
 
-export async function getServerSideProps() {
+export async function getServerSideProps(context) {
+  const cookies = context.req.headers.cookie || '';
+  const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
+  
+  let usuario = '';
+  if (userCookie) {
+    try {
+      const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
+      usuario = userData.email || '';
+    } catch (e) {}
+  }
+
   try {
-    const clientes = await getClientes();
-    return { props: { clientes: clientes || [] } };
+    // CAMBIO 1: Pasar el usuario a getClientes()
+    const clientes = await getClientes(usuario);
+    return { props: { clientes: clientes || [], usuario } };
   } catch (error) {
     console.error('Error en getServerSideProps:', error);
-    return { props: { clientes: [] } };
+    return { props: { clientes: [], usuario } };
   }
 }
 
-export default function ClientesPage({ clientes: clientesIniciales }) {
+export default function ClientesPage({ clientes: clientesIniciales, usuario }) {
   const [clientes, setClientes] = useState(clientesIniciales);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -31,7 +43,8 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
 
     setCargando(true);
     try {
-      const resultados = await buscarClientes(terminoBusqueda);
+      // CAMBIO 1: Pasar el usuario a buscarClientes()
+      const resultados = await buscarClientes(terminoBusqueda, usuario);
       setClientes(resultados);
     } catch (error) {
       console.error('Error al buscar:', error);
@@ -106,7 +119,7 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
       </div>
 
       {clientes.length === 0 ? (
-        <p>No hay clientes cargados en la planilla.</p>
+        <p>No hay clientes cargados o compartidos con tu usuario.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
           <thead>
