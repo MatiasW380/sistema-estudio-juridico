@@ -1,35 +1,87 @@
 // pages/agenda.js
 // Módulo de agenda con vista de calendario mensual y tarjetas de tareas
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import BotonInicio from '../components/BotonInicio';
-import { getAgenda, getTareasPendientes } from '../lib/googleSheets';
+import { getAgenda, getTareasPendientes, getClientes } from '../lib/googleSheets';
+
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function toIsoDateOnly(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+}
 
 export async function getServerSideProps(context) {
   const cookies = context.req.headers.cookie || '';
-  const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
-  let usuario = '';
-  if (userCookie) {
-    try {
-      const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
-      usuario = userData.email || '';
-    } catch (e) {}
+  const userData = parseUserFromCookie(cookies);
+
+  if (!userData?.email) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
   }
 
+  const usuario = userData.email;
+
   try {
-    const eventos = await getAgenda({ usuario });
-    const tareas = await getTareasPendientes(usuario);
+    const [eventos, tareas, clientes] = await Promise.all([
+      getAgenda({ usuario }),
+      getTareasPendientes(usuario),
+      getClientes(usuario),
+    ]);
+
+    // Mapa SAC -> cliente para enriquecer cuando falte Cliente
+    const sacToCliente = new Map();
+    (clientes || []).forEach((c) => {
+      (c.expedientes || []).forEach((exp) => {
+        if (exp?.Numero_SAC) {
+          sacToCliente.set(exp.Numero_SAC, {
+            id: c.ID_Cliente,
+            nombre: c.Nombre_Cliente || '',
+          });
+        }
+      });
+    });
+
+    const enriquecer = (item) => {
+      const fromSac = item.Numero_SAC ? sacToCliente.get(item.Numero_SAC) : null;
+      return {
+        ...item,
+        Cliente: item.Cliente || fromSac?.nombre || '',
+        Cliente_ID: item.Cliente_ID || fromSac?.id || null,
+      };
+    };
+
     return {
       props: {
-        eventos: eventos || [],
-        tareas: tareas || [],
+        eventos: (eventos || []).map(enriquecer),
+        tareas: (tareas || []).map(enriquecer),
         usuario,
       },
     };
   } catch (error) {
     console.error('Error al cargar agenda:', error);
-    return { props: { eventos: [], tareas: [], usuario: '' } };
+    return { props: { eventos: [], tareas: [], usuario } };
   }
 }
 
@@ -61,7 +113,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     compartidoCon: '',
   });
 
-  // Cargar parámetros de URL para "Agregar Plazo"
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const numeroSAC = params.get('numeroSAC');
@@ -69,7 +120,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     const tipo = params.get('tipo');
 
     if (numeroSAC || cliente || tipo) {
-      setNuevoEvento(prev => ({
+      setNuevoEvento((prev) => ({
         ...prev,
         numeroSAC: numeroSAC || '',
         cliente: cliente || '',
@@ -79,29 +130,49 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     }
   }, []);
 
+  const recargarEventos = async () => {
+    try {
+      const [resEventos, resPendientes] = await Promise.all([
+        fetch(`/api/agenda?usuario=${encodeURIComponent(usuario)}`),
+        fetch(`/api/agenda?pendientes=true&usuario=${encodeURIComponent(usuario)}`),
+      ]);
+
+      const dataEventos = await resEventos.json();
+      const dataPendientes = await resPendientes.json();
+
+      if (dataEventos?.eventos) setEventos(dataEventos.eventos);
+      if (dataPendientes?.eventos) setTareas(dataPendientes.eventos);
+    } catch (error) {
+      console.error('Error al recargar eventos:', error);
+    }
+  };
+
   useEffect(() => {
-    const cargarEventos = async () => {
-      try {
-        const response = await fetch(`/api/agenda?usuario=${encodeURIComponent(usuario)}`);
-        const data = await response.json();
-        if (data.eventos) {
-          setEventos(data.eventos);
-        }
-        const tareasResponse = await fetch(`/api/agenda?pendientes=true&usuario=${encodeURIComponent(usuario)}`);
-        const tareasData = await tareasResponse.json();
-        if (tareasData.eventos) {
-          setTareas(tareasData.eventos);
-        }
-      } catch (error) {
-        console.error('Error al recargar eventos:', error);
-      }
-    };
-    cargarEventos();
+    recargarEventos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesActual, usuario]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNuevoEvento(prev => ({ ...prev, [name]: value }));
+    setNuevoEvento((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const limpiarFormulario = () => {
+    setNuevoEvento({
+      tipo: 'Otro',
+      titulo: '',
+      descripcion: '',
+      fecha: new Date().toISOString().split('T')[0],
+      hora: '',
+      horaFin: '',
+      lugar: '',
+      recordatorio: 'SI',
+      diasAntes: '1',
+      estado: 'Pendiente',
+      cliente: '',
+      numeroSAC: '',
+      compartidoCon: '',
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -119,52 +190,22 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       const response = await fetch('/api/agenda', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...nuevoEvento,
-          creadoPor: usuario,
-        }),
+        body: JSON.stringify({ ...nuevoEvento, creadoPor: usuario }),
       });
 
       const resultado = await response.json();
       if (resultado.success) {
         setMensaje('✅ Evento agregado correctamente');
-        setNuevoEvento({
-          tipo: 'Otro',
-          titulo: '',
-          descripcion: '',
-          fecha: new Date().toISOString().split('T')[0],
-          hora: '',
-          horaFin: '',
-          lugar: '',
-          recordatorio: 'SI',
-          diasAntes: '1',
-          estado: 'Pendiente',
-          cliente: '',
-          numeroSAC: '',
-          compartidoCon: '',
-        });
+        limpiarFormulario();
         setMostrarFormulario(false);
-        recargarEventos();
+        await recargarEventos();
       } else {
-        setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
+        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje('❌ Error: ' + error.message);
+      setMensaje(`❌ Error: ${error.message}`);
     } finally {
       setCargando(false);
-    }
-  };
-
-  const recargarEventos = async () => {
-    try {
-      const response = await fetch(`/api/agenda?usuario=${encodeURIComponent(usuario)}`);
-      const data = await response.json();
-      if (data.eventos) setEventos(data.eventos);
-      const tareasResponse = await fetch(`/api/agenda?pendientes=true&usuario=${encodeURIComponent(usuario)}`);
-      const tareasData = await tareasResponse.json();
-      if (tareasData.eventos) setTareas(tareasData.eventos);
-    } catch (error) {
-      console.error('Error al recargar eventos:', error);
     }
   };
 
@@ -202,13 +243,12 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       if (resultado.success) {
         setMensaje('✅ Evento actualizado correctamente');
         setMostrarModal(false);
-        recargarEventos();
+        await recargarEventos();
       } else {
-        setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
+        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      console.error('❌ Error en handleEditar:', error);
-      setMensaje('❌ Error: ' + error.message);
+      setMensaje(`❌ Error: ${error.message}`);
     } finally {
       setCargando(false);
     }
@@ -222,15 +262,16 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         method: 'DELETE',
       });
       const resultado = await response.json();
+
       if (resultado.success) {
         setMensaje('✅ Evento eliminado correctamente');
         setMostrarModal(false);
-        recargarEventos();
+        await recargarEventos();
       } else {
-        setMensaje('❌ Error: ' + (resultado.error || 'Error desconocido'));
+        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje('❌ Error: ' + error.message);
+      setMensaje(`❌ Error: ${error.message}`);
     }
   };
 
@@ -240,26 +281,33 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     setMensaje('');
   };
 
-  // Función para manejar clic en tarea pendiente
-  const handleTareaClick = (tarea) => {
+  // Click en tarea: priorizar SAC y luego cliente
+  const handleTareaClick = async (tarea) => {
     if (tarea.Numero_SAC) {
-      router.push(`/expediente/${tarea.Numero_SAC}`);
-    } else if (tarea.Cliente) {
-      // Buscar cliente por nombre
-      fetch(`/api/clientes?nombre=${encodeURIComponent(tarea.Cliente)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.clientes && data.clientes.length > 0) {
-            router.push(`/clientes/${data.clientes[0].ID_Cliente}`);
-          } else {
-            alert('Cliente no encontrado');
-          }
-        })
-        .catch(() => alert('Error al buscar cliente'));
-    } else {
-      // Si no tiene expediente ni cliente, mostrar el modal de edición
-      abrirModal(tarea);
+      router.push(`/expediente/${encodeURIComponent(tarea.Numero_SAC)}`);
+      return;
     }
+
+    if (tarea.Cliente_ID) {
+      router.push(`/clientes/${encodeURIComponent(tarea.Cliente_ID)}`);
+      return;
+    }
+
+    if (tarea.Cliente) {
+      try {
+        const res = await fetch(`/api/clientes?nombre=${encodeURIComponent(tarea.Cliente)}`);
+        const data = await res.json();
+
+        if (data?.clientes?.length > 0) {
+          router.push(`/clientes/${encodeURIComponent(data.clientes[0].ID_Cliente)}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Error al buscar cliente:', err);
+      }
+    }
+
+    abrirModal(tarea);
   };
 
   const cambiarMes = (delta) => {
@@ -274,39 +322,38 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     const primerDia = new Date(year, month, 1);
     const ultimoDia = new Date(year, month + 1, 0);
     const dias = [];
-    
+
     const primerDiaSemana = primerDia.getDay();
+
     for (let i = primerDiaSemana - 1; i >= 0; i--) {
       const dia = new Date(year, month, -i);
       dias.push({ fecha: dia, esOtroMes: true });
     }
-    
+
     for (let i = 1; i <= ultimoDia.getDate(); i++) {
       const dia = new Date(year, month, i);
       dias.push({ fecha: dia, esOtroMes: false });
     }
-    
+
     return dias;
   };
 
-  const diasMes = obtenerDiasMes(mesActual);
+  const diasMes = useMemo(() => obtenerDiasMes(mesActual), [mesActual]);
   const nombreMes = mesActual.toLocaleString('es-AR', { month: 'long', year: 'numeric' });
   const hoy = new Date().toISOString().split('T')[0];
 
   const getTipoColor = (tipo) => {
     const colores = {
-      'Entrevista': '#38a169',
-      'Plazo': '#e53e3e',
-      'Audiencia': '#3182ce',
-      'Pericia': '#d69e2e',
-      'Otro': '#718096',
+      Entrevista: '#38a169',
+      Plazo: '#e53e3e',
+      Audiencia: '#3182ce',
+      Pericia: '#d69e2e',
+      Otro: '#718096',
     };
     return colores[tipo] || '#718096';
   };
 
-  const getEventosDelDia = (fechaStr) => {
-    return eventos.filter(e => e.Fecha === fechaStr);
-  };
+  const getEventosDelDia = (fechaStr) => eventos.filter((e) => e.Fecha === fechaStr);
 
   return (
     <div className="container">
@@ -319,12 +366,17 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setVista('calendario')} style={{ backgroundColor: vista === 'calendario' ? '#3182ce' : '#718096' }}>📅 Calendario</button>
-        <button onClick={() => setVista('tareas')} style={{ backgroundColor: vista === 'tareas' ? '#3182ce' : '#718096' }}>✅ Tareas Pendientes ({tareas.length})</button>
-        <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>+ Nuevo Evento</button>
+        <button onClick={() => setVista('calendario')} style={{ backgroundColor: vista === 'calendario' ? '#3182ce' : '#718096' }}>
+          📅 Calendario
+        </button>
+        <button onClick={() => setVista('tareas')} style={{ backgroundColor: vista === 'tareas' ? '#3182ce' : '#718096' }}>
+          ✅ Tareas Pendientes ({tareas.length})
+        </button>
+        <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
+          + Nuevo Evento
+        </button>
       </div>
 
-      {/* Formulario para nuevo evento */}
       {mostrarFormulario && (
         <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
           <h3>📝 Nuevo Evento</h3>
@@ -340,39 +392,69 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                   <option value="Otro">Otro</option>
                 </select>
               </div>
+
               <div>
                 <label><strong>Fecha *</strong></label>
                 <input type="date" name="fecha" value={nuevoEvento.fecha} onChange={handleChange} required />
               </div>
+
               <div>
                 <label><strong>Hora (opcional)</strong></label>
                 <input type="time" name="hora" value={nuevoEvento.hora} onChange={handleChange} />
               </div>
+
               <div>
                 <label><strong>Hora Fin (opcional)</strong></label>
                 <input type="time" name="horaFin" value={nuevoEvento.horaFin} onChange={handleChange} />
               </div>
+
               <div>
                 <label><strong>N° SAC (opcional)</strong></label>
                 <input type="text" name="numeroSAC" value={nuevoEvento.numeroSAC} onChange={handleChange} placeholder="Ej: 123456" />
               </div>
+
               <div>
                 <label><strong>Cliente (opcional)</strong></label>
                 <input type="text" name="cliente" value={nuevoEvento.cliente} onChange={handleChange} placeholder="Nombre del cliente" />
               </div>
             </div>
+
             <div style={{ marginTop: '15px' }}>
               <label><strong>Título *</strong></label>
-              <input type="text" name="titulo" value={nuevoEvento.titulo} onChange={handleChange} placeholder="Ej: Contestar demanda" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }} required />
+              <input
+                type="text"
+                name="titulo"
+                value={nuevoEvento.titulo}
+                onChange={handleChange}
+                placeholder="Ej: Contestar demanda"
+                style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                required
+              />
             </div>
+
             <div style={{ marginTop: '15px' }}>
               <label><strong>Descripción</strong></label>
-              <textarea name="descripcion" value={nuevoEvento.descripcion} onChange={handleChange} placeholder="Detalles del evento..." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '60px' }} />
+              <textarea
+                name="descripcion"
+                value={nuevoEvento.descripcion}
+                onChange={handleChange}
+                placeholder="Detalles del evento..."
+                style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '60px' }}
+              />
             </div>
+
             <div style={{ marginTop: '15px' }}>
               <label><strong>Lugar</strong></label>
-              <input type="text" name="lugar" value={nuevoEvento.lugar} onChange={handleChange} placeholder="Dirección, link de Zoom, etc." style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+              <input
+                type="text"
+                name="lugar"
+                value={nuevoEvento.lugar}
+                onChange={handleChange}
+                placeholder="Dirección, link de Zoom, etc."
+                style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+              />
             </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '15px' }}>
               <div>
                 <label><strong>Recordatorio</strong></label>
@@ -381,10 +463,20 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                   <option value="NO">NO</option>
                 </select>
               </div>
+
               <div>
                 <label><strong>Días antes</strong></label>
-                <input type="number" name="diasAntes" value={nuevoEvento.diasAntes} onChange={handleChange} min="1" max="30" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                <input
+                  type="number"
+                  name="diasAntes"
+                  value={nuevoEvento.diasAntes}
+                  onChange={handleChange}
+                  min="1"
+                  max="30"
+                  style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                />
               </div>
+
               <div>
                 <label><strong>Estado</strong></label>
                 <select name="estado" value={nuevoEvento.estado} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
@@ -394,50 +486,88 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                 </select>
               </div>
             </div>
+
             <div style={{ marginTop: '15px' }}>
               <label><strong>Compartir con (emails separados por coma)</strong></label>
-              <input type="text" name="compartidoCon" value={nuevoEvento.compartidoCon} onChange={handleChange} placeholder="email1@gmail.com, email2@gmail.com" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+              <input
+                type="text"
+                name="compartidoCon"
+                value={nuevoEvento.compartidoCon}
+                onChange={handleChange}
+                placeholder="email1@gmail.com, email2@gmail.com"
+                style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+              />
             </div>
-            {mensaje && <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>{mensaje}</div>}
+
+            {mensaje && (
+              <div
+                style={{
+                  marginTop: '15px',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
+                  color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
+                }}
+              >
+                {mensaje}
+              </div>
+            )}
+
             <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>{cargando ? 'Guardando...' : 'Guardar Evento'}</button>
-              <button type="button" onClick={() => { setMostrarFormulario(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>Cancelar</button>
+              <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                {cargando ? 'Guardando...' : 'Guardar Evento'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarFormulario(false);
+                  setMensaje('');
+                }}
+                style={{ backgroundColor: '#718096' }}
+              >
+                Cancelar
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Modal de edición/eliminación */}
       {mostrarModal && eventoSeleccionado && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }} onClick={() => setMostrarModal(false)}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-          }} onClick={(e) => e.stopPropagation()}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setMostrarModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '30px',
+              borderRadius: '12px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2>📅 {eventoSeleccionado.Titulo}</h2>
             <form onSubmit={handleEditar}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div>
                   <label><strong>Tipo</strong></label>
-                  <select 
-                    value={eventoSeleccionado.Tipo || 'Otro'} 
+                  <select
+                    value={eventoSeleccionado.Tipo || 'Otro'}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Tipo: e.target.value })}
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   >
@@ -448,28 +578,31 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                     <option value="Otro">Otro</option>
                   </select>
                 </div>
+
                 <div>
                   <label><strong>Fecha</strong></label>
-                  <input 
-                    type="date" 
-                    value={eventoSeleccionado.Fecha || ''} 
+                  <input
+                    type="date"
+                    value={eventoSeleccionado.Fecha || ''}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Fecha: e.target.value })}
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   />
                 </div>
+
                 <div>
                   <label><strong>Hora</strong></label>
-                  <input 
-                    type="time" 
-                    value={eventoSeleccionado.Hora || ''} 
+                  <input
+                    type="time"
+                    value={eventoSeleccionado.Hora || ''}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Hora: e.target.value })}
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   />
                 </div>
+
                 <div>
                   <label><strong>Estado</strong></label>
-                  <select 
-                    value={eventoSeleccionado.Estado || 'Pendiente'} 
+                  <select
+                    value={eventoSeleccionado.Estado || 'Pendiente'}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Estado: e.target.value })}
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   >
@@ -478,65 +611,89 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                     <option value="Cancelado">Cancelado</option>
                   </select>
                 </div>
+
                 <div>
                   <label><strong>N° SAC</strong></label>
-                  <input 
-                    type="text" 
-                    value={eventoSeleccionado.Numero_SAC || ''} 
+                  <input
+                    type="text"
+                    value={eventoSeleccionado.Numero_SAC || ''}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Numero_SAC: e.target.value })}
                     placeholder="Ej: 123456"
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   />
                 </div>
+
                 <div>
                   <label><strong>Cliente</strong></label>
-                  <input 
-                    type="text" 
-                    value={eventoSeleccionado.Cliente || ''} 
+                  <input
+                    type="text"
+                    value={eventoSeleccionado.Cliente || ''}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Cliente: e.target.value })}
                     placeholder="Nombre del cliente"
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   />
                 </div>
               </div>
+
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Título</strong></label>
-                <input 
-                  type="text" 
-                  value={eventoSeleccionado.Titulo || ''} 
+                <input
+                  type="text"
+                  value={eventoSeleccionado.Titulo || ''}
                   onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Titulo: e.target.value })}
                   style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                 />
               </div>
+
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Descripción</strong></label>
-                <textarea 
-                  value={eventoSeleccionado['Descripción'] || ''} 
+                <textarea
+                  value={eventoSeleccionado['Descripción'] || ''}
                   onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, 'Descripción': e.target.value })}
                   style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }}
                 />
               </div>
+
               <div style={{ marginTop: '15px' }}>
                 <label><strong>Lugar</strong></label>
-                <input 
-                  type="text" 
-                  value={eventoSeleccionado.Lugar || ''} 
+                <input
+                  type="text"
+                  value={eventoSeleccionado.Lugar || ''}
                   onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Lugar: e.target.value })}
                   style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                 />
               </div>
-              {mensaje && <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>{mensaje}</div>}
+
+              {mensaje && (
+                <div
+                  style={{
+                    marginTop: '15px',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
+                    color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
+                  }}
+                >
+                  {mensaje}
+                </div>
+              )}
+
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>{cargando ? 'Guardando...' : '💾 Guardar Cambios'}</button>
-                <button type="button" onClick={handleEliminar} style={{ backgroundColor: '#e53e3e' }}>🗑️ Eliminar</button>
-                <button type="button" onClick={() => { setMostrarModal(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>❌ Cerrar</button>
+                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                  {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
+                </button>
+                <button type="button" onClick={handleEliminar} style={{ backgroundColor: '#e53e3e' }}>
+                  🗑️ Eliminar
+                </button>
+                <button type="button" onClick={() => { setMostrarModal(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
+                  ❌ Cerrar
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Vista de calendario */}
       {vista === 'calendario' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -546,49 +703,64 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', backgroundColor: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-            {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
-              <div key={d} style={{ backgroundColor: '#edf2f7', padding: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem' }}>{d}</div>
+            {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((d) => (
+              <div key={d} style={{ backgroundColor: '#edf2f7', padding: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                {d}
+              </div>
             ))}
+
             {diasMes.map((dia, index) => {
-              const fechaStr = dia.fecha.toISOString().split('T')[0];
+              const fechaStr = toIsoDateOnly(dia.fecha);
               const eventosDia = getEventosDelDia(fechaStr);
               const esHoy = fechaStr === hoy;
               const esOtroMes = dia.esOtroMes;
 
               return (
-                <div key={index} style={{
-                  backgroundColor: esOtroMes ? '#f7fafc' : esHoy ? '#ebf8ff' : 'white',
-                  minHeight: '80px',
-                  padding: '6px',
-                  border: esHoy ? '2px solid #3182ce' : 'none',
-                  opacity: esOtroMes ? 0.5 : 1,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onClick={() => {
-                  setNuevoEvento(prev => ({ ...prev, fecha: fechaStr }));
-                  setMostrarFormulario(true);
-                }}
-                onMouseEnter={(e) => { if (!esOtroMes) e.currentTarget.style.backgroundColor = '#edf2f7'; }}
-                onMouseLeave={(e) => { if (!esOtroMes) e.currentTarget.style.backgroundColor = esHoy ? '#ebf8ff' : 'white'; }}>
+                <div
+                  key={index}
+                  style={{
+                    backgroundColor: esOtroMes ? '#f7fafc' : esHoy ? '#ebf8ff' : 'white',
+                    minHeight: '80px',
+                    padding: '6px',
+                    border: esHoy ? '2px solid #3182ce' : 'none',
+                    opacity: esOtroMes ? 0.5 : 1,
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                  }}
+                  onClick={() => {
+                    setNuevoEvento((prev) => ({ ...prev, fecha: fechaStr }));
+                    setMostrarFormulario(true);
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!esOtroMes) e.currentTarget.style.backgroundColor = '#edf2f7';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!esOtroMes) e.currentTarget.style.backgroundColor = esHoy ? '#ebf8ff' : 'white';
+                  }}
+                >
                   <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{dia.fecha.getDate()}</div>
+
                   {eventosDia.map((ev, idx) => (
-                    <div key={idx} style={{
-                      backgroundColor: getTipoColor(ev.Tipo),
-                      color: 'white',
-                      fontSize: '0.65rem',
-                      padding: '2px 4px',
-                      borderRadius: '3px',
-                      marginTop: '2px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      cursor: 'pointer'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      abrirModal(ev);
-                    }}>
+                    <div
+                      key={`${ev.ID || 'ev'}-${idx}`}
+                      style={{
+                        backgroundColor: getTipoColor(ev.Tipo),
+                        color: 'white',
+                        fontSize: '0.65rem',
+                        padding: '2px 4px',
+                        borderRadius: '3px',
+                        marginTop: '2px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        cursor: 'pointer',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirModal(ev);
+                      }}
+                      title={`${ev.Titulo}${ev.Cliente ? ` | Cliente: ${ev.Cliente}` : ''}${ev.Numero_SAC ? ` | SAC: ${ev.Numero_SAC}` : ''}`}
+                    >
                       {ev.Titulo}
                     </div>
                   ))}
@@ -599,7 +771,6 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         </div>
       )}
 
-      {/* Vista de tareas pendientes */}
       {vista === 'tareas' && (
         <div>
           <h2>✅ Tareas Pendientes</h2>
@@ -608,28 +779,50 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {tareas.map((tarea) => (
-                <div key={tarea.ID} style={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  backgroundColor: '#f7fafc',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  borderLeft: `4px solid ${getTipoColor(tarea.Tipo)}`
-                }}
-                onClick={() => handleTareaClick(tarea)}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  key={tarea.ID}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    backgroundColor: '#f7fafc',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    borderLeft: `4px solid ${getTipoColor(tarea.Tipo)}`,
+                  }}
+                  onClick={() => handleTareaClick(tarea)}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#edf2f7')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f7fafc')}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <div>
                       <strong>{tarea.Titulo}</strong>
                       <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>{tarea.Tipo}</span>
-                      {tarea.Numero_SAC && <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>SAC: {tarea.Numero_SAC}</span>}
-                      {tarea.Cliente && <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>👤 {tarea.Cliente}</span>}
+
+                      {tarea.Numero_SAC && (
+                        <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
+                          SAC: {tarea.Numero_SAC}
+                        </span>
+                      )}
+
+                      {tarea.Cliente && (
+                        <span style={{ marginLeft: '10px', backgroundColor: '#38a169', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
+                          👤 {tarea.Cliente}
+                        </span>
+                      )}
                     </div>
-                    <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>{tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}</span>
+
+                    <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>
+                      {tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}
+                    </span>
                   </div>
-                  {tarea['Descripción'] && <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>{tarea['Descripción'].substring(0, 100)}{tarea['Descripción'].length > 100 && '...'}</div>}
+
+                  {tarea['Descripción'] && (
+                    <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem' }}>
+                      {tarea['Descripción'].substring(0, 100)}
+                      {tarea['Descripción'].length > 100 && '...'}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
