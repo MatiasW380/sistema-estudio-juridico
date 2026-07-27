@@ -1,15 +1,39 @@
 // pages/index.js
-// Página de inicio con verificación de sesión y tareas urgentes mejoradas
+// Página de inicio con verificación de sesión y tareas urgentes (cliente + SAC)
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getTareasPendientes, getClientes } from '../lib/googleSheets';
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    if (!data?.email) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeDateOnly(dateStr) {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export async function getServerSideProps(context) {
   const cookies = context.req.headers.cookie || '';
-  const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
-  
-  if (!userCookie) {
+  const userData = parseUserFromCookie(cookies);
+
+  if (!userData?.email) {
     return {
       redirect: {
         destination: '/login',
@@ -18,31 +42,27 @@ export async function getServerSideProps(context) {
     };
   }
 
-  let usuario = '';
-  let usuarioEmail = '';
-  if (userCookie) {
-    try {
-      const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
-      usuario = userData.email || '';
-      usuarioEmail = userData.email || '';
-    } catch (e) {}
-  }
+  const usuario = userData.email;
+  const usuarioEmail = userData.email;
 
-  const tareas = await getTareasPendientes(usuario);
-  // CAMBIO 2: Obtener clientes para enriquecer las tareas
-  const clientes = await getClientes(usuario);
-  
-  // Crear mapa de SAC -> Cliente para búsqueda rápida
+  const [tareas, clientes] = await Promise.all([
+    getTareasPendientes(usuario),
+    getClientes(usuario),
+  ]);
+
+  // Mapa SAC -> { idCliente, nombreCliente }
   const sacToCliente = new Map();
-  clientes.forEach(cliente => {
-    if (cliente.expedientes) {
-      cliente.expedientes.forEach(exp => {
+  clientes.forEach((cliente) => {
+    const id = cliente.ID_Cliente || null;
+    const nombre = cliente.Nombre_Cliente || '';
+    (cliente.expedientes || []).forEach((exp) => {
+      if (exp?.Numero_SAC) {
         sacToCliente.set(exp.Numero_SAC, {
-          id: cliente.ID_Cliente,
-          nombre: cliente.Nombre_Cliente
+          idCliente: id,
+          nombreCliente: nombre,
         });
-      });
-    }
+      }
+    });
   });
 
   const hoy = new Date();
@@ -50,44 +70,56 @@ export async function getServerSideProps(context) {
   const cincoDias = new Date(hoy);
   cincoDias.setDate(cincoDias.getDate() + 5);
 
-  const tareasUrgentes = tareas.filter(t => {
-    const fechaPlazo = new Date(t.Fecha);
-    fechaPlazo.setHours(0, 0, 0, 0);
-    return fechaPlazo >= hoy && fechaPlazo <= cincoDias;
+  const tareasUrgentes = (tareas || []).filter((t) => {
+    const fecha = normalizeDateOnly(t.Fecha);
+    if (!fecha) return false;
+    return fecha >= hoy && fecha <= cincoDias;
   });
 
-  // CAMBIO 2: Enriquecer tareas con datos del cliente
-  const tareasEnriquecidas = tareasUrgentes.map(t => {
-    const clienteData = sacToCliente.get(t.Numero_SAC);
-    return {
-      ...t,
-      Cliente_ID: clienteData?.id || null,
-      Cliente_Nombre: clienteData?.nombre || t.Cliente || null
-    };
-  });
+  // Enriquecer: siempre intentar tener ambos (Cliente + SAC)
+  const tareasEnriquecidas = tareasUrgentes
+    .map((t) => {
+      const sac = t.Numero_SAC || '';
+      const clienteDesdeSac = sac ? sacToCliente.get(sac) : null;
 
-  tareasEnriquecidas.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+      return {
+        ...t,
+        Cliente_ID: clienteDesdeSac?.idCliente || null,
+        Cliente_Nombre:
+          clienteDesdeSac?.nombreCliente ||
+          t.Cliente ||
+          '',
+      };
+    })
+    .sort((a, b) => {
+      const da = new Date(a.Fecha).getTime();
+      const db = new Date(b.Fecha).getTime();
+      if (Number.isNaN(da) && Number.isNaN(db)) return 0;
+      if (Number.isNaN(da)) return 1;
+      if (Number.isNaN(db)) return -1;
+      return da - db;
+    });
 
   return {
     props: {
-      tareasUrgentes: tareasEnriquecidas || [],
+      tareasUrgentes: tareasEnriquecidas,
       usuario,
       usuarioEmail,
     },
   };
 }
 
-export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
-  const [tareas, setTareas] = useState(tareasUrgentes || []);
+export default function Home({ tareasUrgentes, usuarioEmail }) {
+  const [tareas] = useState(tareasUrgentes || []);
   const router = useRouter();
 
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
+      const [key, ...rest] = cookie.trim().split('=');
+      acc[key] = rest.join('=');
       return acc;
     }, {});
-    
+
     if (!cookies.user) {
       router.push('/login');
     }
@@ -101,8 +133,12 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
   const getUrgenciaColor = (fechaStr) => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
+
     const fechaPlazo = new Date(fechaStr);
     fechaPlazo.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(fechaPlazo.getTime())) return '#718096';
+
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
     if (diff < 0) return '#e53e3e';
@@ -113,8 +149,12 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
   const getUrgenciaTexto = (fechaStr) => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
+
     const fechaPlazo = new Date(fechaStr);
     fechaPlazo.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(fechaPlazo.getTime())) return 'SIN FECHA';
+
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
     if (diff < 0) return 'VENCIDO';
@@ -123,40 +163,43 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
     return `${diff} días`;
   };
 
-  // CAMBIO 2: Mejorar handleTareaClick para mostrar cliente Y expediente
   const handleTareaClick = async (tarea) => {
-    // Si tiene SAC, ir al expediente
+    // Prioridad 1: expediente por SAC
     if (tarea.Numero_SAC) {
-      router.push(`/expediente/${tarea.Numero_SAC}`);
-    } 
-    // Si tiene ID de cliente desde el enriquecimiento, ir al cliente
-    else if (tarea.Cliente_ID) {
-      router.push(`/clientes/${tarea.Cliente_ID}`);
+      router.push(`/expediente/${encodeURIComponent(tarea.Numero_SAC)}`);
+      return;
     }
-    // Fallback: buscar cliente por nombre
-    else if (tarea.Cliente) {
+
+    // Prioridad 2: cliente por ID enriquecido
+    if (tarea.Cliente_ID) {
+      router.push(`/clientes/${encodeURIComponent(tarea.Cliente_ID)}`);
+      return;
+    }
+
+    // Prioridad 3: búsqueda por nombre de cliente
+    const clienteNombre = tarea.Cliente_Nombre || tarea.Cliente || '';
+    if (clienteNombre) {
       try {
-        const response = await fetch(`/api/clientes?nombre=${encodeURIComponent(tarea.Cliente)}`);
+        const response = await fetch(`/api/clientes?nombre=${encodeURIComponent(clienteNombre)}`);
         const data = await response.json();
-        if (data.clientes && data.clientes.length > 0) {
-          router.push(`/clientes/${data.clientes[0].ID_Cliente}`);
-        } else {
-          alert('Cliente no encontrado');
+        if (data?.clientes?.length > 0) {
+          router.push(`/clientes/${encodeURIComponent(data.clientes[0].ID_Cliente)}`);
+          return;
         }
       } catch (error) {
         console.error('Error al buscar cliente:', error);
-        alert('Error al buscar cliente');
       }
-    } else {
-      router.push('/agenda');
     }
+
+    // Fallback
+    router.push('/agenda');
   };
 
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ marginBottom: '0' }}>🏛️ Sistema de Gestión Jurídica</h1>
+          <h1 style={{ marginBottom: 0 }}>🏛️ Sistema de Gestión Jurídica</h1>
           <p style={{ marginTop: '4px', color: '#4a5568', fontSize: '0.95rem' }}>
             👤 Usuario: <strong>{usuarioEmail || 'No identificado'}</strong>
           </p>
@@ -179,7 +222,7 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
         <a href="/biblioteca">
           <button style={{ backgroundColor: '#3182ce' }}>📚 Biblioteca</button>
         </a>
-        <button 
+        <button
           onClick={() => router.push('/ia-general')}
           style={{ backgroundColor: '#7c3aed' }}
         >
@@ -190,47 +233,52 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
         </a>
       </div>
 
-      {/* Tareas urgentes */}
       <div style={{ marginTop: '40px' }}>
-        <h2 style={{ 
-          fontSize: '1.3rem', 
-          color: '#2d3748', 
-          borderBottom: '2px solid #e2e8f0', 
-          paddingBottom: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
+        <h2
+          style={{
+            fontSize: '1.3rem',
+            color: '#2d3748',
+            borderBottom: '2px solid #e2e8f0',
+            paddingBottom: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}
+        >
           ⏰ Tareas Urgentes (próximos 5 días)
           {tareas.length > 0 && (
-            <span style={{ 
-              fontSize: '0.8rem', 
-              backgroundColor: '#e53e3e', 
-              color: 'white', 
-              padding: '2px 10px', 
-              borderRadius: '12px' 
-            }}>
+            <span
+              style={{
+                fontSize: '0.8rem',
+                backgroundColor: '#e53e3e',
+                color: 'white',
+                padding: '2px 10px',
+                borderRadius: '12px',
+              }}
+            >
               {tareas.length}
             </span>
           )}
         </h2>
 
         {tareas.length === 0 ? (
-          <div style={{
-            backgroundColor: '#f7fafc',
-            padding: '30px',
-            borderRadius: '8px',
-            textAlign: 'center',
-            color: '#4a5568',
-            marginTop: '15px'
-          }}>
+          <div
+            style={{
+              backgroundColor: '#f7fafc',
+              padding: '30px',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#4a5568',
+              marginTop: '15px',
+            }}
+          >
             🎉 No hay tareas urgentes en los próximos 5 días.
           </div>
         ) : (
           <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {tareas.map((tarea, index) => (
               <div
-                key={index}
+                key={`${tarea.ID || 'tarea'}-${index}`}
                 style={{
                   border: `2px solid ${getUrgenciaColor(tarea.Fecha)}`,
                   borderRadius: '8px',
@@ -242,7 +290,7 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   flexWrap: 'wrap',
-                  gap: '10px'
+                  gap: '10px',
                 }}
                 onClick={() => handleTareaClick(tarea)}
                 onMouseEnter={(e) => {
@@ -255,52 +303,61 @@ export default function Home({ tareasUrgentes, usuario, usuarioEmail }) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                  <span style={{
-                    backgroundColor: getUrgenciaColor(tarea.Fecha),
-                    color: 'white',
-                    padding: '2px 10px',
-                    borderRadius: '12px',
-                    fontSize: '0.7rem',
-                    fontWeight: 'bold',
-                    minWidth: '60px',
-                    textAlign: 'center'
-                  }}>
+                  <span
+                    style={{
+                      backgroundColor: getUrgenciaColor(tarea.Fecha),
+                      color: 'white',
+                      padding: '2px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.7rem',
+                      fontWeight: 'bold',
+                      minWidth: '60px',
+                      textAlign: 'center',
+                    }}
+                  >
                     {getUrgenciaTexto(tarea.Fecha)}
                   </span>
+
                   <div>
                     <strong>{tarea.Titulo || 'Sin título'}</strong>
                     <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>
                       {tarea.Tipo || 'Otro'}
                     </span>
+
                     {tarea.Numero_SAC && (
-                      <span style={{ 
-                        marginLeft: '10px', 
-                        backgroundColor: '#3182ce', 
-                        color: 'white', 
-                        padding: '2px 8px', 
-                        borderRadius: '12px', 
-                        fontSize: '0.7rem' 
-                      }}>
+                      <span
+                        style={{
+                          marginLeft: '10px',
+                          backgroundColor: '#3182ce',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.7rem',
+                        }}
+                      >
                         SAC: {tarea.Numero_SAC}
                       </span>
                     )}
-                    {/* CAMBIO 2: Mostrar nombre del cliente enriquecido */}
+
                     {tarea.Cliente_Nombre && (
-                      <span style={{ 
-                        marginLeft: '10px', 
-                        backgroundColor: '#38a169', 
-                        color: 'white', 
-                        padding: '2px 8px', 
-                        borderRadius: '12px', 
-                        fontSize: '0.7rem' 
-                      }}>
+                      <span
+                        style={{
+                          marginLeft: '10px',
+                          backgroundColor: '#38a169',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.7rem',
+                        }}
+                      >
                         👤 {tarea.Cliente_Nombre}
                       </span>
                     )}
                   </div>
                 </div>
+
                 <div style={{ color: '#4a5568', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                  {tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}
+                  {tarea.Fecha || 'Sin fecha'} {tarea.Hora ? `- ${tarea.Hora}` : ''}
                 </div>
               </div>
             ))}
