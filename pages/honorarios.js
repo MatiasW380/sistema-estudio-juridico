@@ -1,15 +1,25 @@
 // pages/honorarios.js
 // Página de gestión de honorarios y aportes con nombre del cliente
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useState } from 'react';
 import BotonInicio from '../components/BotonInicio';
-import { getFinanzasConCliente, getResumenFinanzas } from '../lib/googleSheets';
+import { getFinanzas, getResumenFinanzas } from '../lib/googleSheets';
 
-export async function getServerSideProps() {
+export async function getServerSideProps(context) {
+  const cookies = context.req.headers.cookie || '';
+  const userCookie = cookies.split(';').find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
   try {
-    // CAMBIO 3: Usar getFinanzasConCliente() en lugar de getFinanzas()
-    const finanzas = await getFinanzasConCliente();
+    const finanzas = await getFinanzas(); // Ya viene enriquecido con Cliente desde lib/googleSheets.js
     const resumen = await getResumenFinanzas();
     return { props: { finanzas: finanzas || [], resumen: resumen || {} } };
   } catch (error) {
@@ -18,15 +28,19 @@ export async function getServerSideProps() {
   }
 }
 
+function formatMoney(value) {
+  const n = parseFloat(value || 0);
+  return `$${Number.isNaN(n) ? '0.00' : n.toFixed(2)}`;
+}
+
 export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: resumenInicial }) {
-  const [finanzas, setFinanzas] = useState(finanzasIniciales);
+  const [finanzas, setFinanzas] = useState(finanzasIniciales || []);
   const [filtroCategoria, setFiltroCategoria] = useState('Todos');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [filtroCliente, setFiltroCliente] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
-  const [resumen, setResumen] = useState(resumenInicial);
-  const router = useRouter();
+  const [resumen, setResumen] = useState(resumenInicial || {});
 
   const categorias = ['Todos', 'Honorarios', 'Caja_Abogados', 'Colegio_Abogados'];
   const estados = ['Todos', 'Pendiente', 'Pagado', 'Parcial'];
@@ -38,29 +52,41 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
       if (filtroEstado !== 'Todos') params.append('estado', filtroEstado);
       if (fechaInicio) params.append('fechaInicio', fechaInicio);
       if (fechaFin) params.append('fechaFin', fechaFin);
+      if (filtroCliente.trim()) params.append('cliente', filtroCliente.trim());
 
       const response = await fetch(`/api/finanzas?${params.toString()}`);
       const data = await response.json();
+
       if (data.finanzas) {
-        // CAMBIO 3: Filtrar por cliente en el cliente si es necesario
         let finanzasFiltradas = data.finanzas;
+
+        // Soporte por si API todavía no filtra por cliente
         if (filtroCliente.trim()) {
-          finanzasFiltradas = finanzasFiltradas.filter(f => 
-            f.Nombre_Cliente?.toLowerCase().includes(filtroCliente.toLowerCase())
+          const q = filtroCliente.toLowerCase().trim();
+          finanzasFiltradas = finanzasFiltradas.filter((f) =>
+            (f.Cliente || f.Nombre_Cliente || '').toLowerCase().includes(q),
           );
         }
+
         setFinanzas(finanzasFiltradas);
       }
 
-      // Actualizar resumen
       const resResponse = await fetch(`/api/finanzas?resumen=true&${params.toString()}`);
       const resData = await resResponse.json();
-      if (resData.resumen) {
-        setResumen(resData.resumen);
-      }
+      if (resData.resumen) setResumen(resData.resumen);
     } catch (error) {
       console.error('Error al aplicar filtros:', error);
     }
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroCategoria('Todos');
+    setFiltroEstado('Todos');
+    setFiltroCliente('');
+    setFechaInicio('');
+    setFechaFin('');
+    setFinanzas(finanzasIniciales || []);
+    setResumen(resumenInicial || {});
   };
 
   return (
@@ -70,36 +96,41 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
           <BotonInicio />
           <h1>💰 Honorarios y Aportes</h1>
         </div>
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
+        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>
+          ← Volver al inicio
+        </a>
       </div>
 
       {/* Resumen */}
-      <div style={{
-        backgroundColor: '#f7fafc',
-        padding: '15px',
-        borderRadius: '8px',
-        marginBottom: '20px',
-        display: 'flex',
-        gap: '30px',
-        flexWrap: 'wrap'
-      }}>
-        <div><strong>Total Pendiente:</strong> ${resumen.totalPendiente?.toFixed(2) || '0.00'}</div>
-        <div><strong>Total Pagado:</strong> ${resumen.totalPagado?.toFixed(2) || '0.00'}</div>
-        <div><strong>Total Parcial:</strong> ${resumen.totalParcial?.toFixed(2) || '0.00'}</div>
+      <div
+        style={{
+          backgroundColor: '#f7fafc',
+          padding: '15px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          display: 'flex',
+          gap: '30px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div><strong>Total Pendiente:</strong> {formatMoney(resumen.totalPendiente)}</div>
+        <div><strong>Total Pagado:</strong> {formatMoney(resumen.totalPagado)}</div>
+        <div><strong>Total Parcial:</strong> {formatMoney(resumen.totalParcial)}</div>
       </div>
 
       {/* Filtros */}
-      <div style={{
-        display: 'flex',
-        gap: '15px',
-        flexWrap: 'wrap',
-        marginBottom: '20px',
-        padding: '15px',
-        backgroundColor: '#f7fafc',
-        borderRadius: '8px',
-        alignItems: 'center'
-      }}>
-        {/* CAMBIO 3: Agregar filtro por cliente */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '15px',
+          flexWrap: 'wrap',
+          marginBottom: '20px',
+          padding: '15px',
+          backgroundColor: '#f7fafc',
+          borderRadius: '8px',
+          alignItems: 'center',
+        }}
+      >
         <div>
           <label><strong>Cliente</strong></label>
           <input
@@ -110,6 +141,7 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
           />
         </div>
+
         <div>
           <label><strong>Categoría</strong></label>
           <select
@@ -117,11 +149,12 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             onChange={(e) => setFiltroCategoria(e.target.value)}
             style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
           >
-            {categorias.map(c => (
+            {categorias.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>
+
         <div>
           <label><strong>Estado</strong></label>
           <select
@@ -129,11 +162,12 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             onChange={(e) => setFiltroEstado(e.target.value)}
             style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
           >
-            {estados.map(e => (
+            {estados.map((e) => (
               <option key={e} value={e}>{e}</option>
             ))}
           </select>
         </div>
+
         <div>
           <label><strong>Desde</strong></label>
           <input
@@ -143,6 +177,7 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
           />
         </div>
+
         <div>
           <label><strong>Hasta</strong></label>
           <input
@@ -152,18 +187,16 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
           />
         </div>
-        <button onClick={aplicarFiltros} style={{ backgroundColor: '#3182ce' }}>Aplicar Filtros</button>
-        <button onClick={() => {
-          setFiltroCategoria('Todos');
-          setFiltroEstado('Todos');
-          setFiltroCliente('');
-          setFechaInicio('');
-          setFechaFin('');
-          setFinanzas(finanzasIniciales);
-        }} style={{ backgroundColor: '#718096' }}>Limpiar</button>
+
+        <button onClick={aplicarFiltros} style={{ backgroundColor: '#3182ce' }}>
+          Aplicar Filtros
+        </button>
+        <button onClick={limpiarFiltros} style={{ backgroundColor: '#718096' }}>
+          Limpiar
+        </button>
       </div>
 
-      {/* Tabla de movimientos */}
+      {/* Tabla */}
       <h3>📋 Movimientos</h3>
       {finanzas.length === 0 ? (
         <p style={{ color: '#4a5568' }}>No hay movimientos registrados.</p>
@@ -172,7 +205,6 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
           <thead>
             <tr style={{ backgroundColor: '#edf2f7' }}>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fecha</th>
-              {/* CAMBIO 3: Agregar columna Cliente */}
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Cliente</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Categoría</th>
               <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Tipo</th>
@@ -183,32 +215,38 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
             </tr>
           </thead>
           <tbody>
-            {finanzas.map((f, index) => (
-              <tr key={index}>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Fecha || ''}</td>
-                {/* CAMBIO 3: Mostrar nombre del cliente */}
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
-                  <strong>{f.Nombre_Cliente || 'Sin cliente'}</strong>
-                </td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Categoria || ''}</td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Tipo || ''}</td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Concepto || ''}</td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                  ${parseFloat(f.Monto_Total || 0).toFixed(2)}
-                </td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                  ${parseFloat(f.Monto_Pagado || 0).toFixed(2)}
-                </td>
-                <td style={{ 
-                  padding: '10px', 
-                  border: '1px solid #e2e8f0', 
-                  textAlign: 'center',
-                  color: f.Estado === 'Pagado' ? '#38a169' : f.Estado === 'Parcial' ? '#ed8936' : '#e53e3e'
-                }}>
-                  {f.Estado || 'Pendiente'}
-                </td>
-              </tr>
-            ))}
+            {finanzas.map((f, index) => {
+              const cliente = f.Cliente || f.Nombre_Cliente || 'Sin cliente';
+              const estado = f.Estado || 'Pendiente';
+
+              return (
+                <tr key={`${f.ID || 'fin'}-${index}`}>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Fecha || ''}</td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
+                    <strong>{cliente}</strong>
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Categoria || ''}</td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Tipo || ''}</td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Concepto || ''}</td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
+                    {formatMoney(f.Monto_Total)}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
+                    {formatMoney(f.Monto_Pagado)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px',
+                      border: '1px solid #e2e8f0',
+                      textAlign: 'center',
+                      color: estado === 'Pagado' ? '#38a169' : estado === 'Parcial' ? '#ed8936' : '#e53e3e',
+                    }}
+                  >
+                    {estado}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
