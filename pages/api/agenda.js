@@ -1,335 +1,367 @@
 // pages/api/agenda.js
-// API para gestionar eventos de agenda (CRUD completo)
+// API para gestionar eventos de agenda (CRUD)
 
-import { 
-    getAgenda, 
-    agregarEvento, 
-    getTareasPendientes, 
-    appendToSheet, 
-    getAccessToken,
-    normalizarFilaAgenda 
+import {
+  getAgenda,
+  agregarEvento,
+  getTareasPendientes,
+  getAccessToken,
+  getClientes,
 } from '../../lib/googleSheets';
 
 const SHEETS_ID = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
 
+const AGENDA_HEADERS = [
+  'ID',
+  'Numero_SAC',
+  'Cliente',
+  'Tipo',
+  'Titulo',
+  'Descripción',
+  'Fecha',
+  'Hora',
+  'Hora_Fin',
+  'Lugar',
+  'Recordatorio',
+  'Dias_Antes',
+  'Estado',
+  'Creado_Por',
+  'Compartido_Con',
+  'Notificacion_Enviada',
+  'Google_Calendar_ID',
+];
+
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    if (!data?.email) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEmail(value) {
+  return (value || '').toString().trim().toLowerCase();
+}
+
+function normalizeRowTo17(row = []) {
+  const out = Array(17).fill('');
+  for (let i = 0; i < 17; i += 1) {
+    out[i] = row[i] || '';
+  }
+  return out;
+}
+
+function rowToObject(headers, row) {
+  const obj = {};
+  headers.forEach((h, i) => {
+    obj[h] = row[i] || '';
+  });
+  return obj;
+}
+
+function objectToRow17(eventObj) {
+  return normalizeRowTo17([
+    eventObj.ID || '',
+    eventObj.Numero_SAC || '',
+    eventObj.Cliente || '',
+    eventObj.Tipo || 'Otro',
+    eventObj.Titulo || '',
+    eventObj['Descripción'] || eventObj.Descripción || '',
+    eventObj.Fecha || '',
+    eventObj.Hora || '',
+    eventObj.Hora_Fin || '',
+    eventObj.Lugar || '',
+    eventObj.Recordatorio || 'SI',
+    eventObj.Dias_Antes || '1',
+    eventObj.Estado || 'Pendiente',
+    eventObj.Creado_Por || '',
+    eventObj.Compartido_Con || '',
+    eventObj.Notificacion_Enviada || 'NO',
+    eventObj.Google_Calendar_ID || '',
+  ]);
+}
+
+async function buildSacMap(usuario) {
+  const clientes = await getClientes(usuario);
+  const sacMap = new Map();
+
+  (clientes || []).forEach((c) => {
+    (c.expedientes || []).forEach((exp) => {
+      if (exp?.Numero_SAC) {
+        sacMap.set(exp.Numero_SAC, {
+          id: c.ID_Cliente,
+          nombre: c.Nombre_Cliente || '',
+        });
+      }
+    });
+  });
+
+  return sacMap;
+}
+
+async function readAgendaRows(token) {
+  const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda`;
+  const readResponse = await fetch(readUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!readResponse.ok) {
+    const txt = await readResponse.text();
+    throw new Error(`Error al leer Agenda: ${readResponse.status} - ${txt}`);
+  }
+
+  const data = await readResponse.json();
+  const rows = data.values || [];
+  if (rows.length === 0) {
+    return { headers: AGENDA_HEADERS, rows: [] };
+  }
+
+  const headers = rows[0];
+  const bodyRows = rows.slice(1).map((r) => normalizeRowTo17(r));
+  return { headers, rows: bodyRows };
+}
+
 export default async function handler(req, res) {
-    console.log('🚀 ====== API /api/agenda INICIADA ======');
-    console.log('📤 Método:', req.method);
+  try {
+    const userFromCookie = parseUserFromCookie(req.headers.cookie || '');
+    const usuarioCookie = userFromCookie?.email || '';
+    const usuarioQuery = req.query?.usuario || '';
+    const usuarioFinal = usuarioQuery || usuarioCookie;
 
-    // GET: Listar eventos
+    // GET: Listar eventos / pendientes
     if (req.method === 'GET') {
-        try {
-            const { 
-                numeroSAC, 
-                cliente, 
-                tipo, 
-                estado, 
-                fechaInicio, 
-                fechaFin, 
-                usuario, 
-                pendientes 
-            } = req.query;
+      const { numeroSAC, cliente, tipo, estado, fechaInicio, fechaFin, pendientes } = req.query;
 
-            // Obtener usuario desde cookie si no viene en query
-            let usuarioFinal = usuario;
-            if (!usuarioFinal) {
-                const cookies = req.headers.cookie || '';
-                const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
-                if (userCookie) {
-                    try {
-                        const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
-                        usuarioFinal = userData.email;
-                    } catch (e) {}
-                }
-            }
+      if (pendientes === 'true') {
+        const tareas = await getTareasPendientes(usuarioFinal);
+        const sacMap = await buildSacMap(usuarioFinal);
 
-            if (pendientes === 'true') {
-                const tareas = await getTareasPendientes(usuarioFinal);
-                return res.status(200).json({ eventos: tareas });
-            }
+        const tareasEnriquecidas = (tareas || []).map((t) => {
+          const fromSac = t.Numero_SAC ? sacMap.get(t.Numero_SAC) : null;
+          return {
+            ...t,
+            Cliente: t.Cliente || fromSac?.nombre || '',
+            Cliente_ID: fromSac?.id || null,
+          };
+        });
 
-            const eventos = await getAgenda({
-                numeroSAC,
-                cliente,
-                tipo,
-                estado,
-                fechaInicio,
-                fechaFin,
-                usuario: usuarioFinal,
-            });
-            return res.status(200).json({ eventos });
-        } catch (error) {
-            console.error('❌ Error al listar agenda:', error);
-            return res.status(500).json({ error: 'Error al listar agenda' });
-        }
+        return res.status(200).json({ eventos: tareasEnriquecidas });
+      }
+
+      const eventos = await getAgenda({
+        numeroSAC: numeroSAC || null,
+        cliente: cliente || null,
+        tipo: tipo || null,
+        estado: estado || null,
+        fechaInicio: fechaInicio || null,
+        fechaFin: fechaFin || null,
+        usuario: usuarioFinal || null,
+      });
+
+      const sacMap = await buildSacMap(usuarioFinal);
+      const eventosEnriquecidos = (eventos || []).map((e) => {
+        const fromSac = e.Numero_SAC ? sacMap.get(e.Numero_SAC) : null;
+        return {
+          ...e,
+          Cliente: e.Cliente || fromSac?.nombre || '',
+          Cliente_ID: fromSac?.id || null,
+        };
+      });
+
+      return res.status(200).json({ eventos: eventosEnriquecidos });
     }
 
     // POST: Agregar evento
     if (req.method === 'POST') {
-        try {
-            const { 
-                numeroSAC, 
-                cliente, 
-                tipo, 
-                titulo, 
-                descripcion, 
-                fecha, 
-                hora, 
-                horaFin, 
-                lugar, 
-                recordatorio, 
-                diasAntes, 
-                estado, 
-                creadoPor, 
-                compartidoCon 
-            } = req.body;
+      const {
+        numeroSAC,
+        cliente,
+        tipo,
+        titulo,
+        descripcion,
+        fecha,
+        hora,
+        horaFin,
+        lugar,
+        recordatorio,
+        diasAntes,
+        estado,
+        creadoPor,
+        compartidoCon,
+      } = req.body || {};
 
-            console.log('📥 Datos recibidos para POST:', { 
-                numeroSAC, cliente, tipo, titulo, fecha 
-            });
+      if (!fecha || !titulo) {
+        return res.status(400).json({ error: 'Fecha y Título son obligatorios' });
+      }
 
-            if (!fecha || !titulo) {
-                return res.status(400).json({ error: 'Fecha y Título son obligatorios' });
-            }
+      const creador = creadoPor || usuarioCookie || 'sistema';
 
-            // Si no viene creadoPor, intentar obtenerlo de la cookie
-            let creador = creadoPor || 'sistema';
-            if (!creadoPor) {
-                const cookies = req.headers.cookie || '';
-                const userCookie = cookies.split(';').find(c => c.trim().startsWith('user='));
-                if (userCookie) {
-                    try {
-                        const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
-                        creador = userData.email || 'sistema';
-                    } catch (e) {}
-                }
-            }
+      const ok = await agregarEvento(
+        numeroSAC || '',
+        cliente || '',
+        tipo || 'Otro',
+        titulo || '',
+        descripcion || '',
+        fecha || '',
+        hora || '',
+        horaFin || '',
+        lugar || '',
+        recordatorio || 'SI',
+        diasAntes || '1',
+        estado || 'Pendiente',
+        creador,
+        compartidoCon || '',
+      );
 
-            const resultado = await agregarEvento(
-                numeroSAC || '',
-                cliente || '',
-                tipo || 'Otro',
-                titulo,
-                descripcion || '',
-                fecha,
-                hora || '',
-                horaFin || '',
-                lugar || '',
-                recordatorio || 'SI',
-                diasAntes || '1',
-                estado || 'Pendiente',
-                creador,
-                compartidoCon || ''
-            );
+      if (!ok) {
+        return res.status(500).json({ error: 'Error al agregar evento' });
+      }
 
-            if (resultado) {
-                return res.status(200).json({ success: true });
-            } else {
-                return res.status(500).json({ error: 'Error al agregar evento' });
-            }
-        } catch (error) {
-            console.error('❌ Error al agregar evento:', error);
-            return res.status(500).json({ error: 'Error al agregar evento' });
-        }
+      return res.status(200).json({ success: true });
     }
 
-    // PUT: Actualizar evento
+    // PUT: Actualizar evento (17 columnas A:Q)
     if (req.method === 'PUT') {
-        try {
-            const { 
-                id, 
-                numeroSAC, 
-                cliente, 
-                tipo, 
-                titulo, 
-                descripcion, 
-                fecha, 
-                hora, 
-                horaFin, 
-                lugar, 
-                recordatorio, 
-                diasAntes, 
-                estado, 
-                compartidoCon 
-            } = req.body;
+      const {
+        id,
+        numeroSAC,
+        cliente,
+        tipo,
+        titulo,
+        descripcion,
+        fecha,
+        hora,
+        horaFin,
+        lugar,
+        recordatorio,
+        diasAntes,
+        estado,
+        compartidoCon,
+      } = req.body || {};
 
-            console.log('📥 Datos recibidos para PUT:', { id, numeroSAC, cliente, tipo, titulo, fecha });
+      if (!id) {
+        return res.status(400).json({ error: 'ID es obligatorio' });
+      }
 
-            if (!id) {
-                return res.status(400).json({ error: 'ID es obligatorio' });
-            }
+      const token = await getAccessToken();
+      if (!token) {
+        return res.status(500).json({ error: 'Error al obtener token de acceso' });
+      }
 
-            const token = await getAccessToken();
-            if (!token) {
-                return res.status(500).json({ error: 'Error al obtener token de acceso' });
-            }
+      const { headers, rows } = await readAgendaRows(token);
+      const idIndex = headers.indexOf('ID');
+      if (idIndex === -1) {
+        return res.status(500).json({ error: 'Estructura de hoja incorrecta (falta columna ID)' });
+      }
 
-            // Leer todos los eventos
-            const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda`;
-            const readResponse = await fetch(readUrl, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+      const rowIndex = rows.findIndex((r) => (r[idIndex] || '') === String(id));
+      if (rowIndex === -1) {
+        return res.status(404).json({ error: 'Evento no encontrado' });
+      }
 
-            if (!readResponse.ok) {
-                return res.status(500).json({ error: 'Error al leer los datos' });
-            }
+      const existingObj = rowToObject(headers, rows[rowIndex]);
 
-            const data = await readResponse.json();
-            const rows = data.values || [];
-            if (rows.length === 0) {
-                return res.status(404).json({ error: 'No se encontraron datos' });
-            }
+      const updatedObj = {
+        ...existingObj,
+        Numero_SAC: numeroSAC !== undefined ? (numeroSAC || '') : existingObj.Numero_SAC,
+        Cliente: cliente !== undefined ? (cliente || '') : existingObj.Cliente,
+        Tipo: tipo !== undefined ? (tipo || 'Otro') : existingObj.Tipo,
+        Titulo: titulo !== undefined ? (titulo || '') : existingObj.Titulo,
+        'Descripción':
+          descripcion !== undefined
+            ? (descripcion || '')
+            : (existingObj['Descripción'] || existingObj.Descripción || ''),
+        Fecha: fecha !== undefined ? (fecha || '') : existingObj.Fecha,
+        Hora: hora !== undefined ? (hora || '') : existingObj.Hora,
+        Hora_Fin: horaFin !== undefined ? (horaFin || '') : existingObj.Hora_Fin,
+        Lugar: lugar !== undefined ? (lugar || '') : existingObj.Lugar,
+        Recordatorio: recordatorio !== undefined ? (recordatorio || 'SI') : existingObj.Recordatorio,
+        Dias_Antes: diasAntes !== undefined ? (diasAntes || '1') : existingObj.Dias_Antes,
+        Estado: estado !== undefined ? (estado || 'Pendiente') : existingObj.Estado,
+        Compartido_Con: compartidoCon !== undefined ? (compartidoCon || '') : existingObj.Compartido_Con,
+      };
 
-            const headers = rows[0];
-            const idIndex = headers.indexOf('ID');
-            if (idIndex === -1) {
-                return res.status(500).json({ error: 'Estructura de hoja incorrecta' });
-            }
+      const filaNormalizada = objectToRow17(updatedObj);
 
-            // Encontrar la fila
-            let rowIndex = -1;
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i][idIndex] === id) {
-                    rowIndex = i;
-                    break;
-                }
-            }
+      // +2 porque rowIndex está sobre bodyRows (sin headers) y A1 es 1-based
+      const targetSheetRow = rowIndex + 2;
+      const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${targetSheetRow}:Q${targetSheetRow}?valueInputOption=USER_ENTERED`;
 
-            if (rowIndex === -1) {
-                return res.status(404).json({ error: 'Evento no encontrado' });
-            }
+      const updateResponse = await fetch(updateUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [filaNormalizada] }),
+      });
 
-            // Actualizar datos (array de 17 posiciones)
-            const updatedRow = [...rows[rowIndex]];
-            
-            // Mapeo de columnas (índices 0-based)
-            const colMap = {
-                'Numero_SAC': 1,
-                'Cliente': 2,
-                'Tipo': 3,
-                'Titulo': 4,
-                'Descripcion': 5,
-                'Fecha': 6,
-                'Hora': 7,
-                'Hora_Fin': 8,
-                'Lugar': 9,
-                'Recordatorio': 10,
-                'Dias_Antes': 11,
-                'Estado': 12,
-                'Compartido_Con': 14
-            };
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error('❌ Error al actualizar evento:', errorText);
+        return res.status(500).json({ error: 'Error al actualizar evento' });
+      }
 
-            if (numeroSAC !== undefined) updatedRow[colMap.Numero_SAC] = numeroSAC || '';
-            if (cliente !== undefined) updatedRow[colMap.Cliente] = cliente || '';
-            if (tipo !== undefined) updatedRow[colMap.Tipo] = tipo || 'Otro';
-            if (titulo !== undefined) updatedRow[colMap.Titulo] = titulo || '';
-            if (descripcion !== undefined) updatedRow[colMap.Descripcion] = descripcion || '';
-            if (fecha !== undefined) updatedRow[colMap.Fecha] = fecha || '';
-            if (hora !== undefined) updatedRow[colMap.Hora] = hora || '';
-            if (horaFin !== undefined) updatedRow[colMap.Hora_Fin] = horaFin || '';
-            if (lugar !== undefined) updatedRow[colMap.Lugar] = lugar || '';
-            if (recordatorio !== undefined) updatedRow[colMap.Recordatorio] = recordatorio || 'SI';
-            if (diasAntes !== undefined) updatedRow[colMap.Dias_Antes] = diasAntes || '1';
-            if (estado !== undefined) updatedRow[colMap.Estado] = estado || 'Pendiente';
-            if (compartidoCon !== undefined) updatedRow[colMap.Compartido_Con] = compartidoCon || '';
-
-            // Normalizar a 17 columnas por seguridad
-            const filaNormalizada = normalizarFilaAgenda(updatedRow);
-
-            console.log('📤 Fila actualizada (17 columnas):', filaNormalizada);
-
-            const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${rowIndex + 1}:Q${rowIndex + 1}?valueInputOption=USER_ENTERED`;
-            const updateResponse = await fetch(updateUrl, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ values: [filaNormalizada] })
-            });
-
-            if (updateResponse.ok) {
-                console.log('✅ Evento actualizado correctamente');
-                return res.status(200).json({ success: true });
-            } else {
-                const errorText = await updateResponse.text();
-                console.error('❌ Error al actualizar:', errorText);
-                return res.status(500).json({ error: 'Error al actualizar evento' });
-            }
-        } catch (error) {
-            console.error('❌ Error al actualizar evento:', error);
-            return res.status(500).json({ error: 'Error al actualizar evento' });
-        }
+      return res.status(200).json({ success: true });
     }
 
-    // DELETE: Eliminar evento
+    // DELETE: "eliminar" limpiando fila A:Q
     if (req.method === 'DELETE') {
-        try {
-            const { id } = req.query;
-            if (!id) {
-                return res.status(400).json({ error: 'ID es obligatorio' });
-            }
+      const { id } = req.query || {};
+      if (!id) {
+        return res.status(400).json({ error: 'ID es obligatorio' });
+      }
 
-            const token = await getAccessToken();
-            if (!token) {
-                return res.status(500).json({ error: 'Error al obtener token de acceso' });
-            }
+      const token = await getAccessToken();
+      if (!token) {
+        return res.status(500).json({ error: 'Error al obtener token de acceso' });
+      }
 
-            const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda`;
-            const readResponse = await fetch(readUrl, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+      const { headers, rows } = await readAgendaRows(token);
+      const idIndex = headers.indexOf('ID');
+      if (idIndex === -1) {
+        return res.status(500).json({ error: 'Estructura de hoja incorrecta (falta columna ID)' });
+      }
 
-            if (!readResponse.ok) {
-                return res.status(500).json({ error: 'Error al leer los datos' });
-            }
+      const rowIndex = rows.findIndex((r) => (r[idIndex] || '') === String(id));
+      if (rowIndex === -1) {
+        return res.status(404).json({ error: 'Evento no encontrado' });
+      }
 
-            const data = await readResponse.json();
-            const rows = data.values || [];
-            if (rows.length === 0) {
-                return res.status(404).json({ error: 'No se encontraron datos' });
-            }
+      const filaVacia = Array(17).fill('');
+      const targetSheetRow = rowIndex + 2;
+      const deleteUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${targetSheetRow}:Q${targetSheetRow}?valueInputOption=USER_ENTERED`;
 
-            const headers = rows[0];
-            const idIndex = headers.indexOf('ID');
-            if (idIndex === -1) {
-                return res.status(500).json({ error: 'Estructura de hoja incorrecta' });
-            }
+      const deleteResponse = await fetch(deleteUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [filaVacia] }),
+      });
 
-            let rowIndex = -1;
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i][idIndex] === id) {
-                    rowIndex = i;
-                    break;
-                }
-            }
+      if (!deleteResponse.ok) {
+        const errorText = await deleteResponse.text();
+        console.error('❌ Error al eliminar evento:', errorText);
+        return res.status(500).json({ error: 'Error al eliminar evento' });
+      }
 
-            if (rowIndex === -1) {
-                return res.status(404).json({ error: 'Evento no encontrado' });
-            }
-
-            // Vaciar las 17 columnas
-            const filaVacia = Array(17).fill('');
-            const deleteUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${rowIndex + 1}:Q${rowIndex + 1}?valueInputOption=USER_ENTERED`;
-            const deleteResponse = await fetch(deleteUrl, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ values: [filaVacia] })
-            });
-
-            if (deleteResponse.ok) {
-                return res.status(200).json({ success: true });
-            } else {
-                return res.status(500).json({ error: 'Error al eliminar evento' });
-            }
-        } catch (error) {
-            console.error('❌ Error al eliminar evento:', error);
-            return res.status(500).json({ error: 'Error al eliminar evento' });
-        }
+      return res.status(200).json({ success: true });
     }
 
     return res.status(405).json({ error: 'Método no permitido' });
+  } catch (error) {
+    console.error('❌ Error en /api/agenda:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
 }
