@@ -37,7 +37,7 @@ export async function getServerSideProps(context) {
 
   try {
     // IMPORTANTE: filtrar por usuario para no exponer clientes no compartidos
-  const todosLosClientes = await getClientes(userData.email);
+  const todosLosClientes = await getClientes();
 
 const cliente = todosLosClientes.find(
   (c) => String(c.ID_Cliente) === String(id)
