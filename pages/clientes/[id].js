@@ -6,15 +6,46 @@ import { useRouter } from 'next/router';
 import { getClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getServerSideProps(context) {
   const { id } = context.params;
+  const userData = parseUserFromCookie(context.req.headers.cookie || '');
+
+  if (!userData?.email) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
   try {
-    const todosLosClientes = await getClientes();
-    const cliente = todosLosClientes.find(c => c.ID_Cliente === id);
+    // IMPORTANTE: filtrar por usuario para no exponer clientes no compartidos
+    const todosLosClientes = await getClientes(userData.email);
+    const cliente = todosLosClientes.find((c) => c.ID_Cliente === id);
+
     if (!cliente) {
       return { notFound: true };
     }
+
     const expedientes = cliente.expedientes || [];
+
     return {
       props: { cliente, expedientes },
     };
@@ -77,15 +108,15 @@ export default function FichaCliente({ cliente, expedientes }) {
   // ==========================================
   useEffect(() => {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
+      const [key, ...rest] = cookie.trim().split('=');
+      acc[key] = rest.join('=');
       return acc;
     }, {});
     if (cookies.user) {
       try {
         const userData = JSON.parse(decodeURIComponent(cookies.user));
         setSessionEmail(userData.email || '');
-      } catch (e) {}
+      } catch {}
     }
   }, []);
 
@@ -97,7 +128,7 @@ export default function FichaCliente({ cliente, expedientes }) {
     try {
       let todosMovimientos = [];
       for (const exp of expedientes) {
-        const res = await fetch(`/api/finanzas?numeroSAC=${exp.Numero_SAC}`);
+        const res = await fetch(`/api/finanzas?numeroSAC=${encodeURIComponent(exp.Numero_SAC)}`);
         const data = await res.json();
         if (data.finanzas) {
           todosMovimientos = [...todosMovimientos, ...data.finanzas];
@@ -108,7 +139,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
       let totalDebe = 0;
       let totalHaber = 0;
-      todosMovimientos.forEach(m => {
+      todosMovimientos.forEach((m) => {
         const total = parseFloat(m.Monto_Total) || 0;
         const pagado = parseFloat(m.Monto_Pagado) || 0;
         if (m.Tipo === 'Honorario' || m.Tipo === 'Cuota') {
@@ -126,7 +157,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   const handleChangeFinanzas = (e) => {
     const { name, value } = e.target;
-    setNuevoMovimiento(prev => ({ ...prev, [name]: value }));
+    setNuevoMovimiento((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmitFinanzas = async (e) => {
@@ -203,7 +234,7 @@ export default function FichaCliente({ cliente, expedientes }) {
     try {
       let todasLasConsultas = [];
       for (const exp of expedientes) {
-        const res = await fetch(`/api/consultas?numeroSAC=${exp.Numero_SAC}`);
+        const res = await fetch(`/api/consultas?numeroSAC=${encodeURIComponent(exp.Numero_SAC)}`);
         const data = await res.json();
         if (data.consultas) {
           todasLasConsultas = [...todasLasConsultas, ...data.consultas];
@@ -218,7 +249,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   const handleChangeConsulta = (e) => {
     const { name, value } = e.target;
-    setNuevaConsulta(prev => ({ ...prev, [name]: value }));
+    setNuevaConsulta((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmitConsulta = async (e) => {
@@ -287,7 +318,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNuevoExpediente(prev => ({ ...prev, [name]: value }));
+    setNuevoExpediente((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -344,7 +375,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   const listarArchivos = async (folderId) => {
     try {
-      const response = await fetch(`/api/drive/listar?folderId=${folderId}`);
+      const response = await fetch(`/api/drive/listar?folderId=${encodeURIComponent(folderId)}`);
       if (!response.ok) {
         alert('Error al listar archivos');
         return;
@@ -390,7 +421,7 @@ export default function FichaCliente({ cliente, expedientes }) {
             border: 'none',
             borderRadius: '8px 8px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
           📋 Datos
@@ -404,7 +435,7 @@ export default function FichaCliente({ cliente, expedientes }) {
             border: 'none',
             borderRadius: '8px 8px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
           📄 Expedientes ({expedientes.length})
@@ -418,7 +449,7 @@ export default function FichaCliente({ cliente, expedientes }) {
             border: 'none',
             borderRadius: '8px 8px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
           📝 Consultas
@@ -432,7 +463,7 @@ export default function FichaCliente({ cliente, expedientes }) {
             border: 'none',
             borderRadius: '8px 8px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
           💰 Finanzas
@@ -525,30 +556,32 @@ export default function FichaCliente({ cliente, expedientes }) {
             ) : (
               <div>
                 {expedientes.map((exp, index) => (
-                  <div 
+                  <div
                     key={index}
-                    style={{ 
-                      border: '1px solid #e2e8f0', 
-                      borderRadius: '8px', 
-                      padding: '15px', 
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '15px',
                       marginBottom: '15px',
                       backgroundColor: '#f7fafc',
                       cursor: 'pointer',
-                      transition: 'background-color 0.2s'
+                      transition: 'background-color 0.2s',
                     }}
-                    onClick={() => router.push(`/expediente/${exp.Numero_SAC}`)}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                    onClick={() => router.push(`/expediente/${encodeURIComponent(exp.Numero_SAC)}`)}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#edf2f7'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f7fafc'; }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <strong>N° SAC:</strong> {exp.Numero_SAC || 'No registrado'}<br />
-                        <strong>Carátula:</strong> {exp.Caratula || 'No registrada'}<br />
+                        <strong>N° SAC:</strong> {exp.Numero_SAC || 'No registrado'}
+                        <br />
+                        <strong>Carátula:</strong> {exp.Caratula || 'No registrada'}
+                        <br />
                         <strong>Fuero:</strong> {exp.Fuero || 'No registrado'}
                       </div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         {exp.ID_Carpeta_Drive && (
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               listarArchivos(exp.ID_Carpeta_Drive);
@@ -561,6 +594,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                         <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>▶</span>
                       </div>
                     </div>
+
                     {mostrarArchivos && folderIdActual === exp.ID_Carpeta_Drive && archivos.length > 0 && (
                       <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
                         <strong>Archivos en la carpeta:</strong>
@@ -568,9 +602,9 @@ export default function FichaCliente({ cliente, expedientes }) {
                           {archivos.map((file) => (
                             <li key={file.id} style={{ padding: '5px 0', borderBottom: '1px solid #e2e8f0' }}>
                               📄 {file.name}
-                              <a 
-                                href={`/api/drive/descargar?fileId=${file.id}`} 
-                                target="_blank" 
+                              <a
+                                href={`/api/drive/descargar?fileId=${encodeURIComponent(file.id)}`}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ marginLeft: '10px', color: '#3182ce' }}
                               >
@@ -579,7 +613,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                             </li>
                           ))}
                         </ul>
-                        <button 
+                        <button
                           onClick={() => { setMostrarArchivos(false); setArchivos([]); setFolderIdActual(''); }}
                           style={{ marginTop: '10px', backgroundColor: '#718096', padding: '5px 10px', fontSize: '0.8rem' }}
                         >
@@ -598,7 +632,7 @@ export default function FichaCliente({ cliente, expedientes }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2>📝 Historial de Consultas</h2>
-              <button 
+              <button
                 onClick={() => setMostrarFormularioConsultas(!mostrarFormularioConsultas)}
                 style={{ backgroundColor: '#38a169' }}
               >
@@ -606,7 +640,6 @@ export default function FichaCliente({ cliente, expedientes }) {
               </button>
             </div>
 
-            {/* Formulario para nueva consulta */}
             {mostrarFormularioConsultas && (
               <div style={{
                 backgroundColor: '#f7fafc',
@@ -614,7 +647,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                 borderRadius: '8px',
                 marginTop: '15px',
                 marginBottom: '20px',
-                border: '1px solid #e2e8f0'
+                border: '1px solid #e2e8f0',
               }}>
                 <h3>📝 Nueva Consulta</h3>
                 <form onSubmit={handleSubmitConsulta}>
@@ -657,12 +690,12 @@ export default function FichaCliente({ cliente, expedientes }) {
                     />
                   </div>
                   {mensajeConsultas && (
-                    <div style={{ 
-                      marginTop: '15px', 
-                      padding: '10px', 
-                      borderRadius: '8px', 
-                      backgroundColor: mensajeConsultas.includes('✅') ? '#c6f6d5' : '#fed7d7', 
-                      color: mensajeConsultas.includes('✅') ? '#22543d' : '#9b2c2c' 
+                    <div style={{
+                      marginTop: '15px',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      backgroundColor: mensajeConsultas.includes('✅') ? '#c6f6d5' : '#fed7d7',
+                      color: mensajeConsultas.includes('✅') ? '#22543d' : '#9b2c2c',
                     }}>
                       {mensajeConsultas}
                     </div>
@@ -671,9 +704,9 @@ export default function FichaCliente({ cliente, expedientes }) {
                     <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargandoConsultas}>
                       {cargandoConsultas ? 'Guardando...' : 'Guardar Consulta'}
                     </button>
-                    <button 
-                      type="button" 
-                      onClick={() => { setMostrarFormularioConsultas(false); setMensajeConsultas(''); }} 
+                    <button
+                      type="button"
+                      onClick={() => { setMostrarFormularioConsultas(false); setMensajeConsultas(''); }}
                       style={{ backgroundColor: '#718096' }}
                     >
                       Cancelar
@@ -683,15 +716,15 @@ export default function FichaCliente({ cliente, expedientes }) {
               </div>
             )}
 
-            {/* Lista de consultas */}
             {consultas.length === 0 ? (
               <p style={{ color: '#4a5568' }}>No hay consultas registradas para este cliente.</p>
             ) : (
               <div>
                 {consultas.map((consulta, index) => {
                   const estaExpandida = expandidosConsultas[index] || false;
-                  const resumen = consulta.Notas_Consulta?.substring(0, 150) || '';
-                  const tieneMas = consulta.Notas_Consulta && consulta.Notas_Consulta.length > 150;
+                  const textoConsulta = consulta.Notas_Consulta || consulta.Notas || '';
+                  const resumen = textoConsulta.substring(0, 150) || '';
+                  const tieneMas = textoConsulta.length > 150;
 
                   return (
                     <div
@@ -703,16 +736,16 @@ export default function FichaCliente({ cliente, expedientes }) {
                         marginBottom: '10px',
                         backgroundColor: '#f7fafc',
                         cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
                       }}
                       onClick={() => {
-                        setExpandidosConsultas(prev => ({
+                        setExpandidosConsultas((prev) => ({
                           ...prev,
-                          [index]: !prev[index]
+                          [index]: !prev[index],
                         }));
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#edf2f7'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f7fafc'; }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
@@ -722,9 +755,9 @@ export default function FichaCliente({ cliente, expedientes }) {
                               SAC: {consulta.Numero_SAC}
                             </span>
                           )}
-                          {consulta.Abogado_Atendio && (
+                          {(consulta.Abogado_Atendio || consulta.Abogado) && (
                             <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.8rem' }}>
-                              👤 {consulta.Abogado_Atendio}
+                              👤 {consulta.Abogado_Atendio || consulta.Abogado}
                             </span>
                           )}
                         </div>
@@ -738,18 +771,18 @@ export default function FichaCliente({ cliente, expedientes }) {
                           <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
                         )}
                       </div>
-                      {estaExpandida && consulta.Notas_Consulta && (
-                        <div style={{ 
-                          marginTop: '12px', 
-                          paddingTop: '12px', 
+                      {estaExpandida && textoConsulta && (
+                        <div style={{
+                          marginTop: '12px',
+                          paddingTop: '12px',
                           borderTop: '1px solid #e2e8f0',
                           whiteSpace: 'pre-wrap',
                           fontSize: '0.95rem',
                           backgroundColor: 'white',
                           padding: '12px',
-                          borderRadius: '4px'
+                          borderRadius: '4px',
                         }}>
-                          {consulta.Notas_Consulta}
+                          {textoConsulta}
                         </div>
                       )}
                     </div>
@@ -763,8 +796,7 @@ export default function FichaCliente({ cliente, expedientes }) {
         {activeTab === 'finanzas' && (
           <div>
             <h2>💰 Finanzas</h2>
-            
-            {/* Saldo actual */}
+
             <div style={{
               backgroundColor: '#f7fafc',
               padding: '15px',
@@ -772,19 +804,14 @@ export default function FichaCliente({ cliente, expedientes }) {
               marginBottom: '20px',
               display: 'flex',
               gap: '30px',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
             }}>
               <div><strong>Total Adeudado:</strong> ${saldo.totalDebe.toFixed(2)}</div>
               <div><strong>Total Pagado:</strong> ${saldo.totalHaber.toFixed(2)}</div>
-              <div><strong>Saldo:</strong> 
-                <span style={{ color: saldo.saldo > 0 ? '#e53e3e' : '#38a169' }}>
-                  ${saldo.saldo.toFixed(2)}
-                </span>
-              </div>
+              <div><strong>Saldo:</strong> <span style={{ color: saldo.saldo > 0 ? '#e53e3e' : '#38a169' }}>${saldo.saldo.toFixed(2)}</span></div>
             </div>
 
-            {/* Formulario para nuevo movimiento */}
-            <button 
+            <button
               onClick={() => setMostrarFormularioFinanzas(!mostrarFormularioFinanzas)}
               style={{ backgroundColor: '#38a169', marginBottom: '20px' }}
             >
@@ -797,7 +824,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                 padding: '20px',
                 borderRadius: '8px',
                 marginBottom: '20px',
-                border: '1px solid #e2e8f0'
+                border: '1px solid #e2e8f0',
               }}>
                 <h3>Nuevo Movimiento</h3>
                 <form onSubmit={handleSubmitFinanzas}>
@@ -887,12 +914,12 @@ export default function FichaCliente({ cliente, expedientes }) {
                     />
                   </div>
                   {mensajeFinanzas && (
-                    <div style={{ 
-                      marginTop: '15px', 
-                      padding: '10px', 
-                      borderRadius: '8px', 
-                      backgroundColor: mensajeFinanzas.includes('✅') ? '#c6f6d5' : '#fed7d7', 
-                      color: mensajeFinanzas.includes('✅') ? '#22543d' : '#9b2c2c' 
+                    <div style={{
+                      marginTop: '15px',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      backgroundColor: mensajeFinanzas.includes('✅') ? '#c6f6d5' : '#fed7d7',
+                      color: mensajeFinanzas.includes('✅') ? '#22543d' : '#9b2c2c',
                     }}>
                       {mensajeFinanzas}
                     </div>
@@ -901,9 +928,9 @@ export default function FichaCliente({ cliente, expedientes }) {
                     <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargandoFinanzas}>
                       {cargandoFinanzas ? 'Guardando...' : 'Guardar Movimiento'}
                     </button>
-                    <button 
-                      type="button" 
-                      onClick={() => { setMostrarFormularioFinanzas(false); setMensajeFinanzas(''); }} 
+                    <button
+                      type="button"
+                      onClick={() => { setMostrarFormularioFinanzas(false); setMensajeFinanzas(''); }}
                       style={{ backgroundColor: '#718096' }}
                     >
                       Cancelar
@@ -913,7 +940,6 @@ export default function FichaCliente({ cliente, expedientes }) {
               </div>
             )}
 
-            {/* Lista de movimientos */}
             <h3>📋 Historial de Movimientos</h3>
             {movimientos.length === 0 ? (
               <p style={{ color: '#4a5568' }}>No hay movimientos registrados para este cliente.</p>
@@ -946,11 +972,11 @@ export default function FichaCliente({ cliente, expedientes }) {
                         <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
                           ${pagado.toFixed(2)}
                         </td>
-                        <td style={{ 
-                          padding: '10px', 
-                          border: '1px solid #e2e8f0', 
+                        <td style={{
+                          padding: '10px',
+                          border: '1px solid #e2e8f0',
                           textAlign: 'center',
-                          color: mov.Estado === 'Pagado' ? '#38a169' : mov.Estado === 'Parcial' ? '#ed8936' : '#e53e3e'
+                          color: mov.Estado === 'Pagado' ? '#38a169' : mov.Estado === 'Parcial' ? '#ed8936' : '#e53e3e',
                         }}>
                           {mov.Estado || 'Pendiente'}
                         </td>
