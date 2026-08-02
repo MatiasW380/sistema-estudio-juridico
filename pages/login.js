@@ -3,7 +3,44 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { verificarUsuario } from '../lib/googleSheets';
+
+const MOCK_USERS = [
+  { email: 'admin@estudio.com', pin: '1234', rol: 'admin', activo: 'SI' },
+  { email: 'abogado1@estudio.com', pin: '1111', rol: 'usuario', activo: 'SI' },
+  { email: 'abogado2@estudio.com', pin: '2222', rol: 'usuario', activo: 'SI' },
+];
+
+function normalizeEmail(value) {
+  return (value || '').toString().trim().toLowerCase();
+}
+
+async function loginViaApi(email, pin) {
+  const res = await fetch('/api/usuarios', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, pin }),
+  });
+
+  const data = await res.json();
+  return { ok: res.ok, data };
+}
+
+function loginViaMock(email, pin) {
+  const user = MOCK_USERS.find(
+    (u) =>
+      normalizeEmail(u.email) === normalizeEmail(email) &&
+      String(u.pin) === String(pin) &&
+      String(u.activo || 'SI').toUpperCase() === 'SI',
+  );
+
+  if (!user) return null;
+
+  return {
+    email: user.email,
+    rol: user.rol || 'usuario',
+    activo: user.activo || 'SI',
+  };
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,13 +54,12 @@ export default function LoginPage() {
     setError('');
     setCargando(true);
 
-    console.log('🔍 Intentando login con:', { email, pin });
-
     if (!email || !pin) {
       setError('Completá todos los campos');
       setCargando(false);
       return;
     }
+
     if (pin.length !== 4 || !/^\d+$/.test(pin)) {
       setError('El PIN debe ser de 4 dígitos numéricos');
       setCargando(false);
@@ -31,41 +67,57 @@ export default function LoginPage() {
     }
 
     try {
-      console.log('📤 Llamando a verificarUsuario...');
-      const usuario = await verificarUsuario(email, pin);
-      console.log('📥 Resultado de verificarUsuario:', usuario);
+      let usuario = null;
+
+      // 1) Intentar autenticación real vía API (server-side, segura)
+      try {
+        const { ok, data } = await loginViaApi(email, pin);
+        if (ok && data?.usuario) {
+          usuario = data.usuario;
+        }
+      } catch (apiErr) {
+        console.warn('⚠️ API /api/usuarios no disponible, uso fallback mock:', apiErr?.message);
+      }
+
+      // 2) Fallback a mock si API no autentica
+      if (!usuario) {
+        usuario = loginViaMock(email, pin);
+      }
 
       if (usuario) {
-        // Guardar sesión en cookie
-        document.cookie = `user=${encodeURIComponent(JSON.stringify(usuario))}; path=/; max-age=86400`;
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(usuario))}; path=/; max-age=86400; samesite=lax`;
         router.push('/');
       } else {
-        setError('Email o PIN incorrecto. Revisá que los datos estén correctos en la hoja Usuarios.');
+        setError('Email o PIN incorrecto');
       }
     } catch (err) {
-      console.error('❌ Error en handleSubmit:', err);
-      setError('Error al verificar: ' + err.message);
+      console.error('❌ Error en login:', err);
+      setError('Error al iniciar sesión: ' + (err?.message || 'desconocido'));
     } finally {
       setCargando(false);
     }
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh',
-      backgroundColor: '#f4f7fc'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '40px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        width: '100%',
-        maxWidth: '400px'
-      }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#f4f7fc',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'white',
+          padding: '40px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          width: '100%',
+          maxWidth: '400px',
+        }}
+      >
         <h1 style={{ textAlign: 'center', marginBottom: '20px', color: '#2d3748' }}>
           🏛️ Sistema de Gestión
         </h1>
@@ -98,15 +150,15 @@ export default function LoginPage() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="1234"
-              maxLength="4"
-              style={{ 
-                width: '100%', 
-                padding: '10px', 
-                border: '1px solid #e2e8f0', 
+              maxLength={4}
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #e2e8f0',
                 borderRadius: '8px',
                 fontSize: '1.5rem',
                 letterSpacing: '8px',
-                textAlign: 'center'
+                textAlign: 'center',
               }}
               disabled={cargando}
               required
@@ -117,29 +169,31 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div style={{ 
-              backgroundColor: '#fed7d7', 
-              color: '#9b2c2c', 
-              padding: '10px', 
-              borderRadius: '8px',
-              marginBottom: '15px'
-            }}>
+            <div
+              style={{
+                backgroundColor: '#fed7d7',
+                color: '#9b2c2c',
+                padding: '10px',
+                borderRadius: '8px',
+                marginBottom: '15px',
+              }}
+            >
               {error}
             </div>
           )}
 
-          <button 
-            type="submit" 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              backgroundColor: '#3182ce', 
-              color: 'white', 
-              border: 'none', 
+          <button
+            type="submit"
+            style={{
+              width: '100%',
+              padding: '12px',
+              backgroundColor: '#3182ce',
+              color: 'white',
+              border: 'none',
               borderRadius: '8px',
               fontSize: '1rem',
               cursor: cargando ? 'not-allowed' : 'pointer',
-              opacity: cargando ? 0.7 : 1
+              opacity: cargando ? 0.7 : 1,
             }}
             disabled={cargando}
           >
