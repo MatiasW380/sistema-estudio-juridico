@@ -4,42 +4,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 
-const MOCK_USERS = [
-  { email: 'admin@estudio.com', pin: '1234', rol: 'admin', activo: 'SI' },
-  { email: 'abogado1@estudio.com', pin: '1111', rol: 'usuario', activo: 'SI' },
-  { email: 'abogado2@estudio.com', pin: '2222', rol: 'usuario', activo: 'SI' },
-];
+const FALLBACK_EMAIL = 'matiasbaronetto@gmail.com';
+const FALLBACK_PIN = '3543';
 
 function normalizeEmail(value) {
   return (value || '').toString().trim().toLowerCase();
-}
-
-async function loginViaApi(email, pin) {
-  const res = await fetch('/api/usuarios', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, pin }),
-  });
-
-  const data = await res.json();
-  return { ok: res.ok, data };
-}
-
-function loginViaMock(email, pin) {
-  const user = MOCK_USERS.find(
-    (u) =>
-      normalizeEmail(u.email) === normalizeEmail(email) &&
-      String(u.pin) === String(pin) &&
-      String(u.activo || 'SI').toUpperCase() === 'SI',
-  );
-
-  if (!user) return null;
-
-  return {
-    email: user.email,
-    rol: user.rol || 'usuario',
-    activo: user.activo || 'SI',
-  };
 }
 
 export default function LoginPage() {
@@ -54,44 +23,54 @@ export default function LoginPage() {
     setError('');
     setCargando(true);
 
-    if (!email || !pin) {
+    const emailNorm = normalizeEmail(email);
+
+    if (!emailNorm || !pin) {
       setError('Completá todos los campos');
       setCargando(false);
       return;
     }
 
-    if (pin.length !== 4 || !/^\d+$/.test(pin)) {
+    if (!/^\d{4}$/.test(pin)) {
       setError('El PIN debe ser de 4 dígitos numéricos');
       setCargando(false);
       return;
     }
 
     try {
-      let usuario = null;
+      // 1) Intento API
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailNorm, pin }),
+      });
 
-      // 1) Intentar autenticación real vía API (server-side, segura)
-      try {
-        const { ok, data } = await loginViaApi(email, pin);
-        if (ok && data?.usuario) {
-          usuario = data.usuario;
-        }
-      } catch (apiErr) {
-        console.warn('⚠️ API /api/usuarios no disponible, uso fallback mock:', apiErr?.message);
-      }
+      const data = await res.json();
 
-      // 2) Fallback a mock si API no autentica
-      if (!usuario) {
-        usuario = loginViaMock(email, pin);
-      }
-
-      if (usuario) {
-        document.cookie = `user=${encodeURIComponent(JSON.stringify(usuario))}; path=/; max-age=86400; samesite=lax`;
+      if (res.ok && data?.usuario) {
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.usuario))}; path=/; max-age=86400; samesite=lax`;
         router.push('/');
-      } else {
-        setError('Email o PIN incorrecto');
+        return;
       }
+
+      // 2) Fallback final del front (si API cae o responde error)
+      if (emailNorm === FALLBACK_EMAIL && pin === FALLBACK_PIN) {
+        const usuarioFallback = { email: FALLBACK_EMAIL, rol: 'admin', activo: 'SI' };
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(usuarioFallback))}; path=/; max-age=86400; samesite=lax`;
+        router.push('/');
+        return;
+      }
+
+      setError(data?.error || 'Usuario o PIN incorrectos');
     } catch (err) {
-      console.error('❌ Error en login:', err);
+      // 3) Si explota fetch, igual permitir tu usuario fijo
+      if (emailNorm === FALLBACK_EMAIL && pin === FALLBACK_PIN) {
+        const usuarioFallback = { email: FALLBACK_EMAIL, rol: 'admin', activo: 'SI' };
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(usuarioFallback))}; path=/; max-age=86400; samesite=lax`;
+        router.push('/');
+        return;
+      }
+
       setError('Error al iniciar sesión: ' + (err?.message || 'desconocido'));
     } finally {
       setCargando(false);
