@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     const nuevoId = await getNextClienteId();
     console.log('📋 Nuevo ID:', nuevoId);
 
-    // Preparar la fila (10 columnas)
+    // Preparar la fila (11 columnas)
     const fila = [
       nuevoId,          // ID_Cliente
       nombre,           // Nombre_Cliente
@@ -52,6 +52,7 @@ export default async function handler(req, res) {
       '',               // Numero_SAC
       '',               // Caratula
       '',               // Fuero
+      '',               // Juzgado
       '',               // ID_Carpeta_Drive
       '',               // Usuarios_Compartidos
     ];

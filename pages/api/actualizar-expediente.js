@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       updatedRow[compartidosIndex] = usuariosCompartidos;
     }
 
-    const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Clientes_y_Expedientes!A${rowIndex + 1}:J${rowIndex + 1}?valueInputOption=USER_ENTERED`;
+    const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Clientes_y_Expedientes!A${rowIndex + 1}:K${rowIndex + 1}?valueInputOption=USER_ENTERED`;
     const updateResponse = await fetch(updateUrl, {
       method: 'PUT',
       headers: {

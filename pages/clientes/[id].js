@@ -65,6 +65,7 @@ export default function FichaCliente({ cliente, expedientes }) {
     Numero_SAC: '',
     Caratula: '',
     Fuero: '',
+    Juzgado: '',
   });
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -343,6 +344,7 @@ export default function FichaCliente({ cliente, expedientes }) {
         numeroSAC: nuevoExpediente.Numero_SAC,
         caratula: nuevoExpediente.Caratula,
         fuero: nuevoExpediente.Fuero || '',
+        juzgado: nuevoExpediente.Juzgado || '',
         usuariosCompartidos: cliente.Usuarios_Compartidos || '',
       };
 
@@ -362,7 +364,7 @@ export default function FichaCliente({ cliente, expedientes }) {
           mensajeExito = '⚠️ Expediente agregado, pero hubo un problema al crear la carpeta en Drive';
         }
         setMensaje(mensajeExito);
-        setNuevoExpediente({ Numero_SAC: '', Caratula: '', Fuero: '' });
+        setNuevoExpediente({ Numero_SAC: '', Caratula: '', Fuero: '', Juzgado: '' });
         setMostrarFormulario(false);
         setTimeout(() => router.reload(), 1500);
       } else {
@@ -536,6 +538,16 @@ export default function FichaCliente({ cliente, expedientes }) {
                         placeholder="Ej: Civil, Laboral, Familia"
                       />
                     </div>
+                    <div>
+                      <label><strong>Juzgado</strong></label>
+                      <input
+                        type="text"
+                        name="Juzgado"
+                        value={nuevoExpediente.Juzgado}
+                        onChange={handleChange}
+                        placeholder="Ej: Juzgado de Familia de 3° Nominación"
+                      />
+                    </div>
                   </div>
                   {mensaje && (
                     <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>
@@ -581,6 +593,8 @@ export default function FichaCliente({ cliente, expedientes }) {
                         <strong>Carátula:</strong> {exp.Caratula || 'No registrada'}
                         <br />
                         <strong>Fuero:</strong> {exp.Fuero || 'No registrado'}
+                        <br />
+                        <strong>Juzgado:</strong> {exp.Juzgado || 'No registrado'}
                       </div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         {exp.ID_Carpeta_Drive && (

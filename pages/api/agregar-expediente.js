@@ -12,13 +12,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { clienteId, nombre, telefono, numeroSAC, caratula, fuero, usuariosCompartidos } = req.body;
+    const { clienteId, nombre, telefono, numeroSAC, caratula, fuero, juzgado, usuariosCompartidos } = req.body;
 
     console.log('📥 Datos recibidos:');
     console.log('  Cliente ID:', clienteId);
     console.log('  N° SAC:', numeroSAC);
     console.log('  Carátula:', caratula);
     console.log('  Fuero:', fuero);
+    console.log('  Juzgado:', juzgado);
 
     if (!clienteId || !nombre || !numeroSAC || !caratula) {
       console.log('❌ Faltan campos obligatorios');
@@ -62,6 +63,7 @@ export default async function handler(req, res) {
       numeroSAC,
       caratula,
       fuero || '',
+      juzgado || '',
       folderId || '',  // ID_Carpeta_Drive (ID REAL de Google)
       usuariosCompartidos || '',
     ];
