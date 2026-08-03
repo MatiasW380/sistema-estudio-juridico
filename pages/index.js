@@ -116,12 +116,14 @@ export async function getServerSideProps(context) {
       tareasUrgentes: tareasEnriquecidas,
       usuario,
       usuarioEmail,
+      clientes,
+      tareas,
     },
   };
 }
 
-export default function Home({ tareasUrgentes, usuarioEmail }) {
-  const [tareas] = useState(tareasUrgentes || []);
+export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas }) {
+  const [tareas_state] = useState(tareasUrgentes || []);
   const router = useRouter();
 
   useEffect(() => {
@@ -150,9 +152,12 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
 
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
-    if (diff < 0) return '#e53e3e';
-    if (diff <= 2) return '#ed8936';
-    return '#d69e2e';
+    if (diff < 0) return '#e53e3e';      // Rojo: vencido
+    if (diff === 0) return '#f687b3';    // Rosa: hoy (vence hoy)
+    if (diff === 1) return '#fc8cc9';    // Rosa: mañana
+    if (diff >= 2 && diff <= 4) return '#ed8936'; // Amarillo: 3-4 días
+    if (diff === 5) return '#38a169';    // Verde: 5 días
+    return '#718096';                     // Gris: otro
   };
 
   const getUrgenciaTexto = (fechaStr) => {
@@ -202,6 +207,39 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
     router.push('/agenda');
   };
 
+  // === FUNCIONES PARA DASHBOARD ===
+  const calcularEstadisticas = () => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let expedientesAbiertos = 0;
+    let plazosVencidos = 0;
+    const juiciosPorJuzgado = {};
+
+    // Contar expedientes y juicios por juzgado
+    (clientes || []).forEach((cliente) => {
+      (cliente.expedientes || []).forEach((exp) => {
+        expedientesAbiertos++;
+        
+        // Contar por juzgado
+        const juzgado = exp.Juzgado || 'Sin juzgado';
+        juiciosPorJuzgado[juzgado] = (juiciosPorJuzgado[juzgado] || 0) + 1;
+      });
+    });
+
+    // Contar plazos vencidos
+    (tareas || []).forEach((tarea) => {
+      const fechaPlazo = getFechaLocalObj(tarea.Fecha);
+      if (fechaPlazo && fechaPlazo < hoy && tarea.Estado !== 'Completado') {
+        plazosVencidos++;
+      }
+    });
+
+    return { expedientesAbiertos, plazosVencidos, juiciosPorJuzgado };
+  };
+
+  const stats = calcularEstadisticas();
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -241,6 +279,91 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
       </div>
 
       <div style={{ marginTop: '40px' }}>
+        {/* === DASHBOARD === */}
+        <div style={{ marginBottom: '40px' }}>
+          <h2 style={{ fontSize: '1.3rem', color: '#2d3748', marginBottom: '20px' }}>📊 Resumen</h2>
+          
+          {/* Tarjetas de estadísticas */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+            {/* Expedientes abiertos */}
+            <div style={{
+              backgroundColor: '#ebf8ff',
+              border: '1px solid #bee3f8',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3182ce' }}>
+                {stats.expedientesAbiertos}
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Expedientes Abiertos</div>
+            </div>
+
+            {/* Plazos vencidos */}
+            <div style={{
+              backgroundColor: '#fff5f5',
+              border: '1px solid #feb2b2',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#e53e3e' }}>
+                {stats.plazosVencidos}
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Plazos Vencidos</div>
+            </div>
+
+            {/* Tareas próximos 5 días */}
+            <div style={{
+              backgroundColor: '#fef5e7',
+              border: '1px solid #f9e79f',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ed8936' }}>
+                {tareas_state.length}
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Próximos 5 Días</div>
+            </div>
+          </div>
+
+          {/* Juicios por Juzgado */}
+          <div style={{
+            backgroundColor: '#f7fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            padding: '15px'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#2d3748' }}>⚖️ Juicios por Juzgado</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              {Object.entries(stats.juiciosPorJuzgado).length > 0 ? (
+                Object.entries(stats.juiciosPorJuzgado)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([juzgado, cantidad]) => (
+                    <div key={juzgado} style={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      padding: '10px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3182ce' }}>
+                        {cantidad}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#4a5568', marginTop: '5px' }}>
+                        {juzgado}
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <p style={{ color: '#718096' }}>No hay juicios registrados</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* === FIN DASHBOARD === */}
         <h2
           style={{
             fontSize: '1.3rem',
@@ -253,7 +376,7 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
           }}
         >
           ⏰ Tareas Urgentes (próximos 5 días)
-          {tareas.length > 0 && (
+          {tareas_state.length > 0 && (
             <span
               style={{
                 fontSize: '0.8rem',
@@ -263,12 +386,12 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
                 borderRadius: '12px',
               }}
             >
-              {tareas.length}
+              {tareas_state.length}
             </span>
           )}
         </h2>
 
-        {tareas.length === 0 ? (
+        {tareas_state.length === 0 ? (
           <div
             style={{
               backgroundColor: '#f7fafc',
