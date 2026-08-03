@@ -764,6 +764,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             <p style={{ color: '#4a5568', margin: 0 }}>
               Cliente: {cliente.Nombre_Cliente} | Carátula: {expediente.Caratula || 'No registrada'}
             </p>
+            <p style={{ color: '#4a5568', margin: '4px 0 0 0' }}>
+              Juzgado: {expediente.Juzgado || 'No registrado'}
+            </p>
             {expediente.Usuarios_Compartidos && (
               <div style={{ 
                 marginTop: '8px', 
