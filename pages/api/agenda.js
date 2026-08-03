@@ -7,6 +7,8 @@ import {
   getTareasPendientes,
   getAccessToken,
   getClientes,
+  formatearFechaArgentina,
+  parsearFechaArgentina,
 } from '../../lib/googleSheets';
 
 const SHEETS_ID = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
@@ -151,6 +153,8 @@ export default async function handler(req, res) {
             ...t,
             Cliente: t.Cliente || fromSac?.nombre || '',
             Cliente_ID: fromSac?.id || null,
+            // Formatear fecha a DD/MM/AAAA para la salida
+            Fecha: formatearFechaArgentina(t.Fecha),
           };
         });
 
@@ -174,6 +178,8 @@ export default async function handler(req, res) {
           ...e,
           Cliente: e.Cliente || fromSac?.nombre || '',
           Cliente_ID: fromSac?.id || null,
+          // Formatear fecha a DD/MM/AAAA para la salida
+          Fecha: formatearFechaArgentina(e.Fecha),
         };
       });
 
@@ -205,13 +211,16 @@ export default async function handler(req, res) {
 
       const creador = creadoPor || usuarioCookie || 'sistema';
 
+      // Normalizar fecha a YYYY-MM-DD antes de guardar en Sheets
+      const fechaNormalizada = parsearFechaArgentina(fecha);
+
       const ok = await agregarEvento(
         numeroSAC || '',
         cliente || '',
         tipo || 'Otro',
         titulo || '',
         descripcion || '',
-        fecha || '',
+        fechaNormalizada,
         hora || '',
         horaFin || '',
         lugar || '',
@@ -280,7 +289,8 @@ export default async function handler(req, res) {
           descripcion !== undefined
             ? (descripcion || '')
             : (existingObj['Descripción'] || existingObj.Descripción || ''),
-        Fecha: fecha !== undefined ? (fecha || '') : existingObj.Fecha,
+        // Normalizar fecha a YYYY-MM-DD si viene en el body, sino mantener la existente
+        Fecha: fecha !== undefined ? parsearFechaArgentina(fecha || '') : existingObj.Fecha,
         Hora: hora !== undefined ? (hora || '') : existingObj.Hora,
         Hora_Fin: horaFin !== undefined ? (horaFin || '') : existingObj.Hora_Fin,
         Lugar: lugar !== undefined ? (lugar || '') : existingObj.Lugar,
