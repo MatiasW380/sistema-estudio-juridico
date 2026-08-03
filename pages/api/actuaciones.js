@@ -1,7 +1,13 @@
 // pages/api/actuaciones.js
 // API para listar, agregar, editar y eliminar actuaciones
 
-import { getActuaciones, agregarActuacion, getAccessToken } from '../../lib/googleSheets';
+import { 
+  getActuaciones, 
+  agregarActuacion, 
+  getAccessToken,
+  formatearFechaArgentina,
+  parsearFechaArgentina
+} from '../../lib/googleSheets';
 
 const SHEETS_ID = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
 
@@ -16,7 +22,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'numeroSAC es obligatorio' });
       }
       const actuaciones = await getActuaciones(numeroSAC);
-      return res.status(200).json({ actuaciones });
+      
+      // Formatear fechas a DD/MM/AAAA para la salida
+      const actuacionesFormateadas = (actuaciones || []).map(act => ({
+        ...act,
+        Fecha: formatearFechaArgentina(act.Fecha)
+      }));
+      
+      return res.status(200).json({ actuaciones: actuacionesFormateadas });
     } catch (error) {
       console.error('❌ Error al listar actuaciones:', error);
       return res.status(500).json({ error: 'Error al listar actuaciones' });
@@ -62,9 +75,12 @@ export default async function handler(req, res) {
         tipoFinal = tipoOtro.trim();
       }
 
+      // Normalizar fecha a YYYY-MM-DD antes de guardar en Sheets
+      const fechaNormalizada = parsearFechaArgentina(fecha);
+
       const resultado = await agregarActuacion(
         numeroSAC,
-        fecha,
+        fechaNormalizada,
         tipoFinal,
         origen || 'Yo',
         contenido,
@@ -156,7 +172,7 @@ export default async function handler(req, res) {
 
       // Actualizar datos
       const updatedRow = [...rowData];
-      if (fechaIndex !== -1 && fecha) updatedRow[fechaIndex] = fecha;
+      if (fechaIndex !== -1 && fecha) updatedRow[fechaIndex] = parsearFechaArgentina(fecha);
       if (tipoIndex !== -1 && tipo) updatedRow[tipoIndex] = tipo;
       if (origenIndex !== -1 && origen) updatedRow[origenIndex] = origen;
       if (contenidoIndex !== -1 && contenido) updatedRow[contenidoIndex] = contenido;
