@@ -93,8 +93,8 @@ export default async function handler(req, res) {
           valueInputOption: 'USER_ENTERED',
           data: [
             {
-              range: `Clientes_y_Expedientes!A${rowIndex + 1}:K${rowIndex + 1}`,
-              values: [Array(11).fill('')],
+              range: `Clientes_y_Expedientes!A${rowIndex + 1}:L${rowIndex + 1}`,
+              values: [Array(12).fill('')],
             }
           ],
         }),

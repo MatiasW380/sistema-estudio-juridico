@@ -3,6 +3,22 @@
 
 import { appendToSheet, getNextClienteId, verificarDNI } from '../../lib/googleSheets';
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   console.log('🚀 API /api/crear-cliente ejecutándose...');
   
@@ -12,6 +28,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    const userData = parseUserFromCookie(req.headers.cookie || '');
+    const creadoPor = userData?.email || '';
+    console.log('👤 Usuario creador:', creadoPor);
+
     const { nombre, telefono, dni, domicilio } = req.body;
 
     console.log('📥 Datos recibidos:');
@@ -42,7 +62,7 @@ export default async function handler(req, res) {
     const nuevoId = await getNextClienteId();
     console.log('📋 Nuevo ID:', nuevoId);
 
-    // Preparar la fila (11 columnas)
+    // Preparar la fila (12 columnas: agregamos Creado_Por)
     const fila = [
       nuevoId,          // ID_Cliente
       nombre,           // Nombre_Cliente
@@ -55,6 +75,7 @@ export default async function handler(req, res) {
       '',               // Juzgado
       '',               // ID_Carpeta_Drive
       '',               // Usuarios_Compartidos
+      creadoPor,        // Creado_Por
     ];
 
     console.log('📤 Fila a guardar:', fila);

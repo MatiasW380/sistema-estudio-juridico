@@ -3,6 +3,22 @@
 
 import { appendToSheet, crearCarpetaExpediente, getClientes, agregarActuacion } from '../../lib/googleSheets';
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   console.log('🚀 ====== API /api/agregar-expediente INICIADA ======');
   
@@ -12,6 +28,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    const userData = parseUserFromCookie(req.headers.cookie || '');
+    const creadoPor = userData?.email || '';
+    console.log('👤 Usuario creador:', creadoPor);
+
     const { clienteId, nombre, telefono, numeroSAC, caratula, fuero, juzgado, usuariosCompartidos } = req.body;
 
     console.log('📥 Datos recibidos:');
@@ -66,6 +86,7 @@ export default async function handler(req, res) {
       juzgado || '',
       folderId || '',  // ID_Carpeta_Drive (ID REAL de Google)
       usuariosCompartidos || '',
+      creadoPor,       // Creado_Por
     ];
 
     console.log('📤 Fila a guardar:', JSON.stringify(fila));

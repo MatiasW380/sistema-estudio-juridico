@@ -101,8 +101,8 @@ export default async function handler(req, res) {
     if (dniIndex !== -1) updatedRow[dniIndex] = dni || '';
     if (domicilioIndex !== -1) updatedRow[domicilioIndex] = domicilio || '';
 
-    // 4. Escribir la fila actualizada (usando el rango específico)
-    const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Clientes_y_Expedientes!A${rowIndex + 1}:K${rowIndex + 1}?valueInputOption=USER_ENTERED`;
+    // 4. Escribir la fila actualizada (usando el rango específico - ahora 12 columnas)
+    const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Clientes_y_Expedientes!A${rowIndex + 1}:L${rowIndex + 1}?valueInputOption=USER_ENTERED`;
     const updateResponse = await fetch(updateUrl, {
       method: 'PUT',
       headers: {
