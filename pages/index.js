@@ -327,40 +327,6 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
               <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Próximos 5 Días</div>
             </div>
           </div>
-
-          {/* Juicios por Juzgado */}
-          <div style={{
-            backgroundColor: '#f7fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            padding: '15px'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#2d3748' }}>⚖️ Juicios por Juzgado</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-              {Object.entries(stats.juiciosPorJuzgado).length > 0 ? (
-                Object.entries(stats.juiciosPorJuzgado)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([juzgado, cantidad]) => (
-                    <div key={juzgado} style={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '6px',
-                      padding: '10px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3182ce' }}>
-                        {cantidad}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#4a5568', marginTop: '5px' }}>
-                        {juzgado}
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                <p style={{ color: '#718096' }}>No hay juicios registrados</p>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* === FIN DASHBOARD === */}
