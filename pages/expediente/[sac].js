@@ -3,9 +3,28 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getActuaciones, getClientes } from '../../lib/googleSheets';
+import { getActuaciones, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
 import EditorTexto from '../../components/EditorTexto';
+
+// Helper para obtener la fecha de hoy en formato YYYY-MM-DD (para inputs type=date) sin desfase UTC
+const getFechaHoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// Helper para comparar fechas devolviendo un objeto Date local sin desfase UTC
+const getFechaObj = (fechaStr) => {
+  if (!fechaStr) return new Date(0);
+  const isoStr = parsearFechaArgentina(fechaStr); // Devuelve YYYY-MM-DD
+  if (typeof isoStr !== 'string' || !isoStr.includes('-')) return new Date(0);
+  const partes = isoStr.split('-');
+  if (partes.length === 3) {
+    // new Date(año, mes, dia) respeta la hora local y evita el desfase UTC
+    return new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+  }
+  return new Date(0);
+};
 
 export async function getServerSideProps(context) {
   const { sac } = context.params;
@@ -55,7 +74,7 @@ const PlazoCard = ({ plazo, onClick, vencido, completado }) => {
     if (completado) return '#38a169';
     if (vencido) return '#e53e3e';
     const hoy = new Date();
-    const fechaPlazo = new Date(plazo.Fecha);
+    const fechaPlazo = getFechaObj(plazo.Fecha);
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
     if (diff <= 3) return '#ed8936';
     return '#3182ce';
@@ -94,7 +113,7 @@ const PlazoCard = ({ plazo, onClick, vencido, completado }) => {
           )}
         </div>
         <span style={{ color: '#4a5568' }}>
-          {plazo.Fecha} {plazo.Hora ? `- ${plazo.Hora}` : ''}
+          {formatearFechaArgentina(plazo.Fecha)} {plazo.Hora ? `- ${plazo.Hora}` : ''}
         </span>
       </div>
       {plazo.Descripcion && (
@@ -139,9 +158,9 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [mostrarModalEditarPlazo, setMostrarModalEditarPlazo] = useState(false);
   const [plazoSeleccionado, setPlazoSeleccionado] = useState(null);
 
-  // Filtrar plazos
-  const plazosPendientes = plazos.filter(p => p.Estado !== 'Completado' && new Date(p.Fecha) >= new Date());
-  const plazosVencidos = plazos.filter(p => p.Estado !== 'Completado' && new Date(p.Fecha) < new Date());
+  // Filtrar plazos usando la función segura sin desfase
+  const plazosPendientes = plazos.filter(p => p.Estado !== 'Completado' && getFechaObj(p.Fecha) >= new Date());
+  const plazosVencidos = plazos.filter(p => p.Estado !== 'Completado' && getFechaObj(p.Fecha) < new Date());
   const plazosCompletados = plazos.filter(p => p.Estado === 'Completado');
 
   // Obtener el email de la sesión
@@ -192,7 +211,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   };
 
   const [nuevaActuacion, setNuevaActuacion] = useState({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: getFechaHoyISO(), // Sin desfase
     tipo: 'Escrito',
     tipoOtro: '',
     origen: 'Yo',
@@ -220,7 +239,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     try {
       const datos = {
         numeroSAC: sac,
-        fecha: nuevaActuacion.fecha,
+        fecha: formatearFechaArgentina(nuevaActuacion.fecha), // Enviamos DD/MM/AAAA a la API
         tipo: nuevaActuacion.tipo,
         tipoOtro: nuevaActuacion.tipoOtro,
         origen: nuevaActuacion.origen,
@@ -245,7 +264,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       if (resultado.success) {
         setMensaje('✅ Actuación agregada correctamente');
         setNuevaActuacion({
-          fecha: new Date().toISOString().split('T')[0],
+          fecha: getFechaHoyISO(),
           tipo: 'Escrito',
           tipoOtro: '',
           origen: 'Yo',
@@ -298,7 +317,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const editarActuacion = async (act, index) => {
     if (editando === index) {
       const contenido = document.getElementById(`edit_contenido_${index}`).value;
-      const fecha = document.getElementById(`edit_fecha_${index}`).value;
+      const fecha = document.getElementById(`edit_fecha_${index}`).value; // Viene como YYYY-MM-DD del input
       const tipo = document.getElementById(`edit_tipo_${index}`).value;
       const origen = document.getElementById(`edit_origen_${index}`).value;
 
@@ -309,7 +328,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           body: JSON.stringify({
             id: act.ID,
             numeroSAC: sac,
-            fecha,
+            fecha: formatearFechaArgentina(fecha), // Enviamos DD/MM/AAAA
             tipo,
             origen,
             contenido,
@@ -598,7 +617,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     try {
       const datos = {
         numeroSAC: sac,
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: formatearFechaArgentina(getFechaHoyISO()), // Sin desfase y en DD/MM/AAAA
         tipo: 'Análisis',
         origen: 'Yo',
         contenido: editorIA,
@@ -1033,7 +1052,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                               <input
                                 id={`edit_fecha_${index}`}
                                 type="date"
-                                defaultValue={act.Fecha}
+                                defaultValue={parsearFechaArgentina(act.Fecha)} // Convertimos DD/MM/AAAA a YYYY-MM-DD para el input
                                 style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                               />
                             </div>
@@ -1145,7 +1164,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                                 </span>
                               )}
                               <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
-                                {act.Fecha || 'Sin fecha'}
+                                {formatearFechaArgentina(act.Fecha) || 'Sin fecha'}
                               </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1322,7 +1341,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
                 >
-                  <strong>{sent.Tipo}</strong> - {sent.Fecha}
+                  <strong>{sent.Tipo}</strong> - {formatearFechaArgentina(sent.Fecha)}
                   <div style={{ fontSize: '0.85rem', color: '#4a5568', marginTop: '4px' }}>
                     {sent.Contenido?.substring(0, 100)}...
                   </div>
