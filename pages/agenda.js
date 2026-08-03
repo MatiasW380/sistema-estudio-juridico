@@ -819,7 +819,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
 
                     <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>
                       {/* Mostramos la fecha en formato DD/MM/AAAA */}
-                      {tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}
+                      {formatearFechaArgentina(tarea.Fecha)} {tarea.Hora ? `- ${tarea.Hora}` : ''}
                     </span>
                   </div>
 

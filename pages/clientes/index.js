@@ -3,12 +3,39 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { getClientes, buscarClientes } from '../../lib/googleSheets';
+import { getClientes } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
 
-export async function getServerSideProps() {
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
   try {
-    const clientes = await getClientes();
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getServerSideProps(context) {
+  const userData = parseUserFromCookie(context.req.headers.cookie || '');
+
+  if (!userData?.email) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
+  try {
+    const clientes = await getClientes(userData.email);
     return { props: { clientes: clientes || [] } };
   } catch (error) {
     console.error('Error en getServerSideProps:', error);
@@ -31,8 +58,9 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
 
     setCargando(true);
     try {
-      const resultados = await buscarClientes(terminoBusqueda);
-      setClientes(resultados);
+      const response = await fetch(`/api/buscar-clientes?q=${encodeURIComponent(terminoBusqueda)}`);
+      const data = await response.json();
+      setClientes(data.clientes || []);
     } catch (error) {
       console.error('Error al buscar:', error);
     } finally {

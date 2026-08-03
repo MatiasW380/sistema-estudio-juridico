@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import BotonInicio from '../components/BotonInicio';
-import { getFinanzas, getResumenFinanzas } from '../lib/googleSheets';
+import { getFinanzas, getResumenFinanzas, formatearFechaArgentina } from '../lib/googleSheets';
 
 export async function getServerSideProps(context) {
   const cookies = context.req.headers.cookie || '';
@@ -221,7 +221,7 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
 
               return (
                 <tr key={`${f.ID || 'fin'}-${index}`}>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Fecha || ''}</td>
+                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{formatearFechaArgentina(f.Fecha) || ''}</td>
                   <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
                     <strong>{cliente}</strong>
                   </td>

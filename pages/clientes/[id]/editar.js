@@ -6,10 +6,37 @@ import { useRouter } from 'next/router';
 import { getClientes } from '../../../lib/googleSheets';
 import BotonInicio from '../../../components/BotonInicio';
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getServerSideProps(context) {
   const { id } = context.params;
+  const userData = parseUserFromCookie(context.req.headers.cookie || '');
+
+  if (!userData?.email) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
   try {
-    const clientes = await getClientes();
+    const clientes = await getClientes(userData.email);
     const cliente = clientes.find(c => c.ID_Cliente === id);
     if (!cliente) {
       return { notFound: true };
