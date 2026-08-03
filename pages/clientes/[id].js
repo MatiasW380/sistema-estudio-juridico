@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getClientes } from '../../lib/googleSheets';
+import { getClientes, formatearFechaArgentina } from '../../lib/googleSheets';
 import BotonInicio from '../../components/BotonInicio';
 
 function parseUserFromCookie(rawCookie = '') {
@@ -36,8 +36,7 @@ export async function getServerSideProps(context) {
   }
 
   try {
-    // IMPORTANTE: filtrar por usuario para no exponer clientes no compartidos
-  const todosLosClientes = await getClientes();
+    const todosLosClientes = await getClientes(userData.email);
 
 const cliente = todosLosClientes.find(
   (c) => String(c.ID_Cliente) === String(id)
@@ -766,7 +765,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <strong>{consulta.Fecha || 'Sin fecha'}</strong>
+                          <strong>{formatearFechaArgentina(consulta.Fecha) || 'Sin fecha'}</strong>
                           {consulta.Numero_SAC && (
                             <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
                               SAC: {consulta.Numero_SAC}
@@ -979,7 +978,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                     const pagado = parseFloat(mov.Monto_Pagado) || 0;
                     return (
                       <tr key={index}>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Fecha || ''}</td>
+                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{formatearFechaArgentina(mov.Fecha) || ''}</td>
                         <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Categoria || ''}</td>
                         <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Tipo || ''}</td>
                         <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Concepto || ''}</td>

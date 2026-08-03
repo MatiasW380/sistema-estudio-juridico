@@ -26,10 +26,37 @@ const getFechaObj = (fechaStr) => {
   return new Date(0);
 };
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getServerSideProps(context) {
   const { sac } = context.params;
+  const userData = parseUserFromCookie(context.req.headers.cookie || '');
+
+  if (!userData?.email) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
   try {
-    const clientes = await getClientes();
+    const clientes = await getClientes(userData.email);
     let expediente = null;
     let cliente = null;
 
