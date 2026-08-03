@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import BotonInicio from '../components/BotonInicio';
-import { getAgenda, getTareasPendientes, getClientes } from '../lib/googleSheets';
+import { getAgenda, getTareasPendientes, getClientes, formatearFechaArgentina, parsearFechaArgentina, getFechaHoyISO } from '../lib/googleSheets';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -22,10 +22,12 @@ function parseUserFromCookie(rawCookie = '') {
   }
 }
 
-function toIsoDateOnly(value) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().split('T')[0];
+function toIsoDateOnly(dateObj) {
+  if (!(dateObj instanceof Date) || isNaN(dateObj)) return '';
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export async function getServerSideProps(context) {
@@ -69,6 +71,7 @@ export async function getServerSideProps(context) {
         ...item,
         Cliente: item.Cliente || fromSac?.nombre || '',
         Cliente_ID: item.Cliente_ID || fromSac?.id || null,
+        Fecha: formatearFechaArgentina(item.Fecha), // Aseguramos formato DD/MM/AAAA
       };
     };
 
@@ -101,7 +104,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     tipo: 'Otro',
     titulo: '',
     descripcion: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: getFechaHoyISO(),
     hora: '',
     horaFin: '',
     lugar: '',
@@ -162,7 +165,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       tipo: 'Otro',
       titulo: '',
       descripcion: '',
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: getFechaHoyISO(),
       hora: '',
       horaFin: '',
       lugar: '',
@@ -222,7 +225,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         tipo: eventoSeleccionado.Tipo || 'Otro',
         titulo: eventoSeleccionado.Titulo || '',
         descripcion: eventoSeleccionado['Descripción'] || '',
-        fecha: eventoSeleccionado.Fecha || '',
+        fecha: eventoSeleccionado.Fecha || '', // Puede ser DD/MM/AAAA o YYYY-MM-DD (si se editó)
         hora: eventoSeleccionado.Hora || '',
         horaFin: eventoSeleccionado.Hora_Fin || '',
         lugar: eventoSeleccionado.Lugar || '',
@@ -340,7 +343,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
 
   const diasMes = useMemo(() => obtenerDiasMes(mesActual), [mesActual]);
   const nombreMes = mesActual.toLocaleString('es-AR', { month: 'long', year: 'numeric' });
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = getFechaHoyISO();
 
   const getTipoColor = (tipo) => {
     const colores = {
@@ -353,7 +356,9 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     return colores[tipo] || '#718096';
   };
 
-  const getEventosDelDia = (fechaStr) => eventos.filter((e) => e.Fecha === fechaStr);
+  // Convertimos la fecha del evento (DD/MM/AAAA) a YYYY-MM-DD para poder comparar con el calendario
+  const getEventosDelDia = (fechaStr) => 
+    eventos.filter((e) => parsearFechaArgentina(e.Fecha) === fechaStr);
 
   return (
     <div className="container">
@@ -583,7 +588,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                   <label><strong>Fecha</strong></label>
                   <input
                     type="date"
-                    value={eventoSeleccionado.Fecha || ''}
+                    value={parsearFechaArgentina(eventoSeleccionado.Fecha) || ''}
                     onChange={(e) => setEventoSeleccionado({ ...eventoSeleccionado, Fecha: e.target.value })}
                     style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                   />
@@ -813,6 +818,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                     </div>
 
                     <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>
+                      {/* Mostramos la fecha en formato DD/MM/AAAA */}
                       {tarea.Fecha} {tarea.Hora ? `- ${tarea.Hora}` : ''}
                     </span>
                   </div>
