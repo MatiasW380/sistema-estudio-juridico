@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getTareasPendientes, getClientes } from '../lib/googleSheets';
+import { getTareasPendientes, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../lib/googleSheets';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -22,9 +22,20 @@ function parseUserFromCookie(rawCookie = '') {
   }
 }
 
-function normalizeDateOnly(dateStr) {
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return null;
+// Función local para obtener un objeto Date sin desfase UTC
+function getFechaLocalObj(fechaStr) {
+  if (!fechaStr) return null;
+  const isoStr = parsearFechaArgentina(fechaStr); // Asegura YYYY-MM-DD
+  const partes = isoStr.split('-');
+  if (partes.length !== 3) return null;
+  
+  const anio = parseInt(partes[0], 10);
+  const mes = parseInt(partes[1], 10) - 1; // Mes es 0-index
+  const dia = parseInt(partes[2], 10);
+  
+  if (Number.isNaN(anio) || Number.isNaN(mes) || Number.isNaN(dia)) return null;
+  
+  const d = new Date(anio, mes, dia);
   d.setHours(0, 0, 0, 0);
   return d;
 }
@@ -71,7 +82,7 @@ export async function getServerSideProps(context) {
   cincoDias.setDate(cincoDias.getDate() + 5);
 
   const tareasUrgentes = (tareas || []).filter((t) => {
-    const fecha = normalizeDateOnly(t.Fecha);
+    const fecha = getFechaLocalObj(t.Fecha);
     if (!fecha) return false;
     return fecha >= hoy && fecha <= cincoDias;
   });
@@ -92,11 +103,11 @@ export async function getServerSideProps(context) {
       };
     })
     .sort((a, b) => {
-      const da = new Date(a.Fecha).getTime();
-      const db = new Date(b.Fecha).getTime();
-      if (Number.isNaN(da) && Number.isNaN(db)) return 0;
-      if (Number.isNaN(da)) return 1;
-      if (Number.isNaN(db)) return -1;
+      const da = getFechaLocalObj(a.Fecha);
+      const db = getFechaLocalObj(b.Fecha);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
       return da - db;
     });
 
@@ -134,10 +145,8 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    const fechaPlazo = new Date(fechaStr);
-    fechaPlazo.setHours(0, 0, 0, 0);
-
-    if (Number.isNaN(fechaPlazo.getTime())) return '#718096';
+    const fechaPlazo = getFechaLocalObj(fechaStr);
+    if (!fechaPlazo) return '#718096';
 
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
@@ -150,10 +159,8 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    const fechaPlazo = new Date(fechaStr);
-    fechaPlazo.setHours(0, 0, 0, 0);
-
-    if (Number.isNaN(fechaPlazo.getTime())) return 'SIN FECHA';
+    const fechaPlazo = getFechaLocalObj(fechaStr);
+    if (!fechaPlazo) return 'SIN FECHA';
 
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
@@ -357,7 +364,7 @@ export default function Home({ tareasUrgentes, usuarioEmail }) {
                 </div>
 
                 <div style={{ color: '#4a5568', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                  {tarea.Fecha || 'Sin fecha'} {tarea.Hora ? `- ${tarea.Hora}` : ''}
+                  {formatearFechaArgentina(tarea.Fecha) || 'Sin fecha'} {tarea.Hora ? `- ${tarea.Hora}` : ''}
                 </div>
               </div>
             ))}
