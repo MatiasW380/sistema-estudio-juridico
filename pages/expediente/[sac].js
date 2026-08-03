@@ -781,6 +781,72 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setMostrarModalEditarPlazo(true);
   };
 
+  const handleEditarPlazo = async (e) => {
+    e.preventDefault();
+    setMensaje('');
+    setCargando(true);
+
+    try {
+      const datosActualizados = {
+        id: plazoSeleccionado.ID,
+        numeroSAC: expediente?.Numero_SAC || '',
+        cliente: cliente?.Nombre_Cliente || '',
+        tipo: plazoSeleccionado.Tipo || 'Plazo',
+        titulo: plazoSeleccionado.Titulo || '',
+        descripcion: plazoSeleccionado.Descripcion || '',
+        fecha: plazoSeleccionado.Fecha || '',
+        hora: plazoSeleccionado.Hora || '',
+        horaFin: plazoSeleccionado.Hora_Fin || '',
+        lugar: plazoSeleccionado.Lugar || '',
+        recordatorio: plazoSeleccionado.Recordatorio || 'SI',
+        diasAntes: plazoSeleccionado.Dias_Antes || '1',
+        estado: plazoSeleccionado.Estado || 'Pendiente',
+        compartidoCon: plazoSeleccionado.Compartido_Con || '',
+      };
+
+      const response = await fetch('/api/agenda', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosActualizados),
+      });
+
+      const resultado = await response.json();
+
+      if (resultado.success) {
+        setMensaje('✅ Plazo actualizado correctamente');
+        setMostrarModalEditarPlazo(false);
+        cargarPlazos();
+      } else {
+        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handleEliminarPlazo = async () => {
+    if (!confirm('¿Estás seguro de eliminar este plazo?')) return;
+
+    try {
+      const response = await fetch(`/api/agenda?id=${plazoSeleccionado.ID}`, {
+        method: 'DELETE',
+      });
+      const resultado = await response.json();
+
+      if (resultado.success) {
+        setMensaje('✅ Plazo eliminado correctamente');
+        setMostrarModalEditarPlazo(false);
+        cargarPlazos();
+      } else {
+        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    }
+  };
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -1535,6 +1601,147 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edición de plazo */}
+      {mostrarModalEditarPlazo && plazoSeleccionado && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setMostrarModalEditarPlazo(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '30px',
+              borderRadius: '12px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>📅 {plazoSeleccionado.Titulo}</h2>
+            <form onSubmit={handleEditarPlazo}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label><strong>Tipo</strong></label>
+                  <select
+                    value={plazoSeleccionado.Tipo || 'Plazo'}
+                    onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Tipo: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  >
+                    <option value="Entrevista">Entrevista</option>
+                    <option value="Plazo">Plazo</option>
+                    <option value="Audiencia">Audiencia</option>
+                    <option value="Pericia">Pericia</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label><strong>Fecha</strong></label>
+                  <input
+                    type="date"
+                    value={parsearFechaArgentina(plazoSeleccionado.Fecha) || ''}
+                    onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Fecha: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
+
+                <div>
+                  <label><strong>Hora</strong></label>
+                  <input
+                    type="time"
+                    value={plazoSeleccionado.Hora || ''}
+                    onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Hora: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
+
+                <div>
+                  <label><strong>Estado</strong></label>
+                  <select
+                    value={plazoSeleccionado.Estado || 'Pendiente'}
+                    onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Estado: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  >
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Completado">Completado</option>
+                    <option value="Cancelado">Cancelado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Título</strong></label>
+                <input
+                  type="text"
+                  value={plazoSeleccionado.Titulo || ''}
+                  onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Titulo: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Descripción</strong></label>
+                <textarea
+                  value={plazoSeleccionado.Descripcion || ''}
+                  onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Descripcion: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }}
+                />
+              </div>
+
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Lugar</strong></label>
+                <input
+                  type="text"
+                  value={plazoSeleccionado.Lugar || ''}
+                  onChange={(e) => setPlazoSeleccionado({ ...plazoSeleccionado, Lugar: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
+              </div>
+
+              {mensaje && (
+                <div
+                  style={{
+                    marginTop: '15px',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
+                    color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
+                  }}
+                >
+                  {mensaje}
+                </div>
+              )}
+
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                  {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
+                </button>
+                <button type="button" onClick={handleEliminarPlazo} style={{ backgroundColor: '#e53e3e' }}>
+                  🗑️ Eliminar
+                </button>
+                <button type="button" onClick={() => { setMostrarModalEditarPlazo(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
+                  ❌ Cerrar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
