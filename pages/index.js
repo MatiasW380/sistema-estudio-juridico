@@ -153,7 +153,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
     if (diff < 0) return '#e53e3e';      // Rojo: vencido
-    if (diff === 0) return '#f687b3';    // Rosa: hoy (vence hoy)
+    if (diff === 0) return '#e53e3e';    // Rojo: HOY es el día del plazo
     if (diff === 1) return '#fc8cc9';    // Rosa: mañana
     if (diff >= 2 && diff <= 4) return '#ed8936'; // Amarillo: 3-4 días
     if (diff === 5) return '#38a169';    // Verde: 5 días
@@ -283,50 +283,6 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
         <div style={{ marginBottom: '40px' }}>
           <h2 style={{ fontSize: '1.3rem', color: '#2d3748', marginBottom: '20px' }}>📊 Resumen</h2>
           
-          {/* Tarjetas de estadísticas */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-            {/* Expedientes abiertos */}
-            <div style={{
-              backgroundColor: '#ebf8ff',
-              border: '1px solid #bee3f8',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3182ce' }}>
-                {stats.expedientesAbiertos}
-              </div>
-              <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Expedientes Abiertos</div>
-            </div>
-
-            {/* Plazos vencidos */}
-            <div style={{
-              backgroundColor: '#fff5f5',
-              border: '1px solid #feb2b2',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#e53e3e' }}>
-                {stats.plazosVencidos}
-              </div>
-              <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Plazos Vencidos</div>
-            </div>
-
-            {/* Tareas próximos 5 días */}
-            <div style={{
-              backgroundColor: '#fef5e7',
-              border: '1px solid #f9e79f',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ed8936' }}>
-                {tareas_state.length}
-              </div>
-              <div style={{ fontSize: '0.9rem', color: '#4a5568', marginTop: '5px' }}>Próximos 5 Días</div>
-            </div>
-          </div>
         </div>
 
         {/* === FIN DASHBOARD === */}
