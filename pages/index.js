@@ -279,12 +279,6 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
       </div>
 
       <div style={{ marginTop: '40px' }}>
-        {/* === DASHBOARD === */}
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '1.3rem', color: '#2d3748', marginBottom: '20px' }}>📊 Resumen</h2>
-          
-        </div>
-
         {/* === FIN DASHBOARD === */}
         <h2
           style={{
@@ -375,6 +369,11 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
                     <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>
                       {tarea.Tipo || 'Otro'}
                     </span>
+                    {tarea.Nombre_Cliente && (
+                      <span style={{ marginLeft: '10px', color: '#718096', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                        👤 {tarea.Nombre_Cliente}
+                      </span>
+                    )}
 
                     {tarea.Numero_SAC && (
                       <span
