@@ -369,9 +369,9 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
                     <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>
                       {tarea.Tipo || 'Otro'}
                     </span>
-                    {tarea.Nombre_Cliente && (
+                    {tarea.Cliente_Nombre && (
                       <span style={{ marginLeft: '10px', color: '#718096', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                        👤 {tarea.Nombre_Cliente}
+                        👤 {tarea.Cliente_Nombre}
                       </span>
                     )}
 
