@@ -184,6 +184,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [cargandoPlazos, setCargandoPlazos] = useState(false);
   const [mostrarModalEditarPlazo, setMostrarModalEditarPlazo] = useState(false);
   const [plazoSeleccionado, setPlazoSeleccionado] = useState(null);
+  const [comentarios, setComentarios] = useState([]);
+  const [cargandoComentarios, setCargandoComentarios] = useState(false);
+  const [nuevoComentario, setNuevoComentario] = useState('');
+  const [cargandoGuardarComentario, setCargandoGuardarComentario] = useState(false);
 
   // Filtrar plazos usando la función segura sin desfase
   const plazosPendientes = plazos.filter(p => p.Estado !== 'Completado' && getFechaObj(p.Fecha) >= new Date());
@@ -935,6 +939,20 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         >
           📅 Plazos
         </button>
+        <button
+          onClick={() => setActiveTab('comentarios')}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: activeTab === 'comentarios' ? '#3182ce' : 'transparent',
+            color: activeTab === 'comentarios' ? 'white' : '#4a5568',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          💬 Comentarios
+        </button>
       </div>
 
       {/* Contenido de las pestañas */}
@@ -1387,6 +1405,97 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Pestaña Comentarios */}
+        {activeTab === 'comentarios' && (
+          <div>
+            <h2>💬 Comentarios del Expediente</h2>
+            
+            {/* Formulario para agregar comentario */}
+            <div style={{
+              backgroundColor: '#f7fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '15px',
+              marginBottom: '20px'
+            }}>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (nuevoComentario.trim()) {
+                  // Aquí irá la función handleAgregarComentario en el Paso 4
+                  console.log('Agregar comentario:', nuevoComentario);
+                }
+              }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                  Nuevo Comentario
+                </label>
+                <textarea
+                  value={nuevoComentario}
+                  onChange={(e) => setNuevoComentario(e.target.value)}
+                  placeholder="Escribe un comentario interno..."
+                  style={{
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '10px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '4px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!nuevoComentario.trim() || cargandoGuardarComentario}
+                  style={{
+                    marginTop: '10px',
+                    backgroundColor: '#38a169',
+                    color: 'white',
+                    padding: '8px 16px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {cargandoGuardarComentario ? '📤 Guardando...' : '📤 Agregar Comentario'}
+                </button>
+              </form>
+            </div>
+
+            {/* Lista de comentarios */}
+            <div>
+              {cargandoComentarios ? (
+                <p>Cargando comentarios...</p>
+              ) : comentarios.length === 0 ? (
+                <p style={{ color: '#4a5568' }}>No hay comentarios aún. ¡Sé el primero en comentar!</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {comentarios.map((comentario, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <strong style={{ color: '#2d3748' }}>👤 {comentario.autor}</strong>
+                        <span style={{ fontSize: '0.85rem', color: '#718096' }}>
+                          {comentario.fecha}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.5' }}>
+                        {comentario.comentario}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
