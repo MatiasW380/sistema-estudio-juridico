@@ -21,8 +21,8 @@ export default async function handler(req, res) {
 
     console.log(`📥 Buscando comentarios para SAC: ${numeroSAC}`);
 
-    // Leer la hoja Comentarios_Expediente
-    const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Comentarios_Expediente`;
+    // Leer la hoja Comentarios_Expediente - usar range explícito
+    const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Comentarios_Expediente!A:E`;
     const accessToken = await getAccessToken();
 
     const response = await fetch(readUrl, {
@@ -37,6 +37,10 @@ export default async function handler(req, res) {
     const rows = data.values || [];
 
     console.log(`📊 Total de filas en Comentarios_Expediente: ${rows.length}`);
+    if (rows.length > 0) {
+      console.log(`📋 Primera fila (headers): ${JSON.stringify(rows[0])}`);
+      console.log(`📋 Primeras 3 filas de datos: ${JSON.stringify(rows.slice(1, 4))}`);
+    }
 
     if (rows.length === 0) {
       console.log('⚠️ La hoja Comentarios_Expediente está vacía');
@@ -77,7 +81,14 @@ export default async function handler(req, res) {
     // Filtrar comentarios del expediente y ordenar por fecha descendente
     const comentarios = rows
       .slice(1)
-      .filter((row) => row[idxNumeroSAC] === numeroSAC)
+      .filter((row) => {
+        const valor = row[idxNumeroSAC];
+        const coincide = valor === numeroSAC;
+        if (!coincide && row[idxNumeroSAC]) {
+          console.log(`  ❌ No coincide SAC: "${valor}" !== "${numeroSAC}"`);
+        }
+        return coincide;
+      })
       .map((row) => ({
         autor: row[idxAutor] || '',
         fecha: row[idxFecha] || '',

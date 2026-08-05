@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
     console.log('🔍 DEBUG: Leyendo hoja Comentarios_Expediente');
     
-    const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Comentarios_Expediente`;
+    const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Comentarios_Expediente!A:E`;
     const accessToken = await getAccessToken();
 
     const response = await fetch(readUrl, {
@@ -21,9 +21,6 @@ export default async function handler(req, res) {
     const data = await response.json();
     const rows = data.values || [];
 
-    console.log('Total rows:', rows.length);
-    console.log('All rows:', JSON.stringify(rows, null, 2));
-
     if (rows.length === 0) {
       return res.status(200).json({ 
         debug: 'Hoja vacía',
@@ -32,19 +29,35 @@ export default async function handler(req, res) {
     }
 
     const headers = rows[0];
-    console.log('Headers:', headers);
+    
+    // Buscar columnas de forma flexible (case-insensitive)
+    const normalize = (str) => (str || '').trim().toLowerCase();
+    const findColumnIndex = (headerName) => {
+      return headers.findIndex(h => normalize(h) === normalize(headerName));
+    };
+
+    const idxNumeroSAC = findColumnIndex('Numero_SAC');
+    const idxAutor = findColumnIndex('Autor');
+    const idxFecha = findColumnIndex('Fecha');
+    const idxComentario = findColumnIndex('Comentario');
 
     const resultado = {
       totalRows: rows.length,
       headers: headers,
-      headerIndices: {
-        'Numero_SAC': headers.indexOf('Numero_SAC'),
-        'Autor': headers.indexOf('Autor'),
-        'Fecha': headers.indexOf('Fecha'),
-        'Comentario': headers.indexOf('Comentario'),
-      },
+      columnIndices: { idxNumeroSAC, idxAutor, idxFecha, idxComentario },
       allRows: rows.slice(1),
-      rowsForSAC: numeroSAC ? rows.slice(1).filter(row => row[headers.indexOf('Numero_SAC')] === numeroSAC) : null
+      rowsForSAC: numeroSAC && idxNumeroSAC !== -1
+        ? rows.slice(1).filter(row => row[idxNumeroSAC] === numeroSAC) 
+        : null,
+      comentariosProcessados: numeroSAC && idxNumeroSAC !== -1
+        ? rows.slice(1)
+            .filter(row => row[idxNumeroSAC] === numeroSAC)
+            .map(row => ({
+              autor: row[idxAutor],
+              fecha: row[idxFecha],
+              comentario: row[idxComentario]
+            }))
+        : null
     };
 
     return res.status(200).json(resultado);
