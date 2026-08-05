@@ -54,8 +54,11 @@ export default async function handler(req, res) {
     ];
 
     console.log('📝 Agregando comentario:', { idComentario, numeroSAC, autor: userData.email });
+    console.log('📦 Fila a guardar:', fila);
 
     await appendToSheet('Comentarios_Expediente', fila);
+
+    console.log('✅ Comentario guardado exitosamente');
 
     return res.status(200).json({ 
       success: true, 
