@@ -894,7 +894,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
       if (resultado.success) {
         setNuevoComentario('');
-        cargarComentarios(); // Recargar comentarios
+        // Pequeño delay para asegurar que Sheets sincronice
+        setTimeout(() => {
+          cargarComentarios();
+        }, 200);
       } else {
         console.error('Error al agregar comentario:', resultado.error);
       }
@@ -1006,6 +1009,20 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           }}
         >
           💬 Comentarios
+          {comentarios.length > 0 && (
+            <span
+              style={{
+                marginLeft: '8px',
+                fontSize: '0.8rem',
+                backgroundColor: activeTab === 'comentarios' ? 'rgba(255,255,255,0.3)' : '#3182ce',
+                color: activeTab === 'comentarios' ? 'white' : 'white',
+                padding: '2px 8px',
+                borderRadius: '12px',
+              }}
+            >
+              {comentarios.length}
+            </span>
+          )}
         </button>
       </div>
 
