@@ -232,6 +232,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   }, [activeTab, sac]);
 
+  // Cargar comentarios al entrar a la pestaña
+  useEffect(() => {
+    if (activeTab === 'comentarios') {
+      cargarComentarios();
+    }
+  }, [activeTab, sac]);
+
   const volver = () => {
     router.push(`/clientes/${cliente.ID_Cliente}`);
   };
@@ -851,6 +858,53 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   };
 
+  const cargarComentarios = async () => {
+    setCargandoComentarios(true);
+    try {
+      const response = await fetch(`/api/obtener-comentarios?numeroSAC=${encodeURIComponent(sac)}`);
+      const data = await response.json();
+      setComentarios(data.comentarios || []);
+    } catch (error) {
+      console.error('Error al cargar comentarios:', error);
+      setComentarios([]);
+    } finally {
+      setCargandoComentarios(false);
+    }
+  };
+
+  const handleAgregarComentario = async (e) => {
+    e.preventDefault();
+    if (!nuevoComentario.trim()) {
+      return;
+    }
+
+    setCargandoGuardarComentario(true);
+
+    try {
+      const response = await fetch('/api/agregar-comentario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numeroSAC: sac,
+          comentario: nuevoComentario,
+        }),
+      });
+
+      const resultado = await response.json();
+
+      if (resultado.success) {
+        setNuevoComentario('');
+        cargarComentarios(); // Recargar comentarios
+      } else {
+        console.error('Error al agregar comentario:', resultado.error);
+      }
+    } catch (error) {
+      console.error('Error:', error.message);
+    } finally {
+      setCargandoGuardarComentario(false);
+    }
+  };
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -1421,13 +1475,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               padding: '15px',
               marginBottom: '20px'
             }}>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (nuevoComentario.trim()) {
-                  // Aquí irá la función handleAgregarComentario en el Paso 4
-                  console.log('Agregar comentario:', nuevoComentario);
-                }
-              }}>
+              <form onSubmit={handleAgregarComentario}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                   Nuevo Comentario
                 </label>
