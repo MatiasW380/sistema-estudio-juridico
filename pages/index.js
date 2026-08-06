@@ -258,6 +258,9 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
         <a href="/clientes">
           <button style={{ backgroundColor: '#3182ce' }}>👤 Clientes</button>
         </a>
+        <a href="/expedientes">
+          <button style={{ backgroundColor: '#3182ce' }}>📂 Expedientes</button>
+        </a>
         <a href="/agenda">
           <button style={{ backgroundColor: '#3182ce' }}>📅 Agenda</button>
         </a>
