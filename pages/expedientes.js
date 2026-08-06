@@ -49,24 +49,11 @@ export default function ExpedientesPage() {
   return (
     <div style={{ padding: '20px', backgroundColor: '#f7fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Volver al inicio */}
+        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
+        
         {/* Header */}
-        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ margin: 0, color: '#2d3748' }}>📂 Expedientes</h1>
-          <button
-            onClick={() => router.push('/')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#718096',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            ← Volver a Inicio
-          </button>
-        </div>
+        <h1 style={{ margin: '15px 0', color: '#2d3748' }}>📂 Expedientes</h1>
 
         {/* Filtros */}
         <div style={{
