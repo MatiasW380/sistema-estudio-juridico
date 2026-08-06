@@ -232,6 +232,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
   }, [activeTab, sac]);
 
+  // Cargar comentarios cuando monta la ficha (para mostrar badge)
+  useEffect(() => {
+    if (sac) {
+      cargarComentarios();
+    }
+  }, [sac]);
+
   // Cargar comentarios al entrar a la pestaña
   useEffect(() => {
     if (activeTab === 'comentarios') {
