@@ -94,7 +94,7 @@ TEXTO DE LA SENTENCIA A ANALIZAR:
 ${texto || 'No se proporcionó texto de sentencia'}
 
 INSTRUCCIONES:
-Analizá la sentencia proporcionada y generá un informe detallado que incluya:
+Analizá la sentencia proporcionada desde la perspectiva de nuestro estudio juridico (es decir, para defender a nuestro cliente) y generá un informe detallado que incluya:
 
 1. **Argumentos principales de las partes y del tribunal:** Resumí los fundamentos clave de la decisión.
 2. **Contradicciones internas:** Identificá si hay contradicciones en los argumentos del tribunal.
@@ -109,7 +109,7 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
 
       case 'estrategia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente teniendo en cuenta especialmente la ultima consulta realizada.
+Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente teniendo en cuenta especialmente la ultima consulta realizada y siemrpe desde la eprspectiva de la defensa de nuestro cliente.
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
