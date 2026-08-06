@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     switch (accion) {
       case 'resumir':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva. No uses asteriscos, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
 
 ACTUACIONES:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -156,7 +156,7 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 16384,
         },
       }),
     });
