@@ -89,7 +89,7 @@ RESPUESTA (basada exclusivamente en la biblioteca del sistema):
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8000,
         },
       }),
     });

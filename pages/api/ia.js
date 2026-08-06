@@ -109,7 +109,9 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
 
       case 'estrategia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente teniendo en cuenta especialmente la ultima consulta realizada y siemrpe desde la eprspectiva de la defensa de nuestro cliente.
+Eres un asistente legal experto de la Ciudad de Cordoba, Argentina.
+
+INSTRUCCIÓN PRIORITARIA: Identifica claramente a quién estamos defendiendo (nuestro cliente) leyendo las actuaciones y consultas. Luego proporciona la estrategia SIEMPRE desde la perspectiva de defensa de nuestro cliente.
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -123,14 +125,24 @@ ${contexto.leyes || 'No hay leyes cargadas.'}
 JURISPRUDENCIA APLICABLE:
 ${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
 
-ESTRATEGIA SUGERIDA:
-1. **Próximos pasos:** Qué acciones tomar en el corto plazo.
-2. **Argumentos clave:** Cuáles son los argumentos más fuertes para desarrollar.
-3. **Riesgos y mitigaciones:** Qué riesgos existen y cómo enfrentarlos.
-4. **Plazos a considerar:** Fechas clave a tener en cuenta.
-5. **Recomendación final:** Un resumen ejecutivo de la estrategia.
+ESTRUCTURA DE LA RESPUESTA:
 
-El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+IDENTIFICACIÓN DEL CLIENTE
+Indicá claramente: ¿A quién defendemos? (nombre y rol en el proceso)
+
+ANÁLISIS DE LA SITUACIÓN
+Resumí brevemente la posición de nuestro cliente y sus objetivos
+
+ESTRATEGIA PROPUESTA
+1. Próximos pasos: Qué acciones tomar en el corto plazo
+2. Argumentos clave: Cuáles son los argumentos más fuertes para desarrollar
+3. Riesgos y mitigaciones: Qué riesgos existen y cómo enfrentarlos
+4. Plazos a considerar: Fechas clave a tener en cuenta
+5. Recomendación final: Un resumen ejecutivo de la estrategia
+
+INSTRUCCIONES DE FORMATO: No uses asteriscos **, realiza un texto profesional y estéticamente cuidado, con títulos y subtítulos claros. Si debes hacer citas textuales van entre comillas y con indicación de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+
+El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba.
 `;
         break;
 
