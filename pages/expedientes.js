@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import BotonInicio from '../components/BotonInicio';
 
 export default function ExpedientesPage() {
   const router = useRouter();
@@ -49,11 +50,10 @@ export default function ExpedientesPage() {
   return (
     <div style={{ padding: '20px', backgroundColor: '#f7fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Volver al inicio */}
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
-        
-        {/* Header */}
-        <h1 style={{ margin: '15px 0', color: '#2d3748' }}>📂 Expedientes</h1>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+          <BotonInicio />
+          <h1 style={{ margin: 0, color: '#2d3748' }}>📂 Expedientes</h1>
+        </div>
 
         {/* Filtros */}
         <div style={{
