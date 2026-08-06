@@ -9,7 +9,6 @@ export default function ExpedientesPage() {
   // Filtros
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroJuzgado, setFiltroJuzgado] = useState('');
-  const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroFuero, setFiltroFuero] = useState('');
   const [filtroCaratula, setFiltroCaratula] = useState('');
 
@@ -35,18 +34,16 @@ export default function ExpedientesPage() {
   // Obtener listas únicas para filtros
   const clientesUnicos = [...new Set(expedientes.map(e => e.cliente))].filter(Boolean).sort();
   const juzgadosUnicos = [...new Set(expedientes.map(e => e.juzgado))].filter(Boolean).sort();
-  const ciudadesUnicas = [...new Set(expedientes.map(e => e.ciudad))].filter(Boolean).sort();
   const fuerosUnicos = [...new Set(expedientes.map(e => e.fuero))].filter(Boolean).sort();
 
   // Filtrar expedientes
   const expedientesFiltrados = expedientes.filter(exp => {
-    const coincideCliente = !filtroCliente || exp.cliente === filtroCliente;
+    const coincideCliente = !filtroCliente || exp.cliente.toLowerCase().includes(filtroCliente.toLowerCase());
     const coincideJuzgado = !filtroJuzgado || exp.juzgado === filtroJuzgado;
-    const coincideCiudad = !filtroCiudad || exp.ciudad === filtroCiudad;
     const coincideFuero = !filtroFuero || exp.fuero === filtroFuero;
     const coincideCaratula = !filtroCaratula || exp.caratula.toLowerCase().includes(filtroCaratula.toLowerCase());
     
-    return coincideCliente && coincideJuzgado && coincideCiudad && coincideFuero && coincideCaratula;
+    return coincideCliente && coincideJuzgado && coincideFuero && coincideCaratula;
   });
 
   return (
@@ -56,7 +53,7 @@ export default function ExpedientesPage() {
         <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, color: '#2d3748' }}>📂 Expedientes</h1>
           <button
-            onClick={() => router.push('/clientes')}
+            onClick={() => router.push('/')}
             style={{
               padding: '10px 20px',
               backgroundColor: '#718096',
@@ -67,7 +64,7 @@ export default function ExpedientesPage() {
               fontWeight: 'bold'
             }}
           >
-            ← Volver a Clientes
+            ← Volver a Inicio
           </button>
         </div>
 
@@ -87,27 +84,53 @@ export default function ExpedientesPage() {
             gap: '15px',
             marginBottom: '15px'
           }}>
-            {/* Filtro Cliente */}
+            {/* Filtro Cliente - Búsqueda */}
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#2d3748' }}>
-                👤 Cliente
+                👤 Cliente (búsqueda)
               </label>
-              <select
+              <input
+                type="text"
                 value={filtroCliente}
                 onChange={(e) => setFiltroCliente(e.target.value)}
+                placeholder="Escriba nombre del cliente..."
                 style={{
                   width: '100%',
                   padding: '8px',
                   border: '1px solid #e2e8f0',
                   borderRadius: '4px',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box'
                 }}
-              >
-                <option value="">Todos</option>
-                {clientesUnicos.map(cliente => (
-                  <option key={cliente} value={cliente}>{cliente}</option>
-                ))}
-              </select>
+              />
+              {filtroCliente && clientesUnicos.filter(c => c.toLowerCase().includes(filtroCliente.toLowerCase())).length > 0 && (
+                <div style={{
+                  marginTop: '5px',
+                  fontSize: '0.85rem',
+                  color: '#718096',
+                  maxHeight: '100px',
+                  overflowY: 'auto'
+                }}>
+                  {clientesUnicos
+                    .filter(c => c.toLowerCase().includes(filtroCliente.toLowerCase()))
+                    .slice(0, 5)
+                    .map(cliente => (
+                      <div
+                        key={cliente}
+                        onClick={() => setFiltroCliente(cliente)}
+                        style={{
+                          padding: '5px',
+                          cursor: 'pointer',
+                          backgroundColor: '#f0f0f0',
+                          borderRadius: '3px',
+                          marginBottom: '3px'
+                        }}
+                      >
+                        {cliente}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Filtro Juzgado */}
@@ -156,29 +179,6 @@ export default function ExpedientesPage() {
               </select>
             </div>
 
-            {/* Filtro Ciudad */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#2d3748' }}>
-                📍 Ciudad
-              </label>
-              <select
-                value={filtroCiudad}
-                onChange={(e) => setFiltroCiudad(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontFamily: 'inherit'
-                }}
-              >
-                <option value="">Todas</option>
-                {ciudadesUnicas.map(ciudad => (
-                  <option key={ciudad} value={ciudad}>{ciudad}</option>
-                ))}
-              </select>
-            </div>
-
             {/* Búsqueda Caratula */}
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#2d3748' }}>
@@ -206,7 +206,6 @@ export default function ExpedientesPage() {
             onClick={() => {
               setFiltroCliente('');
               setFiltroJuzgado('');
-              setFiltroCiudad('');
               setFiltroFuero('');
               setFiltroCaratula('');
             }}
@@ -257,7 +256,6 @@ export default function ExpedientesPage() {
                     <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#2d3748' }}>Carátula</th>
                     <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#2d3748' }}>Fuero</th>
                     <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#2d3748' }}>Juzgado</th>
-                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#2d3748' }}>Ciudad</th>
                     <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#2d3748' }}>Acciones</th>
                   </tr>
                 </thead>
@@ -277,7 +275,6 @@ export default function ExpedientesPage() {
                       </td>
                       <td style={{ padding: '12px', color: '#2d3748' }}>{exp.fuero}</td>
                       <td style={{ padding: '12px', color: '#2d3748' }}>{exp.juzgado}</td>
-                      <td style={{ padding: '12px', color: '#2d3748' }}>{exp.ciudad}</td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
                         <button
                           onClick={() => router.push(`/expediente/${exp.sac}`)}

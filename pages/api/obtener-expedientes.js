@@ -1,13 +1,39 @@
 // pages/api/obtener-expedientes.js
-// API para obtener todos los expedientes con sus datos
+// API para obtener expedientes (solo los que el usuario puede ver)
 
 import { getAccessToken } from '../../lib/googleSheets';
 
 const SHEETS_ID = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
 
+function parseUserFromCookie(rawCookie = '') {
+  const userCookie = rawCookie
+    .split(';')
+    .find((c) => c.trim().startsWith('user='));
+
+  if (!userCookie) return null;
+
+  try {
+    const value = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const data = JSON.parse(value);
+    return data?.email ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   try {
-    console.log('📥 Obteniendo todos los expedientes...');
+    console.log('📥 Obteniendo expedientes del usuario...');
+
+    // Obtener usuario autenticado
+    const userData = parseUserFromCookie(req.headers.cookie || '');
+    if (!userData?.email) {
+      console.log('⚠️ Usuario no autenticado');
+      return res.status(200).json({ expedientes: [] });
+    }
+
+    const userEmail = userData.email;
+    console.log(`📧 Usuario: ${userEmail}`);
 
     const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Clientes_y_Expedientes!A:L`;
     const accessToken = await getAccessToken();
@@ -32,11 +58,23 @@ export default async function handler(req, res) {
     const idxFuero = headers.indexOf('Fuero');
     const idxJuzgado = headers.indexOf('Juzgado');
     const idxDomicilio = headers.indexOf('Domicilio');
+    const idxUsuariosCompartidos = headers.indexOf('Usuarios_Compartidos');
+    const idxCreadoPor = headers.indexOf('Creado_Por');
 
-    // Extraer expedientes (filas donde Numero_SAC no esté vacío)
+    // Extraer expedientes con control de privacidad
     const expedientes = rows
       .slice(1)
       .filter(row => row[idxNumeroSAC] && row[idxNumeroSAC].trim()) // Solo filas con SAC
+      .filter(row => {
+        // Filtrar por privacidad: solo si el usuario es el creador o está en usuarios_compartidos
+        const creadoPor = row[idxCreadoPor] || '';
+        const compartidos = row[idxUsuariosCompartidos] || '';
+        
+        const esCreador = creadoPor.toLowerCase().trim() === userEmail.toLowerCase().trim();
+        const esCompartido = compartidos.toLowerCase().includes(userEmail.toLowerCase());
+        
+        return esCreador || esCompartido;
+      })
       .map(row => {
         // Extraer ciudad del domicilio (última parte después de la última coma)
         const domicilio = row[idxDomicilio] || '';
@@ -53,7 +91,7 @@ export default async function handler(req, res) {
         };
       });
 
-    console.log(`✅ Se encontraron ${expedientes.length} expedientes`);
+    console.log(`✅ Se encontraron ${expedientes.length} expedientes visibles para ${userEmail}`);
 
     return res.status(200).json({ expedientes });
   } catch (error) {
