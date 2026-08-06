@@ -3,7 +3,7 @@
 
 import { getAccessToken } from '../../lib/googleSheets';
 
-const SHEETS_ID = process.env.GOOGLE_SHEETS_ID;
+const SHEETS_ID = '17YFhMlCPE8AkXJG4Pw6PyzvJuwGgXWKpNc8RTIc7Drc';
 
 export default async function handler(req, res) {
   try {
