@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     switch (accion) {
       case 'resumir':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva.
+Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
 
 ACTUACIONES:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -70,13 +70,13 @@ RESUMEN EJECUTIVO:
 - Partes del proceso
 - Hechos principales
 - Estado actual (etapa procesal)
-- Próximos pasos sugeridos
+- Próximos pasos sugeridos, teniendo en cuenta las leyes locales de procedimiento y de fondo
 `;
         break;
 
       case 'analizar-sentencia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba en Argentina, especializado en análisis de sentencias y apelaciones.
+Eres un asistente legal experto de la Ciudad de Cordoba en Argentina, especializado en análisis de sentencias y apelaciones. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -101,9 +101,9 @@ Analizá la sentencia proporcionada y generá un informe detallado que incluya:
 3. **Errores de procedimiento o de fondo:** Detectá posibles errores en la aplicación de la ley o en el procedimiento.
 4. **Puntos apelables:** Identificá los puntos que podrían ser apelados, **fundamentándolos con la jurisprudencia y doctrina del sistema** (citá literalmente las fuentes disponibles).
 5. **Fortalezas y debilidades:** Evaluá la solidez de la sentencia y los posibles argumentos en contra.
-6. **Recomendación final:** Sugerí si vale la pena apelar y por qué.
+6. **Recomendación final:** Sugerí si vale la pena apelar y por qué, detallando cuales serian los agravios posibles a expresar en la apelacion.
 
-El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba.
+El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
 `;
         break;
 
@@ -130,7 +130,7 @@ ESTRATEGIA SUGERIDA:
 4. **Plazos a considerar:** Fechas clave a tener en cuenta.
 5. **Recomendación final:** Un resumen ejecutivo de la estrategia.
 
-El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba.
+El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
 `;
         break;
 
