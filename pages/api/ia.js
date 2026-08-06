@@ -76,7 +76,7 @@ RESUMEN EJECUTIVO:
 
       case 'analizar-sentencia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba en Argentina, especializado en análisis de sentencias y apelaciones. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+Eres un asistente legal experto de la Ciudad de Cordoba en Argentina, especializado en análisis de sentencias y apelaciones. 
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -94,7 +94,7 @@ TEXTO DE LA SENTENCIA A ANALIZAR:
 ${texto || 'No se proporcionó texto de sentencia'}
 
 INSTRUCCIONES:
-Analizá la sentencia proporcionada desde la perspectiva de nuestro estudio juridico (es decir, para defender a nuestro cliente) y generá un informe detallado que incluya:
+Analizá la sentencia proporcionada y generá un informe detallado que incluya:
 
 1. **Argumentos principales de las partes y del tribunal:** Resumí los fundamentos clave de la decisión.
 2. **Contradicciones internas:** Identificá si hay contradicciones en los argumentos del tribunal.
