@@ -1,10 +1,9 @@
 // pages/index.js
-// Página de inicio con verificación de sesión y tareas urgentes (cliente + SAC)
+// Página de inicio - Dashboard de tareas urgentes
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getTareasPendientes, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../lib/googleSheets';
-import { IconHome } from '../components/Icons';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -139,11 +138,6 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
     }
   }, [router]);
 
-  const handleLogout = () => {
-    document.cookie = 'user=; path=/; max-age=0';
-    router.push('/login');
-  };
-
   const getUrgenciaColor = (fechaStr) => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -243,49 +237,12 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <IconHome size={28} /> Sistema de Gestión Jurídica
-          </h1>
-          <p style={{ marginTop: '4px', color: '#4a5568', fontSize: '0.95rem' }}>
-            Usuario: <strong>{usuarioEmail || 'No identificado'}</strong>
-          </p>
-        </div>
-        <button onClick={handleLogout} style={{ backgroundColor: '#e53e3e' }}>
-          Cerrar sesión
-        </button>
-      </div>
-
-      <div style={{ marginTop: '30px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-        <a href="/clientes">
-          <button style={{ backgroundColor: '#3182ce' }}>👤 Clientes</button>
-        </a>
-        <a href="/expedientes">
-          <button style={{ backgroundColor: '#3182ce' }}>📂 Expedientes</button>
-        </a>
-        <a href="/agenda">
-          <button style={{ backgroundColor: '#3182ce' }}>📅 Agenda</button>
-        </a>
-        <a href="/honorarios">
-          <button style={{ backgroundColor: '#3182ce' }}>💰 Finanzas</button>
-        </a>
-        <a href="/biblioteca">
-          <button style={{ backgroundColor: '#3182ce' }}>📚 Biblioteca</button>
-        </a>
-        <button
-          onClick={() => router.push('/ia-general')}
-          style={{ backgroundColor: '#7c3aed' }}
-        >
-          🤖 Asistente IA
-        </button>
-        <a href="/usuarios" style={{ marginLeft: 'auto' }}>
-          <button style={{ backgroundColor: '#718096' }}>👥 Usuarios</button>
-        </a>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Bienvenido</h1>
+        <p>Resumen de tareas urgentes y estado del estudio</p>
       </div>
 
       <div style={{ marginTop: '40px' }}>
-        {/* === FIN DASHBOARD === */}
         <h2
           style={{
             fontSize: '1.3rem',
