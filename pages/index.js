@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getTareasPendientes, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../lib/googleSheets';
+import { IconHome } from '../components/Icons';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -244,9 +245,11 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ marginBottom: 0 }}>🏛️ Sistema de Gestión Jurídica</h1>
+          <h1 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconHome size={28} /> Sistema de Gestión Jurídica
+          </h1>
           <p style={{ marginTop: '4px', color: '#4a5568', fontSize: '0.95rem' }}>
-            👤 Usuario: <strong>{usuarioEmail || 'No identificado'}</strong>
+            Usuario: <strong>{usuarioEmail || 'No identificado'}</strong>
           </p>
         </div>
         <button onClick={handleLogout} style={{ backgroundColor: '#e53e3e' }}>
@@ -294,7 +297,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
             gap: '10px',
           }}
         >
-          ⏰ Tareas Urgentes (próximos 5 días)
+          Tareas Urgentes (próximos 5 días)
           {tareas_state.length > 0 && (
             <span
               style={{
@@ -321,7 +324,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
               marginTop: '15px',
             }}
           >
-            🎉 No hay tareas urgentes en los próximos 5 días.
+            ✓ No hay tareas urgentes en los próximos 5 días.
           </div>
         ) : (
           <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -374,7 +377,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
                     </span>
                     {tarea.Cliente && (
                       <span style={{ marginLeft: '10px', color: '#718096', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                        👤 {tarea.Cliente}
+                        {tarea.Cliente}
                       </span>
                     )}
 
@@ -404,7 +407,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
                           fontSize: '0.7rem',
                         }}
                       >
-                        👤 {tarea.Cliente_Nombre}
+                        {tarea.Cliente_Nombre}
                       </span>
                     )}
                   </div>
