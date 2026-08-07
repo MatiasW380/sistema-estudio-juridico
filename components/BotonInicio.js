@@ -2,6 +2,7 @@
 // Componente reutilizable para el botón de inicio
 
 import Link from 'next/link';
+import { Home } from 'lucide-react';
 
 export default function BotonInicio() {
   return (
@@ -10,9 +11,13 @@ export default function BotonInicio() {
         backgroundColor: '#4a5568', 
         padding: '8px 16px', 
         fontSize: '0.9rem',
-        marginRight: '10px'
+        marginRight: '10px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
       }}>
-        🏠 Inicio
+        <Home size={18} />
+        Inicio
       </button>
     </Link>
   );
