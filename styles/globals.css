@@ -218,6 +218,218 @@ button.button-ghost:hover,
   color: var(--color-text-primary);
 }
 
+/* ============ BOTONES DANGER (ROJO) ============ */
+/* Acciones destructivas: eliminar, cancelar confirmación */
+button.button-danger,
+.button.button-danger {
+  background-color: var(--color-urgent-text);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+button.button-danger:hover,
+.button.button-danger:hover {
+  background-color: #7f1d1d;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+button.button-danger:active,
+.button.button-danger:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============ BOTONES SUCCESS (VERDE) ============ */
+/* Acciones confirmadas, guardadas, completadas */
+button.button-success,
+.button.button-success {
+  background-color: var(--color-success-text);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+button.button-success:hover,
+.button.button-success:hover {
+  background-color: #15803d;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+button.button-success:active,
+.button.button-success:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============ BOTONES WARNING (ÁMBAR) ============ */
+/* Acciones de precaución: advertencia, atención */
+button.button-warning,
+.button.button-warning {
+  background-color: var(--color-warning-text);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+button.button-warning:hover,
+.button.button-warning:hover {
+  background-color: #b45309;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+button.button-warning:active,
+.button.button-warning:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============ BOTONES INFO (AZUL CLARO) ============ */
+/* Acciones informativas, abrir, expandir */
+button.button-info,
+.button.button-info {
+  background-color: var(--color-info-text);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+button.button-info:hover,
+.button.button-info:hover {
+  background-color: #1e40af;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+button.button-info:active,
+.button.button-info:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============ BUTTON GROUP ============ */
+/* Grupo de botones relacionados */
+.button-group {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.button-group button,
+.button-group .button {
+  margin: 0;
+}
+
+/* Alineación vertical */
+.button-group.vertical {
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.button-group.vertical button,
+.button-group.vertical .button {
+  width: 100%;
+}
+
+/* Button group apretado (sin gap) */
+.button-group.compact {
+  gap: 0;
+}
+
+.button-group.compact button,
+.button-group.compact .button {
+  border-radius: 0;
+  border: 1px solid var(--color-border-light);
+}
+
+.button-group.compact button:first-child,
+.button-group.compact .button:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.button-group.compact button:last-child,
+.button-group.compact .button:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.button-group.compact button:not(:first-child):not(:last-child),
+.button-group.compact .button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+}
+
+/* ============ BUTTON OUTLINE ============ */
+/* Botones con solo borde, sin fondo */
+button.button-outline,
+.button.button-outline {
+  background-color: transparent;
+  border: 2px solid;
+  padding: 0 calc(var(--spacing-lg) - 1px);
+}
+
+button.button-outline:not(.button-danger):not(.button-warning):not(.button-info):not(.button-success),
+.button.button-outline:not(.button-danger):not(.button-warning):not(.button-info):not(.button-success) {
+  border-color: var(--color-cobalt);
+  color: var(--color-cobalt);
+}
+
+button.button-outline:not(.button-danger):not(.button-warning):not(.button-info):not(.button-success):hover,
+.button.button-outline:not(.button-danger):not(.button-warning):not(.button-info):not(.button-success):hover {
+  background-color: var(--color-cobalt);
+  color: white;
+}
+
+button.button-outline.button-danger,
+.button.button-outline.button-danger {
+  border-color: var(--color-urgent-text);
+  color: var(--color-urgent-text);
+  background-color: transparent;
+}
+
+button.button-outline.button-danger:hover,
+.button.button-outline.button-danger:hover {
+  background-color: var(--color-urgent-text);
+  color: white;
+}
+
+button.button-outline.button-success,
+.button.button-outline.button-success {
+  border-color: var(--color-success-text);
+  color: var(--color-success-text);
+  background-color: transparent;
+}
+
+button.button-outline.button-success:hover,
+.button.button-outline.button-success:hover {
+  background-color: var(--color-success-text);
+  color: white;
+}
+
+button.button-outline.button-warning,
+.button.button-outline.button-warning {
+  border-color: var(--color-warning-text);
+  color: var(--color-warning-text);
+  background-color: transparent;
+}
+
+button.button-outline.button-warning:hover,
+.button.button-outline.button-warning:hover {
+  background-color: var(--color-warning-text);
+  color: white;
+}
+
+button.button-outline.button-info,
+.button.button-outline.button-info {
+  border-color: var(--color-info-text);
+  color: var(--color-info-text);
+  background-color: transparent;
+}
+
+button.button-outline.button-info:hover,
+.button.button-outline.button-info:hover {
+  background-color: var(--color-info-text);
+  color: white;
+}
+
 /* ============ ESTADOS DESHABILITADOS ============ */
 button:disabled,
 .button:disabled {
