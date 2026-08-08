@@ -117,7 +117,7 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
           placeholder="Buscar por nombre, DNI, teléfono, N° SAC o carátula..."
           style={{ flex: 1, minWidth: '200px' }}
         />
-        <button onClick={handleBuscar} disabled={cargando} style={{ backgroundColor: 'var(--color-cobalt)' }}>
+        <button onClick={handleBuscar} disabled={cargando}>
           {cargando ? 'Buscando...' : 'Buscar'}
         </button>
         <button onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }} className="button-secondary">
