@@ -13,6 +13,7 @@ export async function getServerSideProps() {
 
 export default function NuevoCliente({ nextId }) {
   const [nombre, setNombre] = useState('');
+  const [tipoCliente, setTipoCliente] = useState('persona');
   const [telefono, setTelefono] = useState('');
   const [dni, setDni] = useState('');
   const [domicilio, setDomicilio] = useState('');
@@ -95,6 +96,15 @@ export default function NuevoCliente({ nextId }) {
               disabled
             />
             <span className="input-helper">El ID se asigna automáticamente al crear el cliente</span>
+          </div>
+
+          <div className="form-group">
+            <label>Tipo de Cliente</label>
+            <select value={tipoCliente} onChange={(e) => setTipoCliente(e.target.value)}>
+              <option value="persona">Persona Física</option>
+              <option value="empresa">Persona Jurídica</option>
+            </select>
+            <span className="input-helper">Selecciona el tipo de cliente que estás registrando</span>
           </div>
 
           <div className="form-group">

@@ -788,27 +788,357 @@ textarea.textarea-warning:focus {
   border-left-color: var(--color-success-text);
 }
 
-/* ============ FORM SECTIONS ============ */
-.form-section {
-  margin-bottom: var(--spacing-xl);
-  padding-bottom: var(--spacing-xl);
-  border-bottom: 1px solid var(--color-border-light);
-}
+/* ============================================================
+   8. SELECTORES - SELECT, CHECKBOX, RADIO
+   ============================================================ */
 
-.form-section:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-
-.form-section-title {
-  font-size: 1rem;
-  font-weight: 600;
+/* ============ SELECT (DROPDOWN) ============ */
+select {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 0.9375rem; /* 15px */
+  font-family: var(--font-family);
   color: var(--color-text-primary);
-  margin-bottom: var(--spacing-lg);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%232563eb' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+select:hover:not(:disabled) {
+  border-color: var(--color-cobalt);
+  background-color: var(--color-surface);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--color-cobalt);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+select:disabled {
+  background-color: var(--color-bg-primary);
   color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+select option {
+  color: var(--color-text-primary);
+  background-color: white;
+  padding: 8px;
+}
+
+/* ============ SELECT SIZES ============ */
+select.select-sm {
+  padding: 8px 40px 8px 12px;
+  font-size: 0.8125rem; /* 13px */
+}
+
+select.select-lg {
+  padding: 12px 40px 12px 16px;
+  font-size: 1rem; /* 16px */
+}
+
+/* ============ SELECT VALIDATION ============ */
+select.select-error {
+  border-color: var(--color-urgent-text);
+  background-color: rgba(156, 27, 27, 0.02);
+}
+
+select.select-error:focus {
+  box-shadow: 0 0 0 3px rgba(156, 27, 27, 0.1);
+  border-color: var(--color-urgent-text);
+}
+
+select.select-success {
+  border-color: var(--color-success-text);
+  background-color: rgba(22, 163, 74, 0.02);
+}
+
+select.select-success:focus {
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+  border-color: var(--color-success-text);
+}
+
+/* ============ CHECKBOX (Custom Styling) ============ */
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border-light);
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: var(--color-surface);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  margin: 2px;
+  position: relative;
+}
+
+input[type='checkbox']:hover:not(:disabled) {
+  border-color: var(--color-cobalt);
+}
+
+input[type='checkbox']:checked {
+  background-color: var(--color-cobalt);
+  border-color: var(--color-cobalt);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='white' d='M11.3 3.8L5.5 10 2.7 7.2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+}
+
+input[type='checkbox']:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-cobalt);
+}
+
+input[type='checkbox']:disabled {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-border-light);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input[type='checkbox']:checked:disabled {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-text-secondary);
+}
+
+/* ============ RADIO (Custom Styling) ============ */
+input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border-light);
+  border-radius: 50%;
+  cursor: pointer;
+  background-color: var(--color-surface);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  margin: 2px;
+}
+
+input[type='radio']:hover:not(:disabled) {
+  border-color: var(--color-cobalt);
+}
+
+input[type='radio']:checked {
+  background-color: var(--color-cobalt);
+  border-color: var(--color-cobalt);
+  box-shadow: inset 0 0 0 4px var(--color-surface);
+}
+
+input[type='radio']:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-cobalt);
+}
+
+input[type='radio']:disabled {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-border-light);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input[type='radio']:checked:disabled {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-text-secondary);
+}
+
+/* ============ CHECKBOX/RADIO LABELS ============ */
+.checkbox-label,
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  user-select: none;
+}
+
+.checkbox-label input[type='checkbox'],
+.radio-label input[type='radio'] {
+  cursor: pointer;
+  margin: 0;
+}
+
+.checkbox-label:hover input[type='checkbox']:not(:disabled),
+.radio-label:hover input[type='radio']:not(:disabled) {
+  border-color: var(--color-cobalt);
+}
+
+.checkbox-label.disabled,
+.radio-label.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  color: var(--color-text-secondary);
+}
+
+/* ============ CHECKBOX/RADIO GROUPS ============ */
+.checkbox-group,
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.checkbox-group.horizontal,
+.radio-group.horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.checkbox-item,
+.radio-item {
+  display: flex;
+  align-items: center;
+}
+
+/* ============ TOGGLE SWITCH ============ */
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch input[type='checkbox'] {
+  display: none;
+}
+
+.toggle-switch-slider {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background-color: #cbd5e1;
+  border-radius: 12px;
+  transition: background-color var(--transition-normal);
+  margin-right: var(--spacing-sm);
+}
+
+.toggle-switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch input[type='checkbox']:checked + .toggle-switch-slider {
+  background-color: var(--color-cobalt);
+}
+
+.toggle-switch input[type='checkbox']:checked + .toggle-switch-slider::before {
+  transform: translateX(20px);
+}
+
+.toggle-switch input[type='checkbox']:focus + .toggle-switch-slider {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.toggle-switch input[type='checkbox']:disabled + .toggle-switch-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============ MULTI-SELECT (Custom) ============ */
+.multi-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  min-height: 40px;
+  align-items: center;
+  transition: all var(--transition-normal);
+}
+
+.multi-select:hover {
+  border-color: var(--color-cobalt);
+}
+
+.multi-select:focus-within {
+  border-color: var(--color-cobalt);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.multi-select-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: var(--color-cobalt);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.multi-select-tag button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  height: auto;
+}
+
+.multi-select-tag button:hover {
+  opacity: 0.8;
+}
+
+.multi-select-input {
+  flex: 1;
+  min-width: 100px;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+}
+
+.multi-select-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* ============ FIELDSET ============ */
+fieldset {
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+fieldset legend {
+  padding: 0 var(--spacing-sm);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
 }
 
 /* ============================================================
