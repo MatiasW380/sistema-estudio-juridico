@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getNextClienteId } from '../../lib/googleSheets';
-import BotonInicio from '../../components/BotonInicio';
 
 export async function getServerSideProps() {
   console.log('📄 getServerSideProps de nuevo cliente ejecutándose');
@@ -79,75 +78,96 @@ export default function NuevoCliente({ nextId }) {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>➕ Nuevo Cliente</h1>
-        </div>
-        <a href="/clientes" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver a la lista</a>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Nuevo Cliente</h1>
+        <p>Crea un nuevo registro de cliente en el sistema</p>
       </div>
 
       <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>ID Asignado:</strong></label>
-          <input type="text" value={nextId} disabled style={{ backgroundColor: '#f7fafc' }} />
-          <small style={{ color: '#4a5568' }}>El ID se asigna automáticamente</small>
-        </div>
+        <div className="form-section">
+          <h2 className="form-section-title">Información Básica</h2>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>Nombre *</strong></label>
-          <input
-            type="text"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej: Juan Perez"
-            required
-          />
-        </div>
+          <div className="form-group">
+            <label>ID Asignado</label>
+            <input
+              type="text"
+              value={nextId}
+              disabled
+            />
+            <span className="input-helper">El ID se asigna automáticamente al crear el cliente</span>
+          </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>Teléfono</strong></label>
-          <input
-            type="text"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            placeholder="Ej: 3511234567"
-          />
-        </div>
+          <div className="form-group">
+            <label className="label-required">Nombre Completo</label>
+            <input
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: Juan García López"
+              className={error && !nombre.trim() ? 'input-error' : ''}
+              required
+            />
+            {error && !nombre.trim() && (
+              <span className="form-error">{error}</span>
+            )}
+          </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>DNI</strong></label>
-          <input
-            type="text"
-            value={dni}
-            onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
-            placeholder="Ej: 12345678"
-          />
-        </div>
+          <div className="form-group">
+            <label>Teléfono</label>
+            <input
+              type="tel"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              placeholder="+54 351 4444444"
+            />
+          </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>Domicilio</strong></label>
-          <input
-            type="text"
-            value={domicilio}
-            onChange={(e) => setDomicilio(e.target.value)}
-            placeholder="Ej: Calle Falsa 123"
-          />
+          <div className="form-group">
+            <label>DNI</label>
+            <input
+              type="text"
+              value={dni}
+              onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+              placeholder="Ej: 12345678"
+            />
+            <span className="input-helper">Solo números, sin puntos ni guiones</span>
+          </div>
+
+          <div className="form-group">
+            <label>Domicilio</label>
+            <input
+              type="text"
+              value={domicilio}
+              onChange={(e) => setDomicilio(e.target.value)}
+              placeholder="Ej: Calle Falsa 123, Depto 4A"
+            />
+          </div>
         </div>
 
         {error && (
-          <div style={{ backgroundColor: '#fed7d7', color: '#9b2c2c', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
-            {error}
+          <div className="form-note error">
+            <strong>❌ Error:</strong> {error}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-            {cargando ? 'Guardando...' : 'Guardar Cliente'}
-          </button>
-          <button type="button" onClick={() => router.push('/clientes')} style={{ backgroundColor: '#718096' }}>
-            Cancelar
-          </button>
+        <div className="form-actions">
+          <div className="form-actions-left" />
+          <div className="form-actions-right">
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => router.push('/clientes')}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="button-success"
+              disabled={cargando}
+            >
+              {cargando ? 'Guardando...' : 'Guardar Cliente'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
