@@ -102,50 +102,52 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>👥 Clientes</h1>
-        </div>
-        <button 
-          onClick={() => router.push('/clientes/nuevo')}
-          style={{ backgroundColor: '#38a169' }}
-        >
-          + Nuevo Cliente
-        </button>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Clientes</h1>
+        <p>Gestión de clientes y expedientes asociados</p>
       </div>
 
-      {/* Buscador */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+      {/* Buscador y acciones */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <input
           type="text"
           value={terminoBusqueda}
           onChange={(e) => setTerminoBusqueda(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Buscar por nombre, DNI, teléfono, N° SAC o carátula..."
-          style={{ flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+          style={{ flex: 1, minWidth: '200px' }}
         />
-        <button onClick={handleBuscar} style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-          {cargando ? 'Buscando...' : '🔍 Buscar'}
+        <button onClick={handleBuscar} disabled={cargando} style={{ backgroundColor: 'var(--color-cobalt)' }}>
+          {cargando ? 'Buscando...' : 'Buscar'}
         </button>
-        <button onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }} style={{ backgroundColor: '#718096' }}>
+        <button onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }} className="button-secondary">
           Limpiar
+        </button>
+        <button 
+          onClick={() => router.push('/clientes/nuevo')}
+          style={{ backgroundColor: '#16a34a' }}
+        >
+          + Nuevo Cliente
         </button>
       </div>
 
       {clientes.length === 0 ? (
-        <p>No hay clientes cargados en la planilla.</p>
+        <div className="table-empty">
+          <div className="table-empty-icon">📋</div>
+          <div className="table-empty-text">No hay clientes</div>
+          <div className="table-empty-subtext">Crea un nuevo cliente para comenzar</div>
+        </div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+        <table>
           <thead>
-            <tr style={{ backgroundColor: '#edf2f7' }}>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>ID</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Nombre</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Teléfono</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>DNI</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Domicilio</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Expedientes</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Acciones</th>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Teléfono</th>
+              <th>DNI</th>
+              <th>Domicilio</th>
+              <th className="numeric">Expedientes</th>
+              <th style={{ textAlign: 'center' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
