@@ -226,12 +226,15 @@ label {
 }
 
 /* ============================================================
-   6. TABLAS
+   6. TABLAS - DISEÑO PROFESIONAL SAAS
    ============================================================ */
 table {
   width: 100%;
   border-collapse: collapse;
   background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 thead {
@@ -242,26 +245,157 @@ thead {
 th {
   padding: var(--spacing-md) var(--spacing-lg);
   text-align: left;
-  font-size: 0.75rem;
+  font-size: 0.75rem; /* 12px */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-secondary);
+  user-select: none;
+}
+
+/* Alineación derecha para números y moneda */
+th.numeric,
+td.numeric {
+  text-align: right;
 }
 
 td {
   padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: 1px solid var(--color-border-light);
-  font-size: 0.9375rem;
+  font-size: 0.9375rem; /* 15px */
   color: var(--color-text-primary);
+  vertical-align: middle;
 }
 
 tbody tr {
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 tbody tr:hover {
   background-color: var(--color-bg-primary);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Estilos para tipos de contenido en tablas */
+.table-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-status-active {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.table-status-pending {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.table-status-inactive {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.table-status-urgent {
+  background-color: var(--color-urgent-bg);
+  color: var(--color-urgent-text);
+}
+
+.table-link {
+  color: var(--color-cobalt);
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-normal);
+}
+
+.table-link:hover {
+  color: var(--color-cobalt-dark);
+  text-decoration: underline;
+}
+
+/* Tabla compacta (para datos densos) */
+.table-compact td,
+.table-compact th {
+  padding: 10px var(--spacing-lg);
+  font-size: 0.875rem;
+}
+
+/* Tabla striped (filas alternadas - opcional) */
+.table-striped tbody tr:nth-child(odd) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+.table-striped tbody tr:nth-child(odd):hover {
+  background-color: var(--color-bg-primary);
+}
+
+/* Actions en tablas */
+.table-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.table-action-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.875rem;
+}
+
+.table-action-btn:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.table-action-btn.delete {
+  color: var(--color-urgent-text);
+}
+
+.table-action-btn.delete:hover {
+  background-color: var(--color-urgent-bg);
+}
+
+/* Empty state para tablas sin datos */
+.table-empty {
+  padding: 40px var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+}
+
+.table-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.3;
+}
+
+.table-empty-text {
+  font-size: 0.9375rem;
+}
+
+.table-empty-subtext {
+  font-size: 0.8125rem;
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-sm);
 }
 
 /* ============================================================
