@@ -169,20 +169,16 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
                   {cliente.totalExpedientes || 0}
                 </td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
-                  <button
-                    onClick={() => eliminarCliente(cliente.ID_Cliente, cliente.Nombre_Cliente)}
-                    style={{
-                      backgroundColor: '#e53e3e',
-                      padding: '5px 10px',
-                      fontSize: '0.8rem',
-                      opacity: eliminando === cliente.ID_Cliente ? 0.7 : 1,
-                      cursor: eliminando === cliente.ID_Cliente ? 'not-allowed' : 'pointer'
-                    }}
-                    disabled={eliminando === cliente.ID_Cliente}
-                  >
-                    {eliminando === cliente.ID_Cliente ? 'Eliminando...' : '🗑️ Eliminar'}
-                  </button>
+                <td style={{ textAlign: 'center' }}>
+                  <div className="table-actions" style={{ justifyContent: 'center' }}>
+                    <button
+                      className="button-danger button-sm"
+                      onClick={() => eliminarCliente(cliente.ID_Cliente, cliente.Nombre_Cliente)}
+                      disabled={eliminando === cliente.ID_Cliente}
+                    >
+                      {eliminando === cliente.ID_Cliente ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
