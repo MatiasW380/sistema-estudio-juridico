@@ -143,16 +143,16 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
     hoy.setHours(0, 0, 0, 0);
 
     const fechaPlazo = getFechaLocalObj(fechaStr);
-    if (!fechaPlazo) return '#718096';
+    if (!fechaPlazo) return '#94a3b8'; // Gris
 
     const diff = Math.ceil((fechaPlazo - hoy) / (1000 * 60 * 60 * 24));
 
-    if (diff < 0) return '#e53e3e';      // Rojo: vencido
-    if (diff === 0) return '#e53e3e';    // Rojo: HOY es el día del plazo
-    if (diff === 1) return '#fc8cc9';    // Rosa: mañana
-    if (diff >= 2 && diff <= 4) return '#ed8936'; // Amarillo: 3-4 días
-    if (diff === 5) return '#38a169';    // Verde: 5 días
-    return '#718096';                     // Gris: otro
+    if (diff < 0) return '#991b1b';      // Rojo vino: vencido
+    if (diff === 0) return '#991b1b';    // Rojo vino: HOY es el día del plazo
+    if (diff === 1) return '#d97706';    // Ámbar: mañana
+    if (diff >= 2 && diff <= 4) return '#d97706'; // Ámbar: 3-4 días
+    if (diff === 5) return '#16a34a';    // Verde: 5 días
+    return '#3b82f6';                     // Azul: otro
   };
 
   const getUrgenciaTexto = (fechaStr) => {
@@ -289,89 +289,144 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
               <div
                 key={`${tarea.ID || 'tarea'}-${index}`}
                 style={{
-                  border: `2px solid ${getUrgenciaColor(tarea.Fecha)}`,
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  backgroundColor: 'white',
+                  borderLeft: `4px solid ${getUrgenciaColor(tarea.Fecha)}`,
+                  border: `1px solid #e2e8f0`,
+                  borderLeft: `4px solid ${getUrgenciaColor(tarea.Fecha)}`,
+                  borderRadius: '6px',
+                  padding: '16px',
+                  backgroundColor: '#ffffff',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'all 0.2s ease-in-out',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   flexWrap: 'wrap',
-                  gap: '10px',
+                  gap: '12px',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
                 }}
                 onClick={() => handleTareaClick(tarea)}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f7fafc';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                  <span
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1 }}>
+                  <div
                     style={{
-                      backgroundColor: getUrgenciaColor(tarea.Fecha),
-                      color: 'white',
-                      padding: '2px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.7rem',
-                      fontWeight: 'bold',
-                      minWidth: '60px',
-                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      minWidth: '70px',
+                      flexShrink: 0,
                     }}
                   >
-                    {getUrgenciaTexto(tarea.Fecha)}
-                  </span>
-
-                  <div>
-                    <strong>{tarea.Titulo || 'Sin título'}</strong>
-                    <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.9rem' }}>
-                      {tarea.Tipo || 'Otro'}
+                    <span
+                      style={{
+                        backgroundColor: getUrgenciaColor(tarea.Fecha),
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {getUrgenciaTexto(tarea.Fecha)}
                     </span>
-                    {tarea.Cliente && (
-                      <span style={{ marginLeft: '10px', color: '#718096', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                        {tarea.Cliente}
-                      </span>
-                    )}
+                  </div>
 
-                    {tarea.Numero_SAC && (
-                      <span
-                        style={{
-                          marginLeft: '10px',
-                          backgroundColor: '#3182ce',
-                          color: 'white',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.7rem',
-                        }}
-                      >
-                        SAC: {tarea.Numero_SAC}
-                      </span>
-                    )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '1rem', color: '#0f172a' }}>
+                        {tarea.Titulo || 'Sin título'}
+                      </strong>
+                      {tarea.Tipo && (
+                        <span
+                          style={{
+                            marginLeft: '12px',
+                            color: '#64748b',
+                            fontSize: '0.875rem',
+                            fontWeight: '500',
+                          }}
+                        >
+                          {tarea.Tipo}
+                        </span>
+                      )}
+                    </div>
 
-                    {tarea.Cliente_Nombre && (
-                      <span
-                        style={{
-                          marginLeft: '10px',
-                          backgroundColor: '#38a169',
-                          color: 'white',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.7rem',
-                        }}
-                      >
-                        {tarea.Cliente_Nombre}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                      {tarea.Cliente && (
+                        <span
+                          style={{
+                            color: '#64748b',
+                            fontSize: '0.875rem',
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          {tarea.Cliente}
+                        </span>
+                      )}
+
+                      {tarea.Numero_SAC && (
+                        <span
+                          style={{
+                            backgroundColor: '#dbeafe',
+                            color: '#1e40af',
+                            padding: '2px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          SAC: {tarea.Numero_SAC}
+                        </span>
+                      )}
+
+                      {tarea.Cliente_Nombre && (
+                        <span
+                          style={{
+                            backgroundColor: '#dcfce7',
+                            color: '#166534',
+                            padding: '2px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          {tarea.Cliente_Nombre}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ color: '#4a5568', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                  {formatearFechaArgentina(tarea.Fecha) || 'Sin fecha'} {tarea.Hora ? `- ${tarea.Hora}` : ''}
+                <div
+                  style={{
+                    color: '#64748b',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    textAlign: 'right',
+                    minWidth: '140px',
+                  }}
+                >
+                  <div style={{ fontWeight: '500' }}>
+                    {formatearFechaArgentina(tarea.Fecha) || 'Sin fecha'}
+                  </div>
+                  {tarea.Hora && <div style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>{tarea.Hora}</div>}
                 </div>
               </div>
             ))}
