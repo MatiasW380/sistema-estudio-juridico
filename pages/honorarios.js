@@ -2,7 +2,6 @@
 // Página de gestión de honorarios y aportes con nombre del cliente
 
 import { useState } from 'react';
-import BotonInicio from '../components/BotonInicio';
 import { getFinanzas, getResumenFinanzas, formatearFechaArgentina } from '../lib/googleSheets';
 
 export async function getServerSideProps(context) {
@@ -91,165 +90,128 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>💰 Honorarios y Aportes</h1>
-        </div>
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>
-          ← Volver al inicio
-        </a>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Honorarios y Aportes</h1>
+        <p>Seguimiento de honorarios, caja y aportes a colegios</p>
       </div>
 
       {/* Resumen */}
-      <div
-        style={{
-          backgroundColor: '#f7fafc',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          display: 'flex',
-          gap: '30px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div><strong>Total Pendiente:</strong> {formatMoney(resumen.totalPendiente)}</div>
-        <div><strong>Total Pagado:</strong> {formatMoney(resumen.totalPagado)}</div>
-        <div><strong>Total Parcial:</strong> {formatMoney(resumen.totalParcial)}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pendiente</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-urgent)' }}>{formatMoney(resumen.totalPendiente)}</div>
+        </div>
+        <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pagado</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-success)' }}>{formatMoney(resumen.totalPagado)}</div>
+        </div>
+        <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Parcial</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-warning)' }}>{formatMoney(resumen.totalParcial)}</div>
+        </div>
       </div>
 
       {/* Filtros */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '15px',
-          flexWrap: 'wrap',
-          marginBottom: '20px',
-          padding: '15px',
-          backgroundColor: '#f7fafc',
-          borderRadius: '8px',
-          alignItems: 'center',
-        }}
-      >
-        <div>
-          <label><strong>Cliente</strong></label>
-          <input
-            type="text"
-            value={filtroCliente}
-            onChange={(e) => setFiltroCliente(e.target.value)}
-            placeholder="Buscar por nombre..."
-            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
-          />
+      <div style={{ marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#0f172a' }}>Filtros</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Cliente</label>
+            <input
+              type="text"
+              value={filtroCliente}
+              onChange={(e) => setFiltroCliente(e.target.value)}
+              placeholder="Buscar por nombre..."
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Categoría</label>
+            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
+              {categorias.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Estado</label>
+            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+              {estados.map((e) => (
+                <option key={e} value={e}>{e}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Desde</label>
+            <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Hasta</label>
+            <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
+          </div>
         </div>
 
-        <div>
-          <label><strong>Categoría</strong></label>
-          <select
-            value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
-            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
-          >
-            {categorias.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="button button-sm" onClick={aplicarFiltros}>
+            Aplicar Filtros
+          </button>
+          <button className="button button-secondary button-sm" onClick={limpiarFiltros}>
+            Limpiar
+          </button>
         </div>
-
-        <div>
-          <label><strong>Estado</strong></label>
-          <select
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
-          >
-            {estados.map((e) => (
-              <option key={e} value={e}>{e}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label><strong>Desde</strong></label>
-          <input
-            type="date"
-            value={fechaInicio}
-            onChange={(e) => setFechaInicio(e.target.value)}
-            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
-          />
-        </div>
-
-        <div>
-          <label><strong>Hasta</strong></label>
-          <input
-            type="date"
-            value={fechaFin}
-            onChange={(e) => setFechaFin(e.target.value)}
-            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', marginLeft: '5px' }}
-          />
-        </div>
-
-        <button onClick={aplicarFiltros} style={{ backgroundColor: '#3182ce' }}>
-          Aplicar Filtros
-        </button>
-        <button onClick={limpiarFiltros} style={{ backgroundColor: '#718096' }}>
-          Limpiar
-        </button>
       </div>
 
       {/* Tabla */}
-      <h3>📋 Movimientos</h3>
-      {finanzas.length === 0 ? (
-        <p style={{ color: '#4a5568' }}>No hay movimientos registrados.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#edf2f7' }}>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fecha</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Cliente</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Categoría</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Tipo</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Concepto</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>Total</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>Pagado</th>
-              <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {finanzas.map((f, index) => {
-              const cliente = f.Cliente || f.Nombre_Cliente || 'Sin cliente';
-              const estado = f.Estado || 'Pendiente';
-
-              return (
-                <tr key={`${f.ID || 'fin'}-${index}`}>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{formatearFechaArgentina(f.Fecha) || ''}</td>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
-                    <strong>{cliente}</strong>
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Categoria || ''}</td>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Tipo || ''}</td>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{f.Concepto || ''}</td>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                    {formatMoney(f.Monto_Total)}
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                    {formatMoney(f.Monto_Pagado)}
-                  </td>
-                  <td
-                    style={{
-                      padding: '10px',
-                      border: '1px solid #e2e8f0',
-                      textAlign: 'center',
-                      color: estado === 'Pagado' ? '#38a169' : estado === 'Parcial' ? '#ed8936' : '#e53e3e',
-                    }}
-                  >
-                    {estado}
-                  </td>
+      <div style={{ marginTop: '24px' }}>
+        <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>
+          Movimientos
+        </h2>
+        {finanzas.length === 0 ? (
+          <p style={{ color: '#64748b' }}>No hay movimientos registrados.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table table-striped">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Cliente</th>
+                  <th>Categoría</th>
+                  <th>Tipo</th>
+                  <th>Concepto</th>
+                  <th className="numeric">Total</th>
+                  <th className="numeric">Pagado</th>
+                  <th style={{ textAlign: 'center' }}>Estado</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+              </thead>
+              <tbody>
+                {finanzas.map((f, index) => {
+                  const cliente = f.Cliente || f.Nombre_Cliente || 'Sin cliente';
+                  const estado = f.Estado || 'Pendiente';
+                  const statusClass = estado === 'Pagado' ? 'table-status-active' : estado === 'Parcial' ? 'table-status-pending' : 'table-status-urgent';
+
+                  return (
+                    <tr key={`${f.ID || 'fin'}-${index}`}>
+                      <td>{formatearFechaArgentina(f.Fecha) || ''}</td>
+                      <td style={{ fontWeight: '600' }}>{cliente}</td>
+                      <td>{f.Categoria || ''}</td>
+                      <td>{f.Tipo || ''}</td>
+                      <td>{f.Concepto || ''}</td>
+                      <td className="numeric">{formatMoney(f.Monto_Total)}</td>
+                      <td className="numeric">{formatMoney(f.Monto_Pagado)}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={statusClass}>{estado}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

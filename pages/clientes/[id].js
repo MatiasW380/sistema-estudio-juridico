@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes, formatearFechaArgentina } from '../../lib/googleSheets';
-import BotonInicio from '../../components/BotonInicio';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -199,7 +198,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
       const resultado = await response.json();
       if (resultado.success) {
-        setMensajeFinanzas('✅ Movimiento agregado correctamente');
+        setMensajeFinanzas('Movimiento agregado correctamente');
         setNuevoMovimiento({
           fecha: new Date().toISOString().split('T')[0],
           tipo: 'Honorario',
@@ -212,11 +211,11 @@ export default function FichaCliente({ cliente, expedientes }) {
         setMostrarFormularioFinanzas(false);
         cargarMovimientos();
       } else {
-        setMensajeFinanzas('❌ Error al agregar movimiento: ' + (resultado.error || 'Error desconocido'));
+        setMensajeFinanzas('Error al agregar movimiento: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
       console.error('Error en handleSubmitFinanzas:', error);
-      setMensajeFinanzas('❌ Error: ' + error.message);
+      setMensajeFinanzas('Error: ' + error.message);
     } finally {
       setCargandoFinanzas(false);
     }
@@ -280,7 +279,7 @@ export default function FichaCliente({ cliente, expedientes }) {
 
       const resultado = await response.json();
       if (resultado.success) {
-        setMensajeConsultas('✅ Consulta agregada correctamente');
+        setMensajeConsultas('Consulta agregada correctamente');
         setNuevaConsulta({
           fecha: new Date().toISOString().split('T')[0],
           numeroSAC: '',
@@ -289,11 +288,11 @@ export default function FichaCliente({ cliente, expedientes }) {
         setMostrarFormularioConsultas(false);
         cargarConsultas();
       } else {
-        setMensajeConsultas('❌ Error al agregar consulta: ' + (resultado.error || 'Error desconocido'));
+        setMensajeConsultas('Error al agregar consulta: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
       console.error('Error en handleSubmitConsulta:', error);
-      setMensajeConsultas('❌ Error: ' + error.message);
+      setMensajeConsultas('Error: ' + error.message);
     } finally {
       setCargandoConsultas(false);
     }
@@ -367,11 +366,11 @@ export default function FichaCliente({ cliente, expedientes }) {
         setMostrarFormulario(false);
         setTimeout(() => router.reload(), 1500);
       } else {
-        setMensaje('❌ Error al agregar el expediente: ' + (resultado.error || 'Error desconocido'));
+        setMensaje('Error al agregar el expediente: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
-      console.error('❌ Error en handleSubmit:', error);
-      setMensaje('❌ Error: ' + error.message);
+      console.error('Error en handleSubmit:', error);
+      setMensaje('Error: ' + error.message);
     } finally {
       setCargando(false);
     }
@@ -396,22 +395,29 @@ export default function FichaCliente({ cliente, expedientes }) {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <div>
-            <h1 style={{ marginBottom: '5px' }}>👤 {cliente.Nombre_Cliente}</h1>
-            <p style={{ color: '#4a5568', margin: 0 }}>
-              ID: {cliente.ID_Cliente} | Teléfono: {cliente.Telefono || 'No registrado'}
-            </p>
-          </div>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ marginBottom: '4px' }}>{cliente.Nombre_Cliente}</h1>
+        <p style={{ margin: 0 }}>Ficha completa del cliente con expedientes, consultas y movimientos financieros</p>
+        <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
+          <p style={{ margin: '4px 0' }}>
+            <strong>ID Cliente:</strong> {cliente.ID_Cliente}
+          </p>
+          <p style={{ margin: '4px 0' }}>
+            <strong>Teléfono:</strong> {cliente.Telefono || 'No registrado'}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <a href={`/clientes/${cliente.ID_Cliente}/editar`}>
-            <button style={{ backgroundColor: '#ed8936' }}>✏️ Editar</button>
-          </a>
-          <button onClick={volver} style={{ backgroundColor: '#718096' }}>← Volver</button>
-        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        <a href={`/clientes/${cliente.ID_Cliente}/editar`}>
+          <button className="button button-sm">Editar</button>
+        </a>
+        <button 
+          className="button button-secondary button-sm"
+          onClick={volver}
+        >
+          Volver a Clientes
+        </button>
       </div>
 
       {/* Pestañas */}
@@ -428,7 +434,7 @@ export default function FichaCliente({ cliente, expedientes }) {
             fontWeight: 'bold',
           }}
         >
-          📋 Datos
+          Datos
         </button>
         <button
           onClick={() => setActiveTab('expedientes')}
@@ -456,7 +462,7 @@ export default function FichaCliente({ cliente, expedientes }) {
             fontWeight: 'bold',
           }}
         >
-          📝 Consultas
+          Consultas
         </button>
         <button
           onClick={() => setActiveTab('finanzas')}
@@ -478,7 +484,7 @@ export default function FichaCliente({ cliente, expedientes }) {
       <div style={{ minHeight: '300px' }}>
         {activeTab === 'datos' && (
           <div>
-            <h2>📋 Datos Generales</h2>
+            <h2>Datos Generales</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }}>
               <div><strong>ID Cliente:</strong> {cliente.ID_Cliente}</div>
               <div><strong>Nombre:</strong> {cliente.Nombre_Cliente}</div>
@@ -647,7 +653,7 @@ export default function FichaCliente({ cliente, expedientes }) {
         {activeTab === 'consultas' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>📝 Historial de Consultas</h2>
+              <h2>Historial de Consultas</h2>
               <button
                 onClick={() => setMostrarFormularioConsultas(!mostrarFormularioConsultas)}
                 style={{ backgroundColor: '#38a169' }}
@@ -665,7 +671,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                 marginBottom: '20px',
                 border: '1px solid #e2e8f0',
               }}>
-                <h3>📝 Nueva Consulta</h3>
+                <h3>Nueva Consulta</h3>
                 <form onSubmit={handleSubmitConsulta}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div>
@@ -773,7 +779,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                           )}
                           {(consulta.Abogado_Atendio || consulta.Abogado) && (
                             <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.8rem' }}>
-                              👤 {consulta.Abogado_Atendio || consulta.Abogado}
+                              {consulta.Abogado_Atendio || consulta.Abogado}
                             </span>
                           )}
                         </div>
@@ -956,7 +962,7 @@ export default function FichaCliente({ cliente, expedientes }) {
               </div>
             )}
 
-            <h3>📋 Historial de Movimientos</h3>
+            <h3>Historial de Movimientos</h3>
             {movimientos.length === 0 ? (
               <p style={{ color: '#4a5568' }}>No hay movimientos registrados para este cliente.</p>
             ) : (
