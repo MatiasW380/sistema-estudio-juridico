@@ -25,12 +25,15 @@ export default async function handler(req, res) {
       const { numeroSAC, categoria, estado, fechaInicio, fechaFin, resumen, cliente } = req.query;
       const userData = parseUserFromCookie(req.headers.cookie || '');
 
-      // hoy getFinanzas no filtra por usuario en firma actual,
-      // pero dejamos parseo listo para futuras restricciones.
-      const _usuario = userData?.email || null;
+      // Obtener usuario desde cookie y usarlo para filtrar finanzas
+      const usuarioEmail = userData?.email || null;
+
+      if (!usuarioEmail) {
+        return res.status(401).json({ error: 'No autenticado' });
+      }
 
       if (resumen === 'true') {
-        const resultado = await getResumenFinanzas(categoria || null, fechaInicio || null, fechaFin || null);
+        const resultado = await getResumenFinanzas(categoria || null, fechaInicio || null, fechaFin || null, usuarioEmail);
         return res.status(200).json({ resumen: resultado });
       }
 
@@ -40,6 +43,7 @@ export default async function handler(req, res) {
         estado || null,
         fechaInicio || null,
         fechaFin || null,
+        usuarioEmail, // Pasar usuario para filtrar acceso
       );
 
       // Filtro por cliente en API (además del front)
@@ -52,7 +56,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ finanzas: finanzas || [] });
     } catch (error) {
-      console.error('❌ Error al listar finanzas:', error);
+      console.error('Error al listar finanzas:', error);
       return res.status(500).json({ error: 'Error al listar finanzas' });
     }
   }

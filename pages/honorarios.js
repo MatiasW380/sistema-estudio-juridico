@@ -18,8 +18,13 @@ export async function getServerSideProps(context) {
   }
 
   try {
-    const finanzas = await getFinanzas(); // Ya viene enriquecido con Cliente desde lib/googleSheets.js
-    const resumen = await getResumenFinanzas();
+    // Extraer usuario del cookie para filtrar finanzas
+    const userValue = decodeURIComponent(userCookie.split('=').slice(1).join('='));
+    const userData = JSON.parse(userValue);
+    const usuarioEmail = userData?.email || null;
+
+    const finanzas = await getFinanzas(null, null, null, null, null, usuarioEmail); // Pasar usuario para filtrar acceso
+    const resumen = await getResumenFinanzas(null, null, null, usuarioEmail); // Pasar usuario para filtrar acceso
     return { props: { finanzas: finanzas || [], resumen: resumen || {} } };
   } catch (error) {
     console.error('Error al cargar finanzas:', error);
