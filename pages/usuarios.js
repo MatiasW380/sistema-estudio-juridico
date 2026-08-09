@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import BotonInicio from '../components/BotonInicio';
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
@@ -85,7 +84,7 @@ export default function UsuariosPage() {
       });
       const data = await response.json();
       if (data.success) {
-        setMensaje('✅ Usuario creado correctamente');
+        setMensaje('Usuario creado correctamente');
         setNuevoEmail('');
         setNuevoPin('');
         cargarUsuarios(session);
@@ -127,16 +126,13 @@ export default function UsuariosPage() {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>👥 Administración de Usuarios</h1>
-        </div>
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Administración de Usuarios</h1>
+        <p style={{ margin: 0 }}>Gestión de acceso y permisos del sistema</p>
       </div>
 
       <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2>➕ Crear Nuevo Usuario</h2>
+        <h2>Crear Nuevo Usuario</h2>
         <form onSubmit={handleCrearUsuario} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <input
             type="email"
@@ -182,7 +178,7 @@ export default function UsuariosPage() {
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{user.Rol || 'usuario'}</td>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
                   <span style={{ color: user.Activo === 'SI' ? '#38a169' : '#e53e3e' }}>
-                    {user.Activo === 'SI' ? '✅ Activo' : '❌ Inactivo'}
+                    {user.Activo === 'SI' ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
                 <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
