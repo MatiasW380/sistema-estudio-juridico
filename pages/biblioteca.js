@@ -2,7 +2,6 @@
 // Módulo de biblioteca legal: modelos, jurisprudencia y leyes (con expansión, búsqueda y copiar)
 
 import { useMemo, useState } from 'react';
-import BotonInicio from '../components/BotonInicio';
 import { getModelos, getJurisprudencia, getLeyes } from '../lib/googleSheets';
 
 export async function getServerSideProps(context) {
@@ -80,10 +79,10 @@ export default function BibliotecaPage({
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text || '');
-      showMessage('✅ Texto copiado al portapapeles');
+      showMessage('Texto copiado al portapapeles');
     } catch (error) {
       console.error('Error al copiar:', error);
-      showMessage('❌ No se pudo copiar el texto');
+      showMessage('No se pudo copiar el texto');
     }
   };
 
@@ -109,16 +108,16 @@ export default function BibliotecaPage({
       if (resultado.success) {
         setNuevoModelo({ nombre: '', fuero: '', contenido: '' });
         setMostrarFormulario(false);
-        showMessage('✅ Modelo agregado correctamente');
+        showMessage('Modelo agregado correctamente');
 
         const reload = await fetch('/api/biblioteca?tipo=modelos');
         const data = await reload.json();
         if (data.modelos) setModelos(data.modelos);
       } else {
-        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+      setMensaje(`Error: ${error.message}`);
     } finally {
       setCargando(false);
     }
@@ -146,16 +145,16 @@ export default function BibliotecaPage({
       if (resultado.success) {
         setNuevaJurisprudencia({ tema: '', subtema: '', juzgado: '', cita: '' });
         setMostrarFormulario(false);
-        showMessage('✅ Jurisprudencia agregada correctamente');
+        showMessage('Jurisprudencia agregada correctamente');
 
         const reload = await fetch('/api/biblioteca?tipo=jurisprudencia');
         const data = await reload.json();
         if (data.jurisprudencia) setJurisprudencia(data.jurisprudencia);
       } else {
-        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+      setMensaje(`Error: ${error.message}`);
     } finally {
       setCargando(false);
     }
@@ -183,16 +182,16 @@ export default function BibliotecaPage({
       if (resultado.success) {
         setNuevaLey({ numero: '', jurisdiccion: '', texto: '' });
         setMostrarFormulario(false);
-        showMessage('✅ Ley agregada correctamente');
+        showMessage('Ley agregada correctamente');
 
         const reload = await fetch('/api/biblioteca?tipo=leyes');
         const data = await reload.json();
         if (data.leyes) setLeyes(data.leyes);
       } else {
-        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+      setMensaje(`Error: ${error.message}`);
     } finally {
       setCargando(false);
     }
@@ -296,7 +295,7 @@ export default function BibliotecaPage({
                 onClick={() => copyToClipboard(contenido)}
                 style={{ backgroundColor: '#3182ce', padding: '8px 12px' }}
               >
-                📋 Copiar texto
+                Copiar texto
               </button>
             </div>
           </div>
@@ -307,14 +306,9 @@ export default function BibliotecaPage({
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>📚 Biblioteca Legal</h1>
-        </div>
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>
-          ← Volver al inicio
-        </a>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Biblioteca Legal</h1>
+        <p style={{ margin: 0 }}>Modelos, jurisprudencia y normativas legales</p>
       </div>
 
       {/* Pestañas */}
@@ -335,7 +329,7 @@ export default function BibliotecaPage({
             fontWeight: 'bold',
           }}
         >
-          📝 Modelos ({modelos.length})
+          Modelos ({modelos.length})
         </button>
 
         <button
@@ -354,7 +348,7 @@ export default function BibliotecaPage({
             fontWeight: 'bold',
           }}
         >
-          ⚖️ Jurisprudencia ({jurisprudencia.length})
+          Jurisprudencia ({jurisprudencia.length})
         </button>
 
         <button
@@ -586,7 +580,7 @@ export default function BibliotecaPage({
       {/* Listados */}
       {activeTab === 'modelos' && (
         <div>
-          <h3>📋 Modelos de Escritos</h3>
+          <h3>Modelos de Escritos</h3>
           {modelos.length === 0 ? (
             <p>No hay modelos cargados.</p>
           ) : (
@@ -608,14 +602,14 @@ export default function BibliotecaPage({
 
       {activeTab === 'jurisprudencia' && (
         <div>
-          <h3>⚖️ Jurisprudencia</h3>
+          <h3>Jurisprudencia</h3>
 
           <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
             <input
               type="text"
               value={terminoBusquedaJuris}
               onChange={(e) => setTerminoBusquedaJuris(e.target.value)}
-              placeholder="🔍 Buscar por tema, subtema, juzgado o cita..."
+              placeholder="Buscar por tema, subtema, juzgado o cita..."
               style={{ flex: 1, padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
             />
             <button onClick={() => setTerminoBusquedaJuris('')} style={{ backgroundColor: '#718096', padding: '10px 15px' }}>
