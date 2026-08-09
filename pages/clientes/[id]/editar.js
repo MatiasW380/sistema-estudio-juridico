@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes } from '../../../lib/googleSheets';
-import BotonInicio from '../../../components/BotonInicio';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -94,7 +93,7 @@ export default function EditarCliente({ cliente }) {
         setError(resultado.error || 'Error al actualizar el cliente');
       }
     } catch (err) {
-      console.error('❌ Error en handleSubmit:', err);
+      console.error('Error en handleSubmit:', err);
       setError('Error: ' + err.message);
     } finally {
       setCargando(false);
@@ -103,22 +102,20 @@ export default function EditarCliente({ cliente }) {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>✏️ Editar Cliente</h1>
-        </div>
-        <a href={`/clientes/${id}`} style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver a la ficha</a>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Editar Cliente</h1>
+        <p>Modifica la información del cliente</p>
       </div>
 
       <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>ID Cliente:</strong></label>
-          <input type="text" value={id} disabled style={{ backgroundColor: '#f7fafc' }} />
+        <div className="form-group">
+          <label>ID Cliente</label>
+          <input type="text" value={id} disabled />
+          <span className="input-helper">ID asignado automáticamente</span>
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>Nombre *</strong></label>
+        <div className="form-group">
+          <label className="label-required">Nombre</label>
           <input
             type="text"
             value={nombre}
@@ -128,8 +125,8 @@ export default function EditarCliente({ cliente }) {
           />
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>Teléfono</strong></label>
+        <div className="form-group">
+          <label>Teléfono</label>
           <input
             type="text"
             value={telefono}
@@ -138,8 +135,8 @@ export default function EditarCliente({ cliente }) {
           />
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>DNI</strong></label>
+        <div className="form-group">
+          <label>DNI</label>
           <input
             type="text"
             value={dni}
@@ -148,8 +145,8 @@ export default function EditarCliente({ cliente }) {
           />
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label><strong>Domicilio</strong></label>
+        <div className="form-group">
+          <label>Domicilio</label>
           <input
             type="text"
             value={domicilio}
@@ -159,18 +156,29 @@ export default function EditarCliente({ cliente }) {
         </div>
 
         {error && (
-          <div style={{ backgroundColor: '#fed7d7', color: '#9b2c2c', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
-            {error}
+          <div className="form-note error" style={{ marginBottom: '16px' }}>
+            <strong>Error:</strong> {error}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-            {cargando ? 'Guardando...' : 'Guardar Cambios'}
-          </button>
-          <button type="button" onClick={() => router.push(`/clientes/${id}`)} style={{ backgroundColor: '#718096' }}>
-            Cancelar
-          </button>
+        <div className="form-actions">
+          <div className="form-actions-left" />
+          <div className="form-actions-right">
+            <button 
+              type="button" 
+              className="button button-secondary"
+              onClick={() => router.push(`/clientes/${id}`)}
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              className="button button-success"
+              disabled={cargando}
+            >
+              {cargando ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+          </div>
         </div>
       </form>
     </div>

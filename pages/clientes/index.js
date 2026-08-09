@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes } from '../../lib/googleSheets';
-import BotonInicio from '../../components/BotonInicio';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -114,18 +113,21 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
           value={terminoBusqueda}
           onChange={(e) => setTerminoBusqueda(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Buscar por nombre, DNI, teléfono, N° SAC o carátula..."
+          placeholder="Buscar por nombre, DNI, teléfono..."
           style={{ flex: 1, minWidth: '200px' }}
         />
-        <button onClick={handleBuscar} disabled={cargando}>
+        <button className="button button-sm" onClick={handleBuscar} disabled={cargando}>
           {cargando ? 'Buscando...' : 'Buscar'}
         </button>
-        <button onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }} className="button-secondary">
+        <button 
+          className="button button-secondary button-sm"
+          onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }}
+        >
           Limpiar
         </button>
         <button 
+          className="button button-success button-sm"
           onClick={() => router.push('/clientes/nuevo')}
-          style={{ backgroundColor: '#16a34a' }}
         >
           + Nuevo Cliente
         </button>
@@ -133,12 +135,11 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
 
       {clientes.length === 0 ? (
         <div className="table-empty">
-          <div className="table-empty-icon">📋</div>
-          <div className="table-empty-text">No hay clientes</div>
+          <div className="table-empty-text">No hay clientes registrados</div>
           <div className="table-empty-subtext">Crea un nuevo cliente para comenzar</div>
         </div>
       ) : (
-        <table>
+        <table className="table table-striped">
           <thead>
             <tr>
               <th>ID</th>
@@ -153,26 +154,24 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
           <tbody>
             {clientes.map((cliente) => (
               <tr key={cliente.ID_Cliente}>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
-                  <a href={`/clientes/${cliente.ID_Cliente}`} style={{ color: '#3182ce', textDecoration: 'none' }}>
+                <td>
+                  <a href={`/clientes/${cliente.ID_Cliente}`} className="table-link">
                     {cliente.ID_Cliente || ''}
                   </a>
                 </td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
-                  <a href={`/clientes/${cliente.ID_Cliente}`} style={{ color: '#3182ce', textDecoration: 'none' }}>
+                <td>
+                  <a href={`/clientes/${cliente.ID_Cliente}`} className="table-link">
                     {cliente.Nombre_Cliente || ''}
                   </a>
                 </td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Telefono || ''}</td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.DNI || ''}</td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{cliente.Domicilio || ''}</td>
-                <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>
-                  {cliente.totalExpedientes || 0}
-                </td>
+                <td>{cliente.Telefono || ''}</td>
+                <td>{cliente.DNI || ''}</td>
+                <td>{cliente.Domicilio || ''}</td>
+                <td className="numeric">{cliente.totalExpedientes || 0}</td>
                 <td style={{ textAlign: 'center' }}>
                   <div className="table-actions" style={{ justifyContent: 'center' }}>
                     <button
-                      className="button-danger button-sm"
+                      className="button button-danger button-sm"
                       onClick={() => eliminarCliente(cliente.ID_Cliente, cliente.Nombre_Cliente)}
                       disabled={eliminando === cliente.ID_Cliente}
                     >

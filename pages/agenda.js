@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import BotonInicio from '../components/BotonInicio';
 import { getAgenda, getTareasPendientes, getClientes, formatearFechaArgentina, parsearFechaArgentina, getFechaHoyISO } from '../lib/googleSheets';
 
 function parseUserFromCookie(rawCookie = '') {
@@ -362,29 +361,26 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <h1>📅 Agenda</h1>
-        </div>
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Agenda</h1>
+        <p>Calendario de eventos y tareas pendientes</p>
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setVista('calendario')} style={{ backgroundColor: vista === 'calendario' ? '#3182ce' : '#718096' }}>
-          📅 Calendario
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        <button className={`button button-sm ${vista === 'calendario' ? '' : 'button-secondary'}`} onClick={() => setVista('calendario')}>
+          Calendario
         </button>
-        <button onClick={() => setVista('tareas')} style={{ backgroundColor: vista === 'tareas' ? '#3182ce' : '#718096' }}>
-          ✅ Tareas Pendientes ({tareas.length})
+        <button className={`button button-sm ${vista === 'tareas' ? '' : 'button-secondary'}`} onClick={() => setVista('tareas')}>
+          Tareas Pendientes ({tareas.length})
         </button>
-        <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
+        <button className="button button-sm button-success" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
           + Nuevo Evento
         </button>
       </div>
 
       {mostrarFormulario && (
-        <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
-          <h3>📝 Nuevo Evento</h3>
+        <div style={{ backgroundColor: 'var(--color-surface)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '24px', border: '1px solid var(--color-border-light)' }}>
+          <h3 style={{ marginTop: 0 }}>Nuevo Evento</h3>
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
@@ -566,7 +562,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2>📅 {eventoSeleccionado.Titulo}</h2>
+            <h2 style={{ marginTop: 0 }}>{eventoSeleccionado.Titulo}</h2>
             <form onSubmit={handleEditar}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div>
@@ -778,7 +774,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
 
       {vista === 'tareas' && (
         <div>
-          <h2>✅ Tareas Pendientes</h2>
+          <h2>Tareas Pendientes</h2>
           {tareas.length === 0 ? (
             <p style={{ color: '#4a5568' }}>No hay tareas pendientes.</p>
           ) : (

@@ -6,7 +6,6 @@ import { useRouter } from 'next/router';
 import { getNextClienteId } from '../../lib/googleSheets';
 
 export async function getServerSideProps() {
-  console.log('📄 getServerSideProps de nuevo cliente ejecutándose');
   const nextId = await getNextClienteId();
   return { props: { nextId } };
 }
@@ -33,7 +32,7 @@ export default function NuevoCliente({ nextId }) {
     setCargando(true);
 
     if (!nombre.trim()) {
-      console.log('❌ Nombre vacío');
+      console.log('Nombre vacío');
       setError('El nombre es obligatorio');
       setCargando(false);
       return;
@@ -63,14 +62,14 @@ export default function NuevoCliente({ nextId }) {
       console.log('📥 Respuesta JSON:', resultado);
       
       if (resultado.success) {
-        console.log('✅ Cliente creado, ID:', resultado.id);
+        console.log('Cliente creado, ID:', resultado.id);
         router.push(`/clientes/${resultado.id}`);
       } else {
-        console.log('❌ Error del servidor:', resultado.error);
+        console.log('Error del servidor:', resultado.error);
         setError(resultado.error || 'Error al crear el cliente');
       }
     } catch (err) {
-      console.error('❌ Error en handleSubmit:', err);
+      console.error('Error en handleSubmit:', err);
       setError('Error: ' + err.message);
     } finally {
       setCargando(false);
@@ -156,7 +155,7 @@ export default function NuevoCliente({ nextId }) {
 
         {error && (
           <div className="form-note error">
-            <strong>❌ Error:</strong> {error}
+            <strong>Error:</strong> {error}
           </div>
         )}
 
@@ -165,14 +164,14 @@ export default function NuevoCliente({ nextId }) {
           <div className="form-actions-right">
             <button
               type="button"
-              className="button-secondary"
+              className="button button-secondary"
               onClick={() => router.push('/clientes')}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="button-success"
+              className="button button-success"
               disabled={cargando}
             >
               {cargando ? 'Guardando...' : 'Guardar Cliente'}
