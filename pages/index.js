@@ -237,38 +237,32 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
 
   return (
     <div className="container">
-      <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Bienvenido</h1>
-        <p>Resumen de tareas urgentes y estado del estudio</p>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ marginBottom: '4px' }}>Dashboard</h1>
+        <p style={{ margin: 0 }}>Resumen centralizado de tareas urgentes y estado del estudio</p>
       </div>
 
-      <div style={{ marginTop: '40px' }}>
-        <h2
-          style={{
-            fontSize: '1.3rem',
-            color: '#2d3748',
-            borderBottom: '2px solid #e2e8f0',
-            paddingBottom: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
-          Tareas Urgentes (próximos 5 días)
+      <div style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
+            Tareas Urgentes (próximos 5 días)
+          </h2>
           {tareas_state.length > 0 && (
             <span
               style={{
-                fontSize: '0.8rem',
+                fontSize: '0.875rem',
                 backgroundColor: '#e53e3e',
                 color: 'white',
-                padding: '2px 10px',
+                padding: '4px 12px',
                 borderRadius: '12px',
+                fontWeight: '600',
+                whiteSpace: 'nowrap',
               }}
             >
-              {tareas_state.length}
+              {tareas_state.length} pendientes
             </span>
           )}
-        </h2>
+        </div>
 
         {tareas_state.length === 0 ? (
           <div
@@ -281,7 +275,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
               marginTop: '15px',
             }}
           >
-            ✓ No hay tareas urgentes en los próximos 5 días.
+            No hay tareas urgentes en los próximos 5 días.
           </div>
         ) : (
           <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
