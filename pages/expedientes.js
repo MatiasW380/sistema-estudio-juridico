@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
+// Página de Expedientes - Listado y búsqueda
 export default function ExpedientesPage() {
   const router = useRouter();
   const [expedientes, setExpedientes] = useState([]);
