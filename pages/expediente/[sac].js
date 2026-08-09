@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
-import BotonInicio from '../../components/BotonInicio';
 import EditorTexto from '../../components/EditorTexto';
 
 // Helper para obtener la fecha de hoy en formato YYYY-MM-DD (para inputs type=date) sin desfase UTC
@@ -307,7 +306,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Actuación agregada correctamente');
+        setMensaje('Actuación agregada correctamente');
         setNuevaActuacion({
           fecha: getFechaHoyISO(),
           tipo: 'Escrito',
@@ -323,11 +322,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           setActuaciones(reloadData.actuaciones);
         }
       } else {
-        setMensaje('❌ Error al agregar la actuación: ' + (resultado.error || 'Error desconocido'));
+        setMensaje('Error al agregar la actuación: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
-      console.error('❌ Error en handleSubmit:', error);
-      setMensaje('❌ Error: ' + error.message);
+      console.error('Error en handleSubmit:', error);
+      setMensaje('Error: ' + error.message);
     } finally {
       setCargando(false);
     }
@@ -574,7 +573,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setEditorIA(data.resultado);
         setEditandoIA(true);
         setMostrarIA(true);
-        setMensaje(`✅ ${accion} completado correctamente`);
+        setMensaje(`${accion} completado correctamente`);
       } else {
         let errorMsg = data.error || 'Error desconocido';
         
@@ -584,12 +583,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           errorMsg = '⚠️ API Key inválida o sin permisos. Verificá tu clave en Google AI Studio.';
         }
         
-        console.error('❌ Error en IA:', errorMsg);
-        setMensaje('❌ Error en IA: ' + errorMsg);
+        console.error('Error en IA:', errorMsg);
+        setMensaje('Error en IA: ' + errorMsg);
       }
     } catch (error) {
-      console.error('❌ Error en ejecutarIA:', error);
-      setMensaje('❌ Error: ' + error.message);
+      console.error('Error en ejecutarIA:', error);
+      setMensaje('Error: ' + error.message);
     } finally {
       setCargandoIA(false);
     }
@@ -624,7 +623,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setEditandoIA(true);
         setMostrarIA(true);
         setGuardarAnalisis(true);
-        setMensaje('✅ Análisis de sentencia completado');
+        setMensaje('Análisis de sentencia completado');
       } else {
         let errorMsg = data.error || 'Error desconocido';
         
@@ -632,12 +631,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           errorMsg = '⚠️ Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.';
         }
         
-        console.error('❌ Error en IA:', errorMsg);
-        setMensaje('❌ Error en IA: ' + errorMsg);
+        console.error('Error en IA:', errorMsg);
+        setMensaje('Error en IA: ' + errorMsg);
       }
     } catch (error) {
-      console.error('❌ Error en ejecutarAnalisisSentencia:', error);
-      setMensaje('❌ Error: ' + error.message);
+      console.error('Error en ejecutarAnalisisSentencia:', error);
+      setMensaje('Error: ' + error.message);
     } finally {
       setCargandoIA(false);
     }
@@ -650,7 +649,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }
 
     if (!confirm('¿Guardar este análisis como actuación en el expediente?')) {
-      setMensaje('❌ Análisis descartado');
+      setMensaje('Análisis descartado');
       setMostrarIA(false);
       setResultadoIA('');
       setEditorIA('');
@@ -684,7 +683,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Análisis guardado como actuación');
+        setMensaje('Análisis guardado como actuación');
         setMostrarIA(false);
         setResultadoIA('');
         setEditorIA('');
@@ -695,11 +694,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           setActuaciones(reloadData.actuaciones);
         }
       } else {
-        setMensaje('❌ Error al guardar: ' + (resultado.error || 'Error desconocido'));
+        setMensaje('Error al guardar: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
       console.error('Error al guardar:', error);
-      setMensaje('❌ Error: ' + error.message);
+      setMensaje('Error: ' + error.message);
     } finally {
       setCargando(false);
     }
@@ -721,7 +720,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           usuario: sessionEmail,
         }),
       });
-      console.log('✅ Corrección guardada');
+      console.log('Corrección guardada');
     } catch (error) {
       console.error('Error al guardar corrección:', error);
     }
@@ -763,15 +762,15 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
       const resultado = await response.json();
       if (resultado.success) {
-        setMensajeCompartir('✅ Expediente compartido correctamente');
+        setMensajeCompartir('Expediente compartido correctamente');
         setEmailCompartir('');
         setTimeout(() => router.reload(), 1500);
       } else {
-        setMensajeCompartir('❌ Error al compartir: ' + (resultado.error || 'Error desconocido'));
+        setMensajeCompartir('Error al compartir: ' + (resultado.error || 'Error desconocido'));
       }
     } catch (error) {
       console.error('Error al compartir:', error);
-      setMensajeCompartir('❌ Error: ' + error.message);
+      setMensajeCompartir('Error: ' + error.message);
     }
   };
 
@@ -831,14 +830,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Plazo actualizado correctamente');
+        setMensaje('Plazo actualizado correctamente');
         setMostrarModalEditarPlazo(false);
         cargarPlazos();
       } else {
-        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+      setMensaje(`Error: ${error.message}`);
     } finally {
       setCargando(false);
     }
@@ -854,14 +853,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('✅ Plazo eliminado correctamente');
+        setMensaje('Plazo eliminado correctamente');
         setMostrarModalEditarPlazo(false);
         cargarPlazos();
       } else {
-        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
       }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+      setMensaje(`Error: ${error.message}`);
     }
   };
 
@@ -917,16 +916,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <BotonInicio />
-          <div>
-            <h1 style={{ marginBottom: '5px' }}>📄 Expediente {sac}</h1>
-            <p style={{ color: '#4a5568', margin: 0 }}>
-              Cliente: {cliente.Nombre_Cliente} | Carátula: {expediente.Caratula || 'No registrada'}
+      <div style={{ marginBottom: '24px' }}>
+        <div>
+          <h1 style={{ marginBottom: '4px' }}>Expediente {sac}</h1>
+          <p style={{ margin: 0 }}>
+            Ficha completa del expediente con actuaciones, plazos y herramientas IA
+          </p>
+          <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
+            <p style={{ margin: '4px 0' }}>
+              <strong>Cliente:</strong> {cliente.Nombre_Cliente}
             </p>
-            <p style={{ color: '#4a5568', margin: '4px 0 0 0' }}>
-              Juzgado: {expediente.Juzgado || 'No registrado'}
+            <p style={{ margin: '4px 0' }}>
+              <strong>Carátula:</strong> {expediente.Caratula || 'No registrada'}
+            </p>
+            <p style={{ margin: '4px 0' }}>
+              <strong>Juzgado:</strong> {expediente.Juzgado || 'No registrado'}
             </p>
             {expediente.Usuarios_Compartidos && (
               <div style={{ 
@@ -937,7 +941,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 flexWrap: 'wrap',
                 fontSize: '0.85rem'
               }}>
-                <span style={{ color: '#4a5568' }}>👥 Compartido con:</span>
+                <span style={{ color: '#4a5568' }}>Compartido con:</span>
                 {expediente.Usuarios_Compartidos.split(',').map((email, idx) => (
                   <span 
                     key={idx} 
@@ -955,19 +959,18 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
           <button
+            className="button button-danger button-sm"
             onClick={eliminarExpediente}
-            style={{
-              backgroundColor: '#e53e3e',
-              opacity: cargando ? 0.7 : 1,
-              cursor: cargando ? 'not-allowed' : 'pointer'
-            }}
             disabled={cargando}
           >
-            {cargando ? 'Eliminando...' : '🗑️ Eliminar Expediente'}
+            {cargando ? 'Eliminando...' : 'Eliminar Expediente'}
           </button>
-          <button onClick={volver} style={{ backgroundColor: '#718096' }}>
+          <button 
+            className="button button-secondary button-sm"
+            onClick={volver}
+          >
             ← Volver al cliente
           </button>
         </div>
@@ -1047,21 +1050,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   cursor: 'pointer'
                 }}
               >
-                {mostrarFormulario ? '❌ Cerrar Formulario' : '📝 Nueva Actuación'}
+                {mostrarFormulario ? 'Cerrar Formulario' : 'Nueva Actuación'}
               </button>
               <button 
                 onClick={() => ejecutarIA('resumir')} 
                 style={{ backgroundColor: '#805ad5' }}
                 disabled={cargandoIA}
               >
-                {cargandoIA ? 'Generando...' : '📄 Resumir'}
+                {cargandoIA ? 'Generando...' : 'Resumir'}
               </button>
               <button 
                 onClick={() => ejecutarIA('analizar-sentencia')} 
                 style={{ backgroundColor: '#e53e3e' }}
                 disabled={cargandoIA}
               >
-                {cargandoIA ? 'Analizando...' : '⚖️ Analizar Sentencia'}
+                {cargandoIA ? 'Analizando...' : 'Analizar Sentencia'}
               </button>
               <button 
                 onClick={() => ejecutarIA('estrategia')} 
@@ -1077,7 +1080,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 onClick={() => setMostrarModalCompartir(true)} 
                 style={{ backgroundColor: '#9f7aea' }}
               >
-                👥 Compartir
+                Compartir
               </button>
             </div>
 
@@ -1090,7 +1093,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 marginBottom: '20px',
                 border: '1px solid #e2e8f0'
               }}>
-                <h3>📝 Nueva Actuación</h3>
+                <h3>Nueva Actuación</h3>
                 <form onSubmit={handleSubmit}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div>
@@ -1195,7 +1198,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             )}
 
             {/* Feed de actuaciones */}
-            <h2>📋 Historial de Actuaciones ({actuaciones.length})</h2>
+            <h2>Historial de Actuaciones ({actuaciones.length})</h2>
             {actuaciones.length === 0 ? (
               <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
             ) : (
@@ -1286,7 +1289,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                               💾 Guardar
                             </button>
                             <button onClick={() => setEditando(null)} style={{ backgroundColor: '#718096' }}>
-                              ❌ Cancelar
+                              Cancelar
                             </button>
                           </div>
                         </div>
@@ -1316,7 +1319,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                                   borderRadius: '12px', 
                                   fontSize: '0.8rem' 
                                 }}>
-                                  ✅ Presentado
+                                  Presentado
                                 </span>
                               )}
                               {act.Enviado === 'SI' && (
@@ -1340,7 +1343,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                                   borderRadius: '12px', 
                                   fontSize: '0.8rem' 
                                 }}>
-                                  📝 Borrador
+                                  Borrador
                                 </span>
                               )}
                               {tienePDF && (
@@ -1372,7 +1375,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                                     onClick={(e) => { e.stopPropagation(); eliminarActuacion(act); }}
                                     style={{ backgroundColor: '#e53e3e', padding: '4px 8px', fontSize: '0.75rem' }}
                                   >
-                                    🗑️
+                                    Eliminar
                                   </button>
                                 </>
                               )}
@@ -1475,7 +1478,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {/* Plazos completados */}
                 {plazosCompletados.length > 0 && (
                   <>
-                    <h3>✅ Completados ({plazosCompletados.length})</h3>
+                    <h3>Completados ({plazosCompletados.length})</h3>
                     {plazosCompletados.map((plazo, index) => (
                       <PlazoCard key={index} plazo={plazo} onClick={() => abrirModalEditarPlazo(plazo)} completado />
                     ))}
@@ -1595,7 +1598,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             width: '90%',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }} onClick={(e) => e.stopPropagation()}>
-            <h2>⚖️ Seleccionar Sentencia</h2>
+            <h2>Seleccionar Sentencia</h2>
             <p style={{ color: '#4a5568', marginBottom: '15px' }}>
               Hay múltiples sentencias en este expediente. Seleccioná cuál querés analizar:
             </p>
@@ -1663,8 +1666,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h2>
-                {accionIA === 'resumir' && '📄 Resumen del Expediente'}
-                {accionIA === 'analizar-sentencia' && '⚖️ Análisis de Sentencia'}
+                {accionIA === 'resumir' && 'Resumen del Expediente'}
+                {accionIA === 'analizar-sentencia' && 'Análisis de Sentencia'}
                 {accionIA === 'estrategia' && '💡 Estrategia Sugerida'}
               </h2>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -1683,7 +1686,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                       onClick={guardarCorreccionIA} 
                       style={{ backgroundColor: '#ed8936' }}
                     >
-                      📝 Guardar Corrección
+                      Guardar Corrección
                     </button>
                   </>
                 )}
@@ -1691,7 +1694,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   onClick={() => { setMostrarIA(false); setResultadoIA(''); setEditorIA(''); setGuardarAnalisis(false); }} 
                   style={{ backgroundColor: '#718096' }}
                 >
-                  ❌ Cerrar
+                  Cerrar
                 </button>
               </div>
             </div>
@@ -1752,7 +1755,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             width: '90%',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }} onClick={(e) => e.stopPropagation()}>
-            <h2>👥 Compartir Expediente</h2>
+            <h2>Compartir Expediente</h2>
             <p style={{ color: '#4a5568', marginBottom: '15px' }}>
               Ingresá el email del usuario con quien querés compartir este expediente.
             </p>
@@ -1916,10 +1919,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
                 </button>
                 <button type="button" onClick={handleEliminarPlazo} style={{ backgroundColor: '#e53e3e' }}>
-                  🗑️ Eliminar
+                  Eliminar Eliminar
                 </button>
                 <button type="button" onClick={() => { setMostrarModalEditarPlazo(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
-                  ❌ Cerrar
+                  Cerrar
                 </button>
               </div>
             </form>
