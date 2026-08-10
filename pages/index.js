@@ -239,7 +239,7 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
     <div className="container">
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ marginBottom: '4px' }}>Dashboard</h1>
-        <p style={{ margin: 0 }}>Resumen centralizado de tareas urgentes y estado del estudio</p>
+        <p style={{ margin: 0 }}>Próximos plazos y tareas urgentes</p>
       </div>
 
       <div style={{ marginTop: '24px' }}>
