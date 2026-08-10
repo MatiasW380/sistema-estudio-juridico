@@ -33,7 +33,14 @@ export default async function handler(req, res) {
       }
 
       if (resumen === 'true') {
-        const resultado = await getResumenFinanzas(categoria || null, fechaInicio || null, fechaFin || null, usuarioEmail);
+        const resultado = await getResumenFinanzas(
+          categoria || null,
+          fechaInicio || null,
+          fechaFin || null,
+          usuarioEmail,
+          estado || null,
+          cliente || null,
+        );
         return res.status(200).json({ resumen: resultado });
       }
 
