@@ -145,6 +145,22 @@ export default function HeaderGlobal({ userData, onLogout }) {
             {userData.email}
           </span>
         )}
+        <Link href="/perfil">
+          <a
+            style={{
+              color: '#e2e8f0',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            Mi Perfil
+          </a>
+        </Link>
         <button
           onClick={onLogout}
           style={{
