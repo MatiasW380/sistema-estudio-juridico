@@ -22,13 +22,13 @@ export default function HeaderGlobal({ userData, onLogout }) {
     setMounted(true);
   }, []);
 
-  const currentPath = mounted && router.isReady ? router.pathname : '';
-
-  // Ocultar header en páginas de autenticación
-  if (currentPath === '/login' || currentPath === '/registro') {
+  // Ocultar header SOLO en login/registro (verificar sin esperar router.isReady)
+  if (typeof window !== 'undefined' && (router.pathname === '/login' || router.pathname === '/registro')) {
     return null;
   }
 
+  // currentPath siempre disponible, usa router.pathname directamente
+  const currentPath = router.pathname || '';
   const isActive = (path) => currentPath === path ? '#2563eb' : 'transparent';
 
   return (
