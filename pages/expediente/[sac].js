@@ -727,7 +727,15 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   };
 
   const agregarPlazo = () => {
-    router.push(`/agenda?numeroSAC=${sac}&cliente=${cliente.Nombre_Cliente}&tipo=Plazo`);
+    // Limpiar el plazo y abrir modal en el expediente
+    setPlazoSeleccionado({
+      Numero_SAC: sac,
+      Titulo: '',
+      Descripcion: '',
+      Fecha_Vencimiento: '',
+      Estado: 'Pendiente',
+    });
+    setMostrarModalEditarPlazo(true);
   };
 
   // ==========================================
