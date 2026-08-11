@@ -244,32 +244,7 @@ export default function Home({
         <p style={{ margin: 0 }}>Próximos plazos y tareas urgentes</p>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <div style={{ padding: '20px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expedientes Activos</div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#2563eb' }}>{expedientesAbiertos}</div>
-        </div>
-
-        <div style={{ padding: '20px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Plazos Vencidos</div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: plazosvencidos > 0 ? '#991b1b' : '#16a34a' }}>{plazosvencidos}</div>
-          {plazosvencidos > 0 && <div style={{ fontSize: '11px', color: '#991b1b', marginTop: '4px' }}>¡Atención requerida!</div>}
-        </div>
-
-        <div style={{ padding: '20px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Acordado</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{formatMoney(totalAcordado)}</div>
-        </div>
-
-        <div style={{ padding: '20px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Pendiente</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: totalPendiente > 0 ? '#991b1b' : '#16a34a' }}>{formatMoney(totalPendiente)}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Pagado: {formatMoney(totalPagado)}</div>
-        </div>
-      </div>
-
-      {/* Próximos Plazos - 4 Columnas por Tipo */}
+      {/* Próximos Plazos - 5 Columnas por Tipo */}
       <div style={{ marginTop: '24px' }}>
         <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
           Próximos Plazos
