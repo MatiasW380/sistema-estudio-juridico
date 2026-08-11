@@ -324,21 +324,6 @@ export default function Home({
               );
             })}
           </div>
-                      </div>
-                    ))}
-                  {tareas_state.filter((t) => {
-                    const tipo = (t.Tipo || 'OTRO').toUpperCase();
-                    if (tipoColumna === 'TAREAS') return tipo === 'OTRO' || tipo === 'TAREAS';
-                    return tipo === tipoColumna;
-                  }).length === 0 && (
-                    <div style={{ fontSize: '0.85rem', color: '#cbd5e1', textAlign: 'center', padding: '20px 0' }}>
-                      —
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
         )}
       </div>
     </div>
