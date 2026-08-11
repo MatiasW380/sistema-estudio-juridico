@@ -982,36 +982,40 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           onClick={() => setActiveTab('actuaciones')}
           style={{
             padding: '10px 20px',
-            backgroundColor: activeTab === 'actuaciones' ? '#3182ce' : 'transparent',
-            color: activeTab === 'actuaciones' ? 'white' : '#4a5568',
+            backgroundColor: activeTab === 'actuaciones' ? '#2563eb' : 'transparent',
+            color: activeTab === 'actuaciones' ? 'white' : '#64748b',
             border: 'none',
-            borderRadius: '8px 8px 0 0',
+            borderRadius: '6px 6px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s'
           }}
         >
-          📋 Actuaciones ({actuaciones.length})
+          Actuaciones ({actuaciones.length})
         </button>
         <button
           onClick={() => setActiveTab('plazos')}
           style={{
             padding: '10px 20px',
-            backgroundColor: activeTab === 'plazos' ? '#3182ce' : 'transparent',
-            color: activeTab === 'plazos' ? 'white' : '#4a5568',
+            backgroundColor: activeTab === 'plazos' ? '#2563eb' : 'transparent',
+            color: activeTab === 'plazos' ? 'white' : '#64748b',
             border: 'none',
-            borderRadius: '8px 8px 0 0',
+            borderRadius: '6px 6px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s'
           }}
         >
-          📅 Plazos
+          Plazos
         </button>
         <button
           onClick={() => setActiveTab('comentarios')}
           style={{
             padding: '10px 20px',
-            backgroundColor: activeTab === 'comentarios' ? '#3182ce' : 'transparent',
-            color: activeTab === 'comentarios' ? 'white' : '#4a5568',
+            backgroundColor: activeTab === 'comentarios' ? '#2563eb' : 'transparent',
+            color: activeTab === 'comentarios' ? 'white' : '#64748b',
             border: 'none',
             borderRadius: '8px 8px 0 0',
             cursor: 'pointer',
