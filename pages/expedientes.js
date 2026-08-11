@@ -136,13 +136,17 @@ export default function ExpedientesPage() {
               </thead>
               <tbody>
                 {expedientesFiltrados.map((exp) => (
-                  <tr key={exp.sac} style={{ cursor: 'pointer' }}>
+                  <tr 
+                    key={exp.sac} 
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => router.push(`/expediente/${exp.sac}`)}
+                  >
                     <td style={{ fontWeight: '600', color: '#2563eb' }}>{exp.sac}</td>
                     <td>{exp.cliente}</td>
                     <td>{exp.caratula}</td>
                     <td>{exp.fuero}</td>
                     <td>{exp.juzgado}</td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                       <button
                         className="button button-sm"
                         onClick={() => router.push(`/expediente/${exp.sac}`)}
