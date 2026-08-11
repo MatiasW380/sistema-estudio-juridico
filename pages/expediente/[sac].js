@@ -967,7 +967,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           <button
             className="button button-danger button-sm"
             onClick={eliminarExpediente}
@@ -985,7 +985,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       </div>
 
       {/* Pestañas */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('actuaciones')}
           style={{
@@ -1054,12 +1054,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {activeTab === 'actuaciones' && (
           <div>
             {/* Botones de acción */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button 
                 onClick={toggleFormulario} 
                 className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
               >
-                {mostrarFormulario ? 'Cerrar Formulario' : 'Nueva Actuación'}
+                {mostrarFormulario ? 'Cerrar' : 'Nueva Actuación'}
               </button>
               <button 
                 onClick={() => ejecutarIA('resumir')} 
@@ -1073,21 +1073,21 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 className="button button-warning button-sm"
                 disabled={cargandoIA}
               >
-                {cargandoIA ? 'Analizando...' : 'Analizar Sentencia'}
+                {cargandoIA ? 'Analizando...' : 'Analizar'}
               </button>
               <button 
                 onClick={() => ejecutarIA('estrategia')} 
                 className="button button-success button-sm"
                 disabled={cargandoIA}
               >
-                {cargandoIA ? 'Pensando...' : '💡 Estrategia'}
+                {cargandoIA ? 'Pensando...' : 'Estrategia'}
               </button>
               <button onClick={agregarPlazo} className="button button-warning button-sm">
-                Agregar Plazo
+                Plazo
               </button>
               <button 
                 onClick={() => setMostrarModalCompartir(true)} 
-                style={{ backgroundColor: '#9f7aea' }}
+                className="button button-primary button-sm"
               >
                 Compartir
               </button>
