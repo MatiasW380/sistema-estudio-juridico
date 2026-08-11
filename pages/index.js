@@ -74,15 +74,9 @@ export async function getServerSideProps(context) {
 
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const cincoDias = new Date(hoy);
-    cincoDias.setDate(cincoDias.getDate() + 5);
 
+    // Traer TODOS los plazos sin filtro de 5 días
     const tareasUrgentes = (tareas || [])
-      .filter((t) => {
-        const fecha = getFechaLocalObj(t.Fecha);
-        if (!fecha) return false;
-        return fecha >= hoy && fecha <= cincoDias;
-      })
       .sort((a, b) => {
         const da = getFechaLocalObj(a.Fecha);
         const db = getFechaLocalObj(b.Fecha);
@@ -255,82 +249,81 @@ export default function Home({
             No hay plazos en los próximos 5 días.
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '15px' }}>
-            {['ENTREVISTA', 'PLAZO', 'AUDIENCIA', 'TAREAS'].map((tipoColumna) => (
-              <div key={tipoColumna}>
-                <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', paddingBottom: '8px', borderBottom: '2px solid #e2e8f0' }}>
-                  {tipoColumna}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {tareas_state
-                    .filter((t) => {
-                      const tipo = (t.Tipo || 'OTRO').toUpperCase();
-                      if (tipoColumna === 'TAREAS') return tipo === 'OTRO' || tipo === 'TAREAS';
-                      return tipo === tipoColumna;
-                    })
-                    .map((tarea, index) => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginTop: '15px' }}>
+            {['ENTREVISTA', 'PLAZO', 'AUDIENCIA', 'TAREAS', 'VENCIDOS'].map((tipoColumna) => {
+              const hoy = new Date();
+              hoy.setHours(0, 0, 0, 0);
+              
+              const tareasColumnna = tareas_state.filter((t) => {
+                const tipo = (t.Tipo || 'OTRO').toUpperCase();
+                const fecha = getFechaLocalObj(t.Fecha);
+                const esVencido = fecha && fecha < hoy;
+                
+                if (tipoColumna === 'VENCIDOS') return esVencido;
+                if (tipoColumna === 'TAREAS') return !esVencido && (tipo === 'OTRO' || tipo === 'TAREAS');
+                return !esVencido && tipo === tipoColumna;
+              });
+              
+              return (
+                <div key={tipoColumna}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', paddingBottom: '6px', borderBottom: '2px solid #e2e8f0' }}>
+                    {tipoColumna}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {tareasColumnna.map((tarea, index) => (
                       <div
                         key={`${tarea.ID || 'tarea'}-${index}`}
                         style={{
                           border: '1px solid #e2e8f0',
-                          borderLeft: `4px solid ${getUrgenciaColor(tarea.Fecha)}`,
-                          borderRadius: '6px',
-                          padding: '12px',
+                          borderLeft: `3px solid ${getUrgenciaColor(tarea.Fecha)}`,
+                          borderRadius: '4px',
+                          padding: '6px 8px',
                           backgroundColor: '#ffffff',
                           cursor: 'pointer',
-                          transition: 'all 0.2s ease-in-out',
+                          transition: 'all 0.2s',
                           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                          fontSize: '0.8rem',
                         }}
                         onClick={() => handleTareaClick(tarea)}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = '#f8fafc';
-                          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.backgroundColor = '#ffffff';
-                          e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                           e.currentTarget.style.transform = 'translateY(0)';
                         }}
                       >
-                        <div style={{ marginBottom: '8px' }}>
-                          <span
-                            style={{
-                              backgroundColor: getUrgenciaColor(tarea.Fecha),
-                              color: 'white',
-                              padding: '3px 8px',
-                              borderRadius: '10px',
-                              fontSize: '0.7rem',
-                              fontWeight: '700',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                              whiteSpace: 'nowrap',
-                              display: 'inline-block',
-                            }}
-                          >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+                          <strong style={{ color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {tarea.Titulo || 'Sin título'}
+                          </strong>
+                          <span style={{ backgroundColor: getUrgenciaColor(tarea.Fecha), color: 'white', padding: '2px 6px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {getUrgenciaTexto(tarea.Fecha)}
                           </span>
                         </div>
-                        <div style={{ marginBottom: '6px' }}>
-                          <strong style={{ fontSize: '0.9rem', color: '#0f172a', display: 'block' }}>
-                            {tarea.Titulo || 'Sin título'}
-                          </strong>
-                        </div>
                         {tarea.Cliente && (
-                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {tarea.Cliente}
                           </div>
                         )}
                         {tarea.Numero_SAC && (
-                          <div style={{ fontSize: '0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '10px', display: 'inline-block' }}>
+                          <div style={{ fontSize: '0.7rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '1px 4px', borderRadius: '8px', display: 'inline-block', marginTop: '2px' }}>
                             SAC: {tarea.Numero_SAC}
                           </div>
                         )}
-                        {tarea.Hora && (
-                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-                            {tarea.Hora}
-                          </div>
-                        )}
+                      </div>
+                    ))}
+                    {tareasColumnna.length === 0 && (
+                      <div style={{ fontSize: '0.75rem', color: '#cbd5e1', textAlign: 'center', padding: '12px 0' }}>
+                        —
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
                       </div>
                     ))}
                   {tareas_state.filter((t) => {
