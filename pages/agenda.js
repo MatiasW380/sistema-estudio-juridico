@@ -90,6 +90,7 @@ export async function getServerSideProps(context) {
 export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIniciales, usuario }) {
   const [eventos, setEventos] = useState(eventosIniciales || []);
   const [tareas, setTareas] = useState(tareasIniciales || []);
+  const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const [vista, setVista] = useState('calendario');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -120,8 +121,15 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
     const numeroSAC = params.get('numeroSAC');
     const cliente = params.get('cliente');
     const tipo = params.get('tipo');
+    const tareaId = params.get('tareaId');
 
-    if (numeroSAC || cliente || tipo) {
+    if (tareaId) {
+      // Buscar la tarea en el array (se cargará cuando recargarEventos ejecute)
+      const tarea = tareas.find(t => t.ID === tareaId || t.Numero_SAC === tareaId);
+      if (tarea) {
+        setTareaSeleccionada(tarea);
+      }
+    } else if (numeroSAC || cliente || tipo) {
       setNuevoEvento((prev) => ({
         ...prev,
         numeroSAC: numeroSAC || '',
@@ -130,7 +138,7 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       }));
       setMostrarFormulario(true);
     }
-  }, []);
+  }, [tareas]);
 
   const recargarEventos = async () => {
     try {
