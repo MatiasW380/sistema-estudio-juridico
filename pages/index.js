@@ -243,26 +243,9 @@ export default function Home({ tareasUrgentes, usuarioEmail, clientes, tareas })
       </div>
 
       <div style={{ marginTop: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
-            Tareas Urgentes (próximos 5 días)
-          </h2>
-          {tareas_state.length > 0 && (
-            <span
-              style={{
-                fontSize: '0.875rem',
-                backgroundColor: '#e53e3e',
-                color: 'white',
-                padding: '4px 12px',
-                borderRadius: '12px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {tareas_state.length} pendientes
-            </span>
-          )}
-        </div>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
+          Próximos Plazos
+        </h2>
 
         {tareas_state.length === 0 ? (
           <div
