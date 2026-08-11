@@ -203,39 +203,19 @@ export default function Home({
     return `${diff} días`;
   };
 
-  const handleTareaClick = async (tarea) => {
-    if (tarea.Numero_SAC) {
-      router.push(`/expediente/${encodeURIComponent(tarea.Numero_SAC)}`);
-      return;
-    }
-
-    if (tarea.Cliente_ID) {
-      router.push(`/clientes/${encodeURIComponent(tarea.Cliente_ID)}`);
-      return;
-    }
-
-    const clienteNombre = tarea.Cliente_Nombre || tarea.Cliente || '';
-    if (clienteNombre) {
-      try {
-        const response = await fetch(`/api/clientes?nombre=${encodeURIComponent(clienteNombre)}`);
-        const data = await response.json();
-        if (data?.clientes?.length > 0) {
-          router.push(`/clientes/${encodeURIComponent(data.clientes[0].ID_Cliente)}`);
-          return;
-        }
-      } catch (error) {
-        console.error('Error al buscar cliente:', error);
-      }
-    }
-
-    router.push('/agenda');
+  const handleTareaClick = (tarea) => {
+    // Navegar a agenda con la tarea seleccionada
+    // La agenda mostrará los detalles y permitirá ir al expediente si existe
+    router.push({
+      pathname: '/agenda',
+      query: { tareaId: tarea.ID || tarea.Numero_SAC }
+    });
   };
 
   return (
     <div className="container">
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Dashboard</h1>
-        <p style={{ margin: 0 }}>Próximos plazos y tareas urgentes</p>
+        <h1>Dashboard</h1>
       </div>
 
       {/* Próximos Plazos - 5 Columnas por Tipo */}
