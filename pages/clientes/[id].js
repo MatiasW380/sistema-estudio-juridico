@@ -235,6 +235,8 @@ export default function FichaCliente({ cliente, expedientes }) {
   const cargarConsultas = async () => {
     try {
       let todasLasConsultas = [];
+      
+      // Cargar consultas por expedientes
       for (const exp of expedientes) {
         const res = await fetch(`/api/consultas?numeroSAC=${encodeURIComponent(exp.Numero_SAC)}`);
         const data = await res.json();
@@ -242,6 +244,20 @@ export default function FichaCliente({ cliente, expedientes }) {
           todasLasConsultas = [...todasLasConsultas, ...data.consultas];
         }
       }
+      
+      // Cargar consultas del cliente (sin expediente)
+      if (cliente?.ID_Cliente) {
+        const res = await fetch(`/api/consultas?clienteId=${encodeURIComponent(cliente.ID_Cliente)}`);
+        const data = await res.json();
+        if (data.consultas) {
+          // Agregar solo consultas que no están ya cargadas
+          todasLasConsultas = [...todasLasConsultas, ...data.consultas].filter(
+            (consulta, index, self) =>
+              index === self.findIndex((c) => c.ID === consulta.ID)
+          );
+        }
+      }
+      
       todasLasConsultas.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
       setConsultas(todasLasConsultas);
     } catch (error) {
@@ -274,6 +290,7 @@ export default function FichaCliente({ cliente, expedientes }) {
           fecha: nuevaConsulta.fecha || new Date().toISOString().split('T')[0],
           abogado: sessionEmail,
           notas: nuevaConsulta.notas,
+          clienteId: cliente?.ID_Cliente || '',
         }),
       });
 

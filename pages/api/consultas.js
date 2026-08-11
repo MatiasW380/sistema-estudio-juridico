@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   // POST: Agregar consulta
   if (req.method === 'POST') {
     try {
-      const { numeroSAC, fecha, abogado, notas } = req.body;
+      const { numeroSAC, fecha, abogado, notas, clienteId } = req.body;
       
       if (!notas || notas.trim() === '') {
         return res.status(400).json({ error: 'Las notas son obligatorias' });
@@ -31,7 +31,8 @@ export default async function handler(req, res) {
         numeroSAC || '',
         fecha || new Date().toISOString().split('T')[0],
         abogado || '',
-        notas
+        notas,
+        clienteId || ''
       );
 
       if (resultado) {
