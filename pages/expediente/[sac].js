@@ -1049,35 +1049,32 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <button 
                 onClick={toggleFormulario} 
-                style={{ 
-                  backgroundColor: mostrarFormulario ? '#e53e3e' : '#38a169',
-                  cursor: 'pointer'
-                }}
+                className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
               >
                 {mostrarFormulario ? 'Cerrar Formulario' : 'Nueva Actuación'}
               </button>
               <button 
                 onClick={() => ejecutarIA('resumir')} 
-                style={{ backgroundColor: '#805ad5' }}
+                className="button button-info button-sm"
                 disabled={cargandoIA}
               >
                 {cargandoIA ? 'Generando...' : 'Resumir'}
               </button>
               <button 
                 onClick={() => ejecutarIA('analizar-sentencia')} 
-                style={{ backgroundColor: '#e53e3e' }}
+                className="button button-warning button-sm"
                 disabled={cargandoIA}
               >
                 {cargandoIA ? 'Analizando...' : 'Analizar Sentencia'}
               </button>
               <button 
                 onClick={() => ejecutarIA('estrategia')} 
-                style={{ backgroundColor: '#38a169' }}
+                className="button button-success button-sm"
                 disabled={cargandoIA}
               >
                 {cargandoIA ? 'Pensando...' : '💡 Estrategia'}
               </button>
-              <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
+              <button onClick={agregarPlazo} className="button button-warning button-sm">
                 Agregar Plazo
               </button>
               <button 
@@ -1186,13 +1183,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                     </div>
                   )}
                   <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                    <button type="submit" className="button button-primary button-sm" disabled={cargando}>
                       {cargando ? 'Guardando...' : 'Guardar Actuación'}
                     </button>
                     <button 
                       type="button" 
                       onClick={toggleFormulario} 
-                      style={{ backgroundColor: '#718096' }}
+                      className="button button-secondary button-sm"
                     >
                       Cancelar
                     </button>
@@ -1289,10 +1286,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                             />
                           </div>
                           <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-                            <button onClick={() => editarActuacion(act, index)} style={{ backgroundColor: '#38a169' }}>
+                            <button onClick={() => editarActuacion(act, index)} className="button button-success button-sm">
                               💾 Guardar
                             </button>
-                            <button onClick={() => setEditando(null)} style={{ backgroundColor: '#718096' }}>
+                            <button onClick={() => setEditando(null)} className="button button-secondary button-sm">
                               Cancelar
                             </button>
                           </div>
@@ -1680,7 +1677,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                     {guardarAnalisis && (
                       <button 
                         onClick={guardarAnalisisIA} 
-                        style={{ backgroundColor: '#38a169' }}
+                        className="button button-success button-sm"
                         disabled={cargando}
                       >
                         {cargando ? 'Guardando...' : '💾 Guardar como Actuación'}
@@ -1688,7 +1685,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                     )}
                     <button 
                       onClick={guardarCorreccionIA} 
-                      style={{ backgroundColor: '#ed8936' }}
+                      className="button button-warning button-sm"
                     >
                       Guardar Corrección
                     </button>
@@ -1696,7 +1693,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 )}
                 <button 
                   onClick={() => { setMostrarIA(false); setResultadoIA(''); setEditorIA(''); setGuardarAnalisis(false); }} 
-                  style={{ backgroundColor: '#718096' }}
+                  className="button button-secondary button-sm"
                 >
                   Cerrar
                 </button>
@@ -1782,10 +1779,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               </div>
             )}
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={compartirExpediente} style={{ backgroundColor: '#3182ce' }}>
+              <button onClick={compartirExpediente} className="button button-primary button-sm">
                 Compartir
               </button>
-              <button onClick={() => { setMostrarModalCompartir(false); setMensajeCompartir(''); }} style={{ backgroundColor: '#718096' }}>
+              <button onClick={() => { setMostrarModalCompartir(false); setMensajeCompartir(''); }} className="button button-secondary button-sm">
                 Cancelar
               </button>
             </div>
@@ -1919,13 +1916,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               )}
 
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                <button type="submit" className="button button-primary button-sm" disabled={cargando}>
                   {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
                 </button>
-                <button type="button" onClick={handleEliminarPlazo} style={{ backgroundColor: '#e53e3e' }}>
+                <button type="button" onClick={handleEliminarPlazo} className="button button-danger button-sm">
                   Eliminar Eliminar
                 </button>
-                <button type="button" onClick={() => { setMostrarModalEditarPlazo(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
+                <button type="button" onClick={() => { setMostrarModalEditarPlazo(false); setMensaje(''); }} className="button button-secondary button-sm">
                   Cerrar
                 </button>
               </div>
