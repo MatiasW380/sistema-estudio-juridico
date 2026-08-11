@@ -49,6 +49,19 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
   const categorias = ['Todos', 'Honorarios', 'Caja_Abogados', 'Colegio_Abogados'];
   const estados = ['Todos', 'Pendiente', 'Pagado', 'Parcial'];
 
+  // Detectar si hay filtros activos
+  const hayFiltrosActivos = () => {
+    return (
+      filtroCategoria !== 'Todos' ||
+      filtroEstado !== 'Todos' ||
+      filtroCliente.trim() !== '' ||
+      fechaInicio !== '' ||
+      fechaFin !== ''
+    );
+  };
+
+  const filtrosActivos = hayFiltrosActivos();
+
   const aplicarFiltros = async () => {
     try {
       const params = new URLSearchParams();
@@ -100,21 +113,23 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
         <p>Seguimiento de honorarios, caja y aportes a colegios</p>
       </div>
 
-      {/* Resumen */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Acordado</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb' }}>{formatMoney(resumen.totalAcordado)}</div>
+      {/* Resumen - Solo mostrar si hay filtros activos */}
+      {filtrosActivos && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Acordado</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb' }}>{formatMoney(resumen.totalAcordado)}</div>
+          </div>
+          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pagado</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-success)' }}>{formatMoney(resumen.totalPagado)}</div>
+          </div>
+          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pendiente</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-urgent)' }}>{formatMoney(resumen.totalPendiente)}</div>
+          </div>
         </div>
-        <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pagado</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-success)' }}>{formatMoney(resumen.totalPagado)}</div>
-        </div>
-        <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pendiente</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-urgent)' }}>{formatMoney(resumen.totalPendiente)}</div>
-        </div>
-      </div>
+      )}
 
       {/* Filtros */}
       <div style={{ marginBottom: '24px' }}>
