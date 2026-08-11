@@ -386,6 +386,41 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
         </button>
       </div>
 
+      {tareaSeleccionada && (
+        <div style={{ backgroundColor: '#ebf8ff', border: '1px solid #3182ce', borderRadius: '6px', padding: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: '0 0 8px 0', color: '#0c3c26' }}>{tareaSeleccionada.Titulo}</h3>
+            {tareaSeleccionada.Descripcion && (
+              <p style={{ margin: '0 0 8px 0', color: '#1e3a8a', fontSize: '0.95rem', lineHeight: '1.4' }}>
+                {tareaSeleccionada.Descripcion}
+              </p>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '0.85rem', color: '#1e3a8a' }}>
+              <div><strong>Tipo:</strong> {tareaSeleccionada.Tipo}</div>
+              <div><strong>Fecha:</strong> {tareaSeleccionada.Fecha}</div>
+              {tareaSeleccionada.Cliente && <div><strong>Cliente:</strong> {tareaSeleccionada.Cliente}</div>}
+              {tareaSeleccionada.Numero_SAC && <div><strong>SAC:</strong> {tareaSeleccionada.Numero_SAC}</div>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            {tareaSeleccionada.Numero_SAC && (
+              <button 
+                className="button button-sm button-primary"
+                onClick={() => router.push(`/expediente/${encodeURIComponent(tareaSeleccionada.Numero_SAC)}`)}
+              >
+                Ver Expediente
+              </button>
+            )}
+            <button 
+              className="button button-sm button-secondary"
+              onClick={() => setTareaSeleccionada(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
       {mostrarFormulario && (
         <div style={{ backgroundColor: 'var(--color-surface)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '24px', border: '1px solid var(--color-border-light)' }}>
           <h3 style={{ marginTop: 0 }}>Nuevo Evento</h3>
