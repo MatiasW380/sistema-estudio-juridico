@@ -1078,7 +1078,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {cargandoIA ? 'Pensando...' : '💡 Estrategia'}
               </button>
               <button onClick={agregarPlazo} style={{ backgroundColor: '#ed8936' }}>
-                📅 Agregar Plazo
+                Agregar Plazo
               </button>
               <button 
                 onClick={() => setMostrarModalCompartir(true)} 
@@ -1373,7 +1373,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                                     onClick={(e) => { e.stopPropagation(); editarActuacion(act, index); }}
                                     style={{ backgroundColor: '#ed8936', padding: '4px 8px', fontSize: '0.75rem' }}
                                   >
-                                    ✏️ Editar
+                                    Editar
                                   </button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); eliminarActuacion(act); }}
@@ -1452,7 +1452,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {/* Pestaña Plazos */}
         {activeTab === 'plazos' && (
           <div>
-            <h2>📅 Plazos del Expediente</h2>
+            <h2>Plazos del Expediente</h2>
             {cargandoPlazos ? (
               <p>Cargando plazos...</p>
             ) : plazos.length === 0 ? (
@@ -1462,7 +1462,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {/* Plazos vencidos */}
                 {plazosVencidos.length > 0 && (
                   <>
-                    <h3 style={{ color: '#e53e3e' }}>🔴 Vencidos ({plazosVencidos.length})</h3>
+                    <h3 style={{ color: '#991b1b' }}>Vencidos ({plazosVencidos.length})</h3>
                     {plazosVencidos.map((plazo, index) => (
                       <PlazoCard key={index} plazo={plazo} onClick={() => abrirModalEditarPlazo(plazo)} vencido />
                     ))}
@@ -1472,7 +1472,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {/* Plazos pendientes */}
                 {plazosPendientes.length > 0 && (
                   <>
-                    <h3>⏳ Pendientes ({plazosPendientes.length})</h3>
+                    <h3 style={{ color: '#d97706' }}>Pendientes ({plazosPendientes.length})</h3>
                     {plazosPendientes.map((plazo, index) => (
                       <PlazoCard key={index} plazo={plazo} onClick={() => abrirModalEditarPlazo(plazo)} />
                     ))}
@@ -1496,7 +1496,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {/* Pestaña Comentarios */}
         {activeTab === 'comentarios' && (
           <div>
-            <h2>💬 Comentarios del Expediente</h2>
+            <h2>Comentarios del Expediente</h2>
             
             {/* Formulario para agregar comentario */}
             <div style={{
@@ -1823,7 +1823,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2>📅 {plazoSeleccionado.Titulo}</h2>
+            <h2>{plazoSeleccionado.Titulo}</h2>
             <form onSubmit={handleEditarPlazo}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div>
