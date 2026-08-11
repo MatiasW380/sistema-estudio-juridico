@@ -84,6 +84,12 @@ export default function HeaderGlobal({ userData, onLogout }) {
         }}
       >
         <NavLink
+          href="/"
+          icon={<IconHome size={18} />}
+          label="Inicio"
+          isActive={isActive('/')}
+        />
+        <NavLink
           href="/clientes"
           icon={<IconUsers size={18} />}
           label="Clientes"
