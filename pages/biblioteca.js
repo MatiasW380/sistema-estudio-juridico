@@ -242,18 +242,18 @@ export default function BibliotecaPage({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <strong>{titulo}</strong>
-            {subtitulo ? <span style={{ color: '#4a5568' }}>{subtitulo}</span> : null}
+            {subtitulo ? <span style={{ color: '#64748b' }}>{subtitulo}</span> : null}
             {badge ? <span style={{ color: '#718096', fontSize: '0.8rem' }}>{badge}</span> : null}
           </div>
-          <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>{estaExpandido ? '▲' : '▼'}</span>
+          <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{estaExpandido ? '▲' : '▼'}</span>
         </div>
 
-        <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
+        <div style={{ marginTop: '8px', color: '#64748b', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
           {preview ? (
             <>
               {preview}
               {tieneMas && !estaExpandido && (
-                <span style={{ color: '#3182ce', marginLeft: '5px' }}>
+                <span style={{ color: '#2563eb', marginLeft: '5px' }}>
                   ... <em>clic para leer más</em>
                 </span>
               )}
@@ -293,7 +293,7 @@ export default function BibliotecaPage({
               <button
                 type="button"
                 onClick={() => copyToClipboard(contenido)}
-                style={{ backgroundColor: '#3182ce', padding: '8px 12px' }}
+                style={{ backgroundColor: '#2563eb', padding: '8px 12px' }}
               >
                 Copiar texto
               </button>
@@ -321,12 +321,14 @@ export default function BibliotecaPage({
           }}
           style={{
             padding: '10px 20px',
-            backgroundColor: activeTab === 'modelos' ? '#3182ce' : 'transparent',
-            color: activeTab === 'modelos' ? 'white' : '#4a5568',
+            backgroundColor: activeTab === 'modelos' ? '#2563eb' : 'transparent',
+            color: activeTab === 'modelos' ? 'white' : '#64748b',
             border: 'none',
-            borderRadius: '8px 8px 0 0',
+            borderRadius: '6px 6px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s',
           }}
         >
           Modelos ({modelos.length})
@@ -340,12 +342,14 @@ export default function BibliotecaPage({
           }}
           style={{
             padding: '10px 20px',
-            backgroundColor: activeTab === 'jurisprudencia' ? '#3182ce' : 'transparent',
-            color: activeTab === 'jurisprudencia' ? 'white' : '#4a5568',
+            backgroundColor: activeTab === 'jurisprudencia' ? '#2563eb' : 'transparent',
+            color: activeTab === 'jurisprudencia' ? 'white' : '#64748b',
             border: 'none',
-            borderRadius: '8px 8px 0 0',
+            borderRadius: '6px 6px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s',
           }}
         >
           Jurisprudencia ({jurisprudencia.length})
@@ -359,15 +363,17 @@ export default function BibliotecaPage({
           }}
           style={{
             padding: '10px 20px',
-            backgroundColor: activeTab === 'leyes' ? '#3182ce' : 'transparent',
-            color: activeTab === 'leyes' ? 'white' : '#4a5568',
+            backgroundColor: activeTab === 'leyes' ? '#2563eb' : 'transparent',
+            color: activeTab === 'leyes' ? 'white' : '#64748b',
             border: 'none',
-            borderRadius: '8px 8px 0 0',
+            borderRadius: '6px 6px 0 0',
             cursor: 'pointer',
-            fontWeight: 'bold',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s',
           }}
         >
-          📜 Leyes ({leyes.length})
+          Leyes ({leyes.length})
         </button>
       </div>
 
@@ -426,7 +432,7 @@ export default function BibliotecaPage({
                 />
               </div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                <button type="submit" style={{ backgroundColor: '#2563eb' }} disabled={cargando}>
                   {cargando ? 'Guardando...' : 'Guardar Modelo'}
                 </button>
                 <button
@@ -490,7 +496,7 @@ export default function BibliotecaPage({
                 />
               </div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                <button type="submit" style={{ backgroundColor: '#2563eb' }} disabled={cargando}>
                   {cargando ? 'Guardando...' : 'Guardar Jurisprudencia'}
                 </button>
                 <button
@@ -544,7 +550,7 @@ export default function BibliotecaPage({
                 />
               </div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                <button type="submit" style={{ backgroundColor: '#2563eb' }} disabled={cargando}>
                   {cargando ? 'Guardando...' : 'Guardar Ley'}
                 </button>
                 <button
