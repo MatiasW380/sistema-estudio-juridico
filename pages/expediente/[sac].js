@@ -1053,28 +1053,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {/* Pestaña Actuaciones */}
         {activeTab === 'actuaciones' && (
           <div>
-            {/* FILA 1: Acciones principales */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Botones de acción */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button 
                 onClick={toggleFormulario} 
                 className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
               >
-                {mostrarFormulario ? 'Cerrar' : '+ Actuación'}
+                {mostrarFormulario ? 'Cerrar' : 'Nueva Actuación'}
               </button>
-              <button onClick={agregarPlazo} className="button button-warning button-sm">
-                + Plazo
-              </button>
-              <button 
-                onClick={() => setMostrarModalCompartir(true)} 
-                className="button button-primary button-sm"
-              >
-                Compartir
-              </button>
-            </div>
-
-            {/* FILA 2: Herramientas IA */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500', marginRight: '4px' }}>IA:</span>
               <button 
                 onClick={() => ejecutarIA('resumir')} 
                 className="button button-info button-sm"
@@ -1095,6 +1081,15 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 disabled={cargandoIA}
               >
                 {cargandoIA ? 'Pensando...' : 'Estrategia'}
+              </button>
+              <button onClick={agregarPlazo} className="button button-warning button-sm">
+                Plazo
+              </button>
+              <button 
+                onClick={() => setMostrarModalCompartir(true)} 
+                className="button button-primary button-sm"
+              >
+                Compartir
               </button>
             </div>
 
