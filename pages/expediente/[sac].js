@@ -932,6 +932,42 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             <p style={{ margin: 0 }}>
               Ficha completa del expediente con actuaciones, plazos y herramientas IA
             </p>
+            <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
+              <p style={{ margin: '4px 0' }}>
+                <strong>Cliente:</strong> {cliente.Nombre_Cliente}
+              </p>
+              <p style={{ margin: '4px 0' }}>
+                <strong>Carátula:</strong> {expediente.Caratula || 'No registrada'}
+              </p>
+              <p style={{ margin: '4px 0' }}>
+                <strong>Juzgado:</strong> {expediente.Juzgado || 'No registrado'}
+              </p>
+              {expediente.Usuarios_Compartidos && (
+                <div style={{ 
+                  marginTop: '8px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '5px', 
+                  flexWrap: 'wrap',
+                  fontSize: '0.85rem'
+                }}>
+                  <span style={{ color: '#4a5568' }}>Compartido con:</span>
+                  {expediente.Usuarios_Compartidos.split(',').map((email, idx) => (
+                    <span 
+                      key={idx} 
+                      style={{ 
+                        backgroundColor: '#e2e8f0', 
+                        padding: '2px 10px', 
+                        borderRadius: '12px',
+                        color: '#2d3748'
+                      }}
+                    >
+                      {email.trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           {/* Botones Eliminar y Volver - ARRIBA A LA DERECHA */}
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
@@ -948,43 +984,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             >
               ← Volver
             </button>
-          </div>
-        </div>
-          <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
-            <p style={{ margin: '4px 0' }}>
-              <strong>Cliente:</strong> {cliente.Nombre_Cliente}
-            </p>
-            <p style={{ margin: '4px 0' }}>
-              <strong>Carátula:</strong> {expediente.Caratula || 'No registrada'}
-            </p>
-            <p style={{ margin: '4px 0' }}>
-              <strong>Juzgado:</strong> {expediente.Juzgado || 'No registrado'}
-            </p>
-            {expediente.Usuarios_Compartidos && (
-              <div style={{ 
-                marginTop: '8px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '5px', 
-                flexWrap: 'wrap',
-                fontSize: '0.85rem'
-              }}>
-                <span style={{ color: '#4a5568' }}>Compartido con:</span>
-                {expediente.Usuarios_Compartidos.split(',').map((email, idx) => (
-                  <span 
-                    key={idx} 
-                    style={{ 
-                      backgroundColor: '#e2e8f0', 
-                      padding: '2px 10px', 
-                      borderRadius: '12px',
-                      color: '#2d3748'
-                    }}
-                  >
-                    {email.trim()}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
