@@ -926,11 +926,30 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   return (
     <div className="container">
       <div style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ marginBottom: '4px' }}>Expediente {sac}</h1>
-          <p style={{ margin: 0 }}>
-            Ficha completa del expediente con actuaciones, plazos y herramientas IA
-          </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+          <div>
+            <h1 style={{ marginBottom: '4px' }}>Expediente {sac}</h1>
+            <p style={{ margin: 0 }}>
+              Ficha completa del expediente con actuaciones, plazos y herramientas IA
+            </p>
+          </div>
+          {/* Botones Eliminar y Volver - ARRIBA A LA DERECHA */}
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <button
+              className="button button-danger button-sm"
+              onClick={eliminarExpediente}
+              disabled={cargando}
+            >
+              {cargando ? 'Eliminando...' : 'Eliminar'}
+            </button>
+            <button 
+              className="button button-secondary button-sm"
+              onClick={volver}
+            >
+              ← Volver
+            </button>
+          </div>
+        </div>
           <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
             <p style={{ margin: '4px 0' }}>
               <strong>Cliente:</strong> {cliente.Nombre_Cliente}
@@ -967,21 +986,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               </div>
             )}
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <button
-            className="button button-danger button-sm"
-            onClick={eliminarExpediente}
-            disabled={cargando}
-          >
-            {cargando ? 'Eliminando...' : 'Eliminar Expediente'}
-          </button>
-          <button 
-            className="button button-secondary button-sm"
-            onClick={volver}
-          >
-            ← Volver al cliente
-          </button>
         </div>
       </div>
 
