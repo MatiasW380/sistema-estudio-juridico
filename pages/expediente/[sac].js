@@ -925,18 +925,18 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
   return (
     <div className="container">
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
           <div>
-            <h1 style={{ marginBottom: '8px' }}>Expediente {sac}</h1>
-            <div style={{ marginTop: '0', fontSize: '12px', color: '#64748b' }}>
-              <p style={{ margin: '4px 0' }}>
+            <h1 style={{ marginBottom: '4px' }}>Expediente {sac}</h1>
+            <div style={{ marginTop: '0', fontSize: '12px', color: '#64748b', lineHeight: '1.3' }}>
+              <p style={{ margin: '2px 0' }}>
                 <strong>Cliente:</strong> {cliente.Nombre_Cliente}
               </p>
-              <p style={{ margin: '4px 0' }}>
+              <p style={{ margin: '2px 0' }}>
                 <strong>Carátula:</strong> {expediente.Caratula || 'No registrada'}
               </p>
-              <p style={{ margin: '4px 0' }}>
+              <p style={{ margin: '2px 0' }}>
                 <strong>Juzgado:</strong> {expediente.Juzgado || 'No registrado'}
               </p>
               {expediente.Usuarios_Compartidos && (
@@ -986,7 +986,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       </div>
 
       {/* Pestañas */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
         {/* PESTAÑAS */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
