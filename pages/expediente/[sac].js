@@ -1177,11 +1177,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {/* Pestaña Actuaciones */}
         {activeTab === 'actuaciones' && (
           <div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Formulario para nueva actuación */}
             {mostrarFormulario && (
               <div style={{ 
