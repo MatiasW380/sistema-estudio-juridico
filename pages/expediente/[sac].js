@@ -928,11 +928,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
           <div>
-            <h1 style={{ marginBottom: '4px' }}>Expediente {sac}</h1>
-            <p style={{ margin: 0 }}>
-              Ficha completa del expediente con actuaciones, plazos y herramientas IA
-            </p>
-            <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
+            <h1 style={{ marginBottom: '8px' }}>Expediente {sac}</h1>
+            <div style={{ marginTop: '0', fontSize: '12px', color: '#64748b' }}>
               <p style={{ margin: '4px 0' }}>
                 <strong>Cliente:</strong> {cliente.Nombre_Cliente}
               </p>
@@ -1054,9 +1051,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
           </button>
         </div>
 
-        {/* BOTONES DE ACCIÓN - SOLO EN PESTAÑA ACTUACIONES */}
-        {activeTab === 'actuaciones' && (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+        {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
             <button 
               onClick={toggleFormulario} 
               className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
@@ -1169,7 +1165,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Contenido de las pestañas */}
