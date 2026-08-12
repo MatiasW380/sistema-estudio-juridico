@@ -163,6 +163,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const router = useRouter();
 
   // Estados para IA
+  const [mostrarMenuIA, setMostrarMenuIA] = useState(false);
   const [mostrarIA, setMostrarIA] = useState(false);
   const [accionIA, setAccionIA] = useState('');
   const [resultadoIA, setResultadoIA] = useState('');
@@ -1053,37 +1054,16 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {/* Pestaña Actuaciones */}
         {activeTab === 'actuaciones' && (
           <div>
-            {/* Botones de acción */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Botones de acción en UNA FILA COMPACTA */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button 
                 onClick={toggleFormulario} 
                 className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
               >
-                {mostrarFormulario ? 'Cerrar' : 'Nueva Actuación'}
-              </button>
-              <button 
-                onClick={() => ejecutarIA('resumir')} 
-                className="button button-info button-sm"
-                disabled={cargandoIA}
-              >
-                {cargandoIA ? 'Generando...' : 'Resumir'}
-              </button>
-              <button 
-                onClick={() => ejecutarIA('analizar-sentencia')} 
-                className="button button-warning button-sm"
-                disabled={cargandoIA}
-              >
-                {cargandoIA ? 'Analizando...' : 'Analizar'}
-              </button>
-              <button 
-                onClick={() => ejecutarIA('estrategia')} 
-                className="button button-success button-sm"
-                disabled={cargandoIA}
-              >
-                {cargandoIA ? 'Pensando...' : 'Estrategia'}
+                {mostrarFormulario ? 'Cerrar' : '+ Actuación'}
               </button>
               <button onClick={agregarPlazo} className="button button-warning button-sm">
-                Plazo
+                + Plazo
               </button>
               <button 
                 onClick={() => setMostrarModalCompartir(true)} 
@@ -1091,6 +1071,96 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               >
                 Compartir
               </button>
+              
+              {/* Dropdown para Herramientas IA */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => setMostrarMenuIA(!mostrarMenuIA)}
+                  className="button button-info button-sm"
+                  style={{ marginRight: '0' }}
+                >
+                  {cargandoIA ? 'IA...' : 'IA ▼'}
+                </button>
+                {mostrarMenuIA && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '36px',
+                    left: '0',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    zIndex: 100,
+                    minWidth: '140px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        ejecutarIA('resumir');
+                        setMostrarMenuIA(false);
+                      }}
+                      disabled={cargandoIA}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '8px 12px',
+                        textAlign: 'left',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        borderBottom: '1px solid #e2e8f0'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    >
+                      {cargandoIA ? '⏳ Resumir' : 'Resumir'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        ejecutarIA('analizar-sentencia');
+                        setMostrarMenuIA(false);
+                      }}
+                      disabled={cargandoIA}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '8px 12px',
+                        textAlign: 'left',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        borderBottom: '1px solid #e2e8f0'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    >
+                      {cargandoIA ? '⏳ Analizar' : 'Analizar'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        ejecutarIA('estrategia');
+                        setMostrarMenuIA(false);
+                      }}
+                      disabled={cargandoIA}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '8px 12px',
+                        textAlign: 'left',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    >
+                      {cargandoIA ? '⏳ Estrategia' : 'Estrategia'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Formulario para nueva actuación */}
