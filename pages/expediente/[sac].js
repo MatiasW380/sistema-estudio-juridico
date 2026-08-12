@@ -989,67 +989,187 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       </div>
 
       {/* Pestañas */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => setActiveTab('actuaciones')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'actuaciones' ? '#2563eb' : 'transparent',
-            color: activeTab === 'actuaciones' ? 'white' : '#64748b',
-            border: 'none',
-            borderRadius: '6px 6px 0 0',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.9rem',
-            transition: 'all 0.2s'
-          }}
-        >
-          Actuaciones ({actuaciones.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('plazos')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'plazos' ? '#2563eb' : 'transparent',
-            color: activeTab === 'plazos' ? 'white' : '#64748b',
-            border: 'none',
-            borderRadius: '6px 6px 0 0',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.9rem',
-            transition: 'all 0.2s'
-          }}
-        >
-          Plazos
-        </button>
-        <button
-          onClick={() => setActiveTab('comentarios')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'comentarios' ? '#2563eb' : 'transparent',
-            color: activeTab === 'comentarios' ? 'white' : '#64748b',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          💬 Comentarios
-          {comentarios.length > 0 && (
-            <span
-              style={{
-                marginLeft: '8px',
-                fontSize: '0.8rem',
-                backgroundColor: activeTab === 'comentarios' ? 'rgba(255,255,255,0.3)' : '#3182ce',
-                color: activeTab === 'comentarios' ? 'white' : 'white',
-                padding: '2px 8px',
-                borderRadius: '12px',
-              }}
+      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* PESTAÑAS */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setActiveTab('actuaciones')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'actuaciones' ? '#2563eb' : 'transparent',
+              color: activeTab === 'actuaciones' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '6px 6px 0 0',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            Actuaciones ({actuaciones.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('plazos')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'plazos' ? '#2563eb' : 'transparent',
+              color: activeTab === 'plazos' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '6px 6px 0 0',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            Plazos
+          </button>
+          <button
+            onClick={() => setActiveTab('comentarios')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'comentarios' ? '#2563eb' : 'transparent',
+              color: activeTab === 'comentarios' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px 8px 0 0',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            💬 Comentarios
+            {comentarios.length > 0 && (
+              <span
+                style={{
+                  marginLeft: '8px',
+                  fontSize: '0.8rem',
+                  backgroundColor: activeTab === 'comentarios' ? 'rgba(255,255,255,0.3)' : '#3182ce',
+                  color: activeTab === 'comentarios' ? 'white' : 'white',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                }}
+              >
+                {comentarios.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* BOTONES DE ACCIÓN - SOLO EN PESTAÑA ACTUACIONES */}
+        {activeTab === 'actuaciones' && (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+            <button 
+              onClick={toggleFormulario} 
+              className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
             >
-              {comentarios.length}
-            </span>
-          )}
-        </button>
+              {mostrarFormulario ? 'Cerrar' : '+ Actuación'}
+            </button>
+            <button onClick={agregarPlazo} className="button button-warning button-sm">
+              + Plazo
+            </button>
+            <button 
+              onClick={() => setMostrarModalCompartir(true)} 
+              className="button button-primary button-sm"
+            >
+              Compartir
+            </button>
+            
+            {/* Dropdown para Herramientas IA */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setMostrarMenuIA(!mostrarMenuIA)}
+                className="button button-info button-sm"
+                style={{ marginRight: '0' }}
+              >
+                {cargandoIA ? 'IA...' : 'IA ▼'}
+              </button>
+              {mostrarMenuIA && (
+                <div style={{
+                  position: 'absolute',
+                  top: '36px',
+                  right: '0',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  zIndex: 100,
+                  minWidth: '140px'
+                }}>
+                  <button
+                    onClick={() => {
+                      ejecutarIA('resumir');
+                      setMostrarMenuIA(false);
+                    }}
+                    disabled={cargandoIA}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      color: '#2d3748',
+                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      borderBottom: '1px solid #e2e8f0',
+                      fontWeight: '500'
+                    }}
+                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    {cargandoIA ? '⏳ Resumir' : 'Resumir'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      ejecutarIA('analizar-sentencia');
+                      setMostrarMenuIA(false);
+                    }}
+                    disabled={cargandoIA}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      color: '#2d3748',
+                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      borderBottom: '1px solid #e2e8f0',
+                      fontWeight: '500'
+                    }}
+                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    {cargandoIA ? '⏳ Analizar' : 'Analizar'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      ejecutarIA('estrategia');
+                      setMostrarMenuIA(false);
+                    }}
+                    disabled={cargandoIA}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      color: '#2d3748',
+                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    {cargandoIA ? '⏳ Estrategia' : 'Estrategia'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Contenido de las pestañas */}
@@ -1057,45 +1177,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         {/* Pestaña Actuaciones */}
         {activeTab === 'actuaciones' && (
           <div>
-            {/* Botones de acción en UNA FILA COMPACTA */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button 
-                onClick={toggleFormulario} 
-                className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
-              >
-                {mostrarFormulario ? 'Cerrar' : '+ Actuación'}
-              </button>
-              <button onClick={agregarPlazo} className="button button-warning button-sm">
-                + Plazo
-              </button>
-              <button 
-                onClick={() => setMostrarModalCompartir(true)} 
-                className="button button-primary button-sm"
-              >
-                Compartir
-              </button>
-              
-              {/* Dropdown para Herramientas IA */}
-              <div style={{ position: 'relative' }}>
-                <button 
-                  onClick={() => setMostrarMenuIA(!mostrarMenuIA)}
-                  className="button button-info button-sm"
-                  style={{ marginRight: '0' }}
-                >
-                  {cargandoIA ? 'IA...' : 'IA ▼'}
-                </button>
-                {mostrarMenuIA && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '36px',
-                    left: '0',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    zIndex: 100,
-                    minWidth: '140px'
-                  }}>
                     <button
                       onClick={() => {
                         ejecutarIA('resumir');
@@ -1109,6 +1190,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                         textAlign: 'left',
                         border: 'none',
                         backgroundColor: 'transparent',
+                        color: '#1f2937',
                         cursor: 'pointer',
                         fontSize: '14px',
                         borderBottom: '1px solid #e2e8f0'
@@ -1131,6 +1213,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                         textAlign: 'left',
                         border: 'none',
                         backgroundColor: 'transparent',
+                        color: '#1f2937',
                         cursor: 'pointer',
                         fontSize: '14px',
                         borderBottom: '1px solid #e2e8f0'
@@ -1153,6 +1236,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                         textAlign: 'left',
                         border: 'none',
                         backgroundColor: 'transparent',
+                        color: '#1f2937',
                         cursor: 'pointer',
                         fontSize: '14px'
                       }}
