@@ -15,11 +15,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { accion, numeroSAC, texto, usuario } = req.body;
+    const { accion, numeroSAC, texto, usuario, nombreCliente } = req.body;
 
     console.log('📥 Datos recibidos:');
     console.log('  accion:', accion);
     console.log('  numeroSAC:', numeroSAC);
+    console.log('  nombreCliente:', nombreCliente);
 
     if (!numeroSAC) {
       console.log('❌ numeroSAC faltante');
@@ -58,7 +59,9 @@ export default async function handler(req, res) {
     switch (accion) {
       case 'resumir':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva. No uses asteriscos, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Resumí el siguiente expediente de manera clara y ejecutiva, enfocándote en los hechos y situación de nuestro cliente ${nombreCliente || '(nombre del cliente)'}. No uses asteriscos, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+
+CLIENTE: ${nombreCliente || 'Nuestro cliente'}
 
 ACTUACIONES:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -66,17 +69,19 @@ ${contexto.actuaciones || 'No hay actuaciones registradas.'}
 CONSULTAS:
 ${contexto.consultas || 'No hay consultas registradas.'}
 
-RESUMEN EJECUTIVO:
-- Partes del proceso
-- Hechos principales
-- Estado actual (etapa procesal)
+RESUMEN EJECUTIVO (enfocado en ${nombreCliente || 'nuestro cliente'}):
+- Partes del proceso (identificar el rol de ${nombreCliente || 'nuestro cliente'})
+- Hechos principales que afectan a ${nombreCliente || 'nuestro cliente'})
+- Estado actual (etapa procesal del caso)
 - Próximos pasos sugeridos, teniendo en cuenta las leyes locales de procedimiento y de fondo
 `;
         break;
 
       case 'analizar-sentencia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba en Argentina, especializado en análisis de sentencias y apelaciones. 
+Eres un asistente legal experto de la Ciudad de Córdoba en Argentina, especializado en análisis de sentencias y apelaciones.
+
+CLIENTE A ANALIZAR: ${nombreCliente || 'Nuestro cliente'}
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -94,7 +99,7 @@ TEXTO DE LA SENTENCIA A ANALIZAR:
 ${texto || 'No se proporcionó texto de sentencia'}
 
 INSTRUCCIONES:
-Analizá la sentencia proporcionada y generá un informe detallado que incluya:
+Analizá la sentencia proporcionada DESDE LA PERSPECTIVA DE ${nombreCliente || 'NUESTRO CLIENTE'} y generá un informe detallado que incluya:
 
 1. **Argumentos principales de las partes y del tribunal:** Resumí los fundamentos clave de la decisión.
 2. **Contradicciones internas:** Identificá si hay contradicciones en los argumentos del tribunal.
@@ -109,7 +114,9 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
 
       case 'estrategia':
         prompt = `
-Eres un asistente legal experto de la Ciudad de Cordoba, Argentina. Sugerí una estrategia jurídica para el siguiente expediente teniendo en cuenta especialmente la ultima consulta realizada y siemrpe desde la eprspectiva de la defensa de nuestro cliente.
+Eres un asistente legal experto de la Ciudad de Córdoba, Argentina. Sugerí una estrategia jurídica PARA DEFENDER A ${nombreCliente || 'nuestro cliente'} en el siguiente expediente.
+
+**CLIENTE A DEFENDER:** ${nombreCliente || 'Nuestro cliente'}
 
 CONTEXTO DEL EXPEDIENTE:
 ${contexto.actuaciones || 'No hay actuaciones registradas.'}
@@ -123,12 +130,14 @@ ${contexto.leyes || 'No hay leyes cargadas.'}
 JURISPRUDENCIA APLICABLE:
 ${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
 
-ESTRATEGIA SUGERIDA:
-1. **Próximos pasos:** Qué acciones tomar en el corto plazo.
-2. **Argumentos clave:** Cuáles son los argumentos más fuertes para desarrollar.
-3. **Riesgos y mitigaciones:** Qué riesgos existen y cómo enfrentarlos.
-4. **Plazos a considerar:** Fechas clave a tener en cuenta.
-5. **Recomendación final:** Un resumen ejecutivo de la estrategia.
+ESTRATEGIA PARA LA DEFENSA DE ${nombreCliente || 'NUESTRO CLIENTE'}:
+1. **Próximos pasos:** Qué acciones tomar en el corto plazo PARA BENEFICIAR A ${nombreCliente || 'nuestro cliente'}.
+2. **Argumentos clave:** Cuáles son los argumentos más fuertes para desarrollar en defensa de ${nombreCliente || 'nuestro cliente'}.
+3. **Riesgos y mitigaciones:** Qué riesgos existen y cómo enfrentarlos PARA PROTEGER A ${nombreCliente || 'nuestro cliente'}.
+4. **Plazos a considerar:** Fechas clave que favorecen a ${nombreCliente || 'nuestro cliente'}
+5. **Recomendación final:** Un resumen ejecutivo de la estrategia para ganar PARA ${nombreCliente || 'nuestro cliente'}.
+
+El análisis DEBE ser SIEMPRE desde la perspectiva de la DEFENSA de ${nombreCliente || 'nuestro cliente'}. No analices la posición de la contraparte. Enfocate únicamente en los argumentos, leyes y estrategias que favorecen a ${nombreCliente || 'nuestro cliente'}
 
 El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
 `;

@@ -556,9 +556,10 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         accion,
         numeroSAC: sac,
         usuario: sessionEmail,
+        nombreCliente: cliente?.Nombre_Cliente || '',
       };
 
-      console.log('📤 Enviando a /api/ia:', { accion, numeroSAC: sac });
+      console.log('📤 Enviando a /api/ia:', { accion, numeroSAC: sac, nombreCliente: cliente?.Nombre_Cliente });
 
       const response = await fetch('/api/ia', {
         method: 'POST',
