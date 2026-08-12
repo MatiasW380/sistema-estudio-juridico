@@ -1166,7 +1166,6 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             </div>
           </div>
         </div>
-      </div>
 
       {/* Contenido de las pestañas */}
       <div style={{ minHeight: '300px' }}>
