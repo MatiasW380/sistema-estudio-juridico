@@ -993,7 +993,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             onClick={() => setActiveTab('actuaciones')}
             style={{
               padding: '10px 20px',
-              backgroundColor: activeTab === 'actuaciones' ? '#2563eb' : 'transparent',
+              backgroundColor: activeTab === 'actuaciones' ? '#1e40af' : 'transparent',
               color: activeTab === 'actuaciones' ? 'white' : '#64748b',
               border: 'none',
               borderRadius: '6px 6px 0 0',
@@ -1009,7 +1009,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             onClick={() => setActiveTab('plazos')}
             style={{
               padding: '10px 20px',
-              backgroundColor: activeTab === 'plazos' ? '#2563eb' : 'transparent',
+              backgroundColor: activeTab === 'plazos' ? '#1e40af' : 'transparent',
               color: activeTab === 'plazos' ? 'white' : '#64748b',
               border: 'none',
               borderRadius: '6px 6px 0 0',
@@ -1025,7 +1025,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             onClick={() => setActiveTab('comentarios')}
             style={{
               padding: '10px 20px',
-              backgroundColor: activeTab === 'comentarios' ? '#2563eb' : 'transparent',
+              backgroundColor: activeTab === 'comentarios' ? '#1e40af' : 'transparent',
               color: activeTab === 'comentarios' ? 'white' : '#64748b',
               border: 'none',
               borderRadius: '8px 8px 0 0',
