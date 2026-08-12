@@ -1,7 +1,7 @@
 // pages/api/perfil.js
 // API para obtener y actualizar perfil del usuario
 
-import { getPerfilUsuario, actualizarPerfilUsuario } from '../../lib/googleSheets';
+import { getPerfilUsuario, actualizarPerfilUsuario, inicializarColumnasUsuarios } from '../../lib/googleSheets';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -43,6 +43,9 @@ export default async function handler(req, res) {
       if (!nombre || !domicilioConstituido || !matricula) {
         return res.status(400).json({ error: 'Faltan campos requeridos' });
       }
+
+      // Inicializar columnas en sheet Usuarios
+      await inicializarColumnasUsuarios();
 
       const ok = await actualizarPerfilUsuario(
         userData.email,
