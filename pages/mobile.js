@@ -1,127 +1,101 @@
 // pages/mobile.js
-// Versión móvil simplificada - Solo lectura de clientes y expedientes
+// Versión móvil simplificada - Solo dos desplegables
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { getClientes, getExpedientes } from '../lib/googleSheets';
 
 export default function MobilePage() {
-  const router = useRouter();
   const [clientes, setClientes] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  const [juzgadoFiltro, setJuzgadoFiltro] = useState('');
+  const [clienteId, setClienteId] = useState('');
+  const [juzgado, setJuzgado] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const cargar = async () => {
-      const cls = await getClientes();
-      setClientes(cls || []);
+      try {
+        const cls = await getClientes();
+        console.log('Clientes cargados:', cls);
+        setClientes(cls || []);
+      } catch (e) {
+        console.error('Error cargando clientes:', e);
+      }
       setLoading(false);
     };
     cargar();
   }, []);
 
-  const manejarSeleccionCliente = async (cliente) => {
-    setClienteSeleccionado(cliente);
-    const exps = await getExpedientes(cliente.ID_Cliente);
-    setExpedientes(exps || []);
-    setJuzgadoFiltro('');
+  const manejarCambioCliente = async (id) => {
+    setClienteId(id);
+    setJuzgado('');
+    if (id) {
+      try {
+        const exps = await getExpedientes(id);
+        console.log('Expedientes:', exps);
+        setExpedientes(exps || []);
+      } catch (e) {
+        console.error('Error cargando expedientes:', e);
+      }
+    } else {
+      setExpedientes([]);
+    }
   };
 
-  const expedienteFiltrados = clienteSeleccionado
-    ? expedientes.filter((e) =>
-        juzgadoFiltro ? e.Juzgado === juzgadoFiltro : true
-      )
-    : [];
+  const juzgadosUnicos = [...new Set(expedientes.map((e) => e.Juzgado).filter(Boolean))].sort();
 
-  const juzgadosUnicos = clienteSeleccionado
-    ? [...new Set(expedientes.map((e) => e.Juzgado).filter(Boolean))]
-    : [];
+  const expedientesFiltrados = juzgado
+    ? expedientes.filter((e) => e.Juzgado === juzgado)
+    : expedientes;
 
   return (
-    <div style={{ 
-      padding: '15px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      backgroundColor: '#f8f9fa',
-      minHeight: '100vh'
-    }}>
-      <h1 style={{ fontSize: '20px', marginBottom: '20px', color: '#1e40af' }}>
-        📋 Mis Casos
-      </h1>
+    <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif' }}>
+      <h1 style={{ fontSize: '18px', marginBottom: '20px' }}>📋 Mis Casos</h1>
 
       {loading ? (
         <p>Cargando...</p>
-      ) : !clienteSeleccionado ? (
-        <div>
-          <p style={{ color: '#64748b', marginBottom: '15px' }}>Selecciona un cliente:</p>
-          {clientes.map((cliente) => (
-            <button
-              key={cliente.ID_Cliente}
-              onClick={() => manejarSeleccionCliente(cliente)}
+      ) : (
+        <>
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+              Cliente:
+            </label>
+            <select
+              value={clienteId}
+              onChange={(e) => manejarCambioCliente(e.target.value)}
               style={{
-                display: 'block',
                 width: '100%',
-                padding: '12px',
-                marginBottom: '10px',
-                backgroundColor: '#white',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                textAlign: 'left',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
                 fontSize: '14px'
               }}
             >
-              <strong>{cliente.Nombre_Cliente}</strong>
-              <br />
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
-                {cliente.expedientes?.length || 0} expedientes
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div>
-          <button
-            onClick={() => {
-              setClienteSeleccionado(null);
-              setExpedientes([]);
-            }}
-            style={{
-              marginBottom: '15px',
-              padding: '8px 12px',
-              backgroundColor: '#718096',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            ← Atrás
-          </button>
+              <option value="">-- Selecciona un cliente --</option>
+              {clientes.map((cli) => (
+                <option key={cli.ID_Cliente} value={cli.ID_Cliente}>
+                  {cli.Nombre_Cliente}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <h2 style={{ fontSize: '16px', marginBottom: '10px', color: '#1e40af' }}>
-            {clienteSeleccionado.Nombre_Cliente}
-          </h2>
-
-          {juzgadosUnicos.length > 0 && (
+          {clienteId && juzgadosUnicos.length > 0 && (
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 'bold' }}>
-                Filtrar por juzgado:
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+                Juzgado:
               </label>
               <select
-                value={juzgadoFiltro}
-                onChange={(e) => setJuzgadoFiltro(e.target.value)}
+                value={juzgado}
+                onChange={(e) => setJuzgado(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px',
+                  padding: '10px',
                   borderRadius: '6px',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid #ccc',
                   fontSize: '14px'
                 }}
               >
-                <option value="">Todos los juzgados</option>
+                <option value="">-- Todos los juzgados --</option>
                 {juzgadosUnicos.map((juz) => (
                   <option key={juz} value={juz}>
                     {juz}
@@ -131,45 +105,43 @@ export default function MobilePage() {
             </div>
           )}
 
-          <div style={{ marginBottom: '15px' }}>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '10px' }}>
-              {expedienteFiltrados.length} expediente{expedienteFiltrados.length !== 1 ? 's' : ''}
-            </p>
-
-            {expedienteFiltrados.map((exp) => (
-              <div
-                key={exp.Numero_SAC}
-                style={{
-                  backgroundColor: 'white',
-                  padding: '12px',
-                  marginBottom: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0'
-                }}
-              >
-                <div style={{ marginBottom: '8px' }}>
-                  <strong style={{ fontSize: '14px', color: '#1e40af' }}>
+          {clienteId && expedientesFiltrados.length > 0 && (
+            <div>
+              <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+                {expedientesFiltrados.length} expediente{expedientesFiltrados.length !== 1 ? 's' : ''}
+              </p>
+              {expedientesFiltrados.map((exp) => (
+                <div
+                  key={exp.Numero_SAC}
+                  style={{
+                    backgroundColor: '#f9f9f9',
+                    padding: '10px',
+                    marginBottom: '10px',
+                    borderRadius: '6px',
+                    border: '1px solid #e0e0e0',
+                    fontSize: '13px'
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#1e40af' }}>
                     {exp.Numero_SAC}
-                  </strong>
+                  </div>
+                  {exp.Caratula && <div>📝 {exp.Caratula}</div>}
+                  {exp.Juzgado && <div>⚖️ {exp.Juzgado}</div>}
+                  {exp.Ciudad && <div>📍 {exp.Ciudad}</div>}
+                  {exp.Fuero && <div>📋 {exp.Fuero}</div>}
                 </div>
-                <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5' }}>
-                  {exp.Caratula && (
-                    <div><strong>Carátula:</strong> {exp.Caratula}</div>
-                  )}
-                  {exp.Juzgado && (
-                    <div><strong>Juzgado:</strong> {exp.Juzgado}</div>
-                  )}
-                  {exp.Ciudad && (
-                    <div><strong>Ciudad:</strong> {exp.Ciudad}</div>
-                  )}
-                  {exp.Fuero && (
-                    <div><strong>Fuero:</strong> {exp.Fuero}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          )}
+
+          {clienteId && expedientesFiltrados.length === 0 && expedientes.length > 0 && (
+            <p style={{ color: '#666' }}>No hay expedientes para este juzgado.</p>
+          )}
+
+          {clienteId && expedientes.length === 0 && (
+            <p style={{ color: '#666' }}>Este cliente no tiene expedientes.</p>
+          )}
+        </>
       )}
     </div>
   );
