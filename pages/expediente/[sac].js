@@ -1,7 +1,7 @@
 // pages/expediente/[sac].js
 // Página de detalle de un expediente con actuaciones, plazos y herramientas IA
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
 import EditorTexto from '../../components/EditorTexto';
@@ -169,6 +169,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [resultadoIA, setResultadoIA] = useState('');
   const [editandoIA, setEditandoIA] = useState(false);
   const [cargandoIA, setCargandoIA] = useState(false);
+  const abortControllerRef = useRef(null);
   const [editorIA, setEditorIA] = useState('');
   const [sentencias, setSentencias] = useState([]);
   const [mostrarSeleccionSentencia, setMostrarSeleccionSentencia] = useState(false);
@@ -561,10 +562,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
       console.log('📤 Enviando a /api/ia:', { accion, numeroSAC: sac, nombreCliente: cliente?.Nombre_Cliente });
 
+      abortControllerRef.current = new AbortController();
       const response = await fetch('/api/ia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: abortControllerRef.current.signal,
       });
 
       const data = await response.json();
@@ -589,9 +592,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setMensaje('Error en IA: ' + errorMsg);
       }
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('📌 Cancelado');
+        setMensaje('');
+        setCargandoIA(false);
+        return;
+      }
       console.error('Error en ejecutarIA:', error);
       setMensaje('Error: ' + error.message);
-    } finally {
       setCargandoIA(false);
     }
   };
@@ -610,10 +618,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
       console.log('📤 Enviando a /api/ia (análisis de sentencia)...');
 
+      abortControllerRef.current = new AbortController();
       const response = await fetch('/api/ia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: abortControllerRef.current.signal,
       });
 
       const data = await response.json();
@@ -637,9 +647,14 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setMensaje('Error en IA: ' + errorMsg);
       }
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('📌 Cancelado');
+        setMensaje('');
+        setCargandoIA(false);
+        return;
+      }
       console.error('Error en ejecutarAnalisisSentencia:', error);
       setMensaje('Error: ' + error.message);
-    } finally {
       setCargandoIA(false);
     }
   };
@@ -2015,6 +2030,17 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {cargandoIA && (
+        <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',backgroundColor:'rgba(0,0,0,0.7)',display:'flex',justifyContent:'center',alignItems:'center',zIndex:1001}}>
+          <div style={{backgroundColor:'white',padding:'40px',borderRadius:'12px',textAlign:'center',boxShadow:'0 4px 20px rgba(0,0,0,0.3)',minWidth:'300px'}}>
+            <div style={{fontSize:'48px',marginBottom:'20px',animation:'spin 1s linear infinite'}}>⚙️</div>
+            <h2 style={{marginBottom:'10px',color:'#1e40af'}}>Procesando IA...</h2>
+            <p style={{color:'#64748b',marginBottom:'30px'}}>Generando análisis. Esto puede tomar unos segundos.</p>
+            <button onClick={()=>{if(abortControllerRef.current)abortControllerRef.current.abort();setCargandoIA(false);}} style={{backgroundColor:'#e53e3e',color:'white',border:'none',padding:'10px 20px',borderRadius:'6px',cursor:'pointer',fontSize:'14px',minWidth:'150px'}}>Cancelar</button>
           </div>
         </div>
       )}
