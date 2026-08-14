@@ -12,6 +12,20 @@ function MyApp({ Component, pageProps }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Detectar si es móvil
+    const isMobile = () => {
+      return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+    };
+
+    // Si es móvil y NO está en /mobile, redirigir
+    if (isMobile() && router.pathname !== '/mobile' && router.pathname !== '/login') {
+      router.push('/mobile');
+    }
+  }, [router.pathname, router]);
+
+  useEffect(() => {
     // Leer usuario de la cookie
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, ...rest] = cookie.trim().split('=');
