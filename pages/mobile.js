@@ -1,8 +1,7 @@
 // pages/mobile.js
-// Versión móvil - Input de texto para cliente + Lista de juzgados
+// Versión móvil - Llama al endpoint /api/mobile-datos
 
 import { useState, useEffect } from 'react';
-import { readSheet } from '../lib/googleSheets';
 
 export default function MobilePage() {
   const [clientes, setClientes] = useState([]);
@@ -15,76 +14,17 @@ export default function MobilePage() {
   useEffect(() => {
     const cargar = async () => {
       try {
-        console.log('Iniciando carga...');
-        const rows = await readSheet('Clientes_y_Expedientes');
-        console.log('Rows recibidas:', rows);
+        const res = await fetch('/api/mobile-datos');
+        const data = await res.json();
         
-        if (!rows) {
-          setError('No se pudieron cargar los datos');
-          setLoading(false);
-          return;
+        if (res.ok) {
+          setClientes(data.clientes || []);
+          setExpedientes(data.expedientes || []);
+          setError('');
+        } else {
+          setError(data.error || 'Error cargando datos');
         }
-
-        if (rows.length < 2) {
-          setError('No hay datos en el sheet');
-          setLoading(false);
-          return;
-        }
-
-        const headers = rows[0];
-        console.log('Headers:', headers);
-        
-        const idxNombre = headers.indexOf('Nombre_Cliente');
-        const idxSAC = headers.indexOf('Numero_SAC');
-        const idxCaratula = headers.indexOf('Caratula');
-        const idxJuzgado = headers.indexOf('Juzgado');
-        const idxCiudad = headers.indexOf('Ciudad');
-        const idxFuero = headers.indexOf('Fuero');
-
-        if (idxNombre === -1) {
-          setError('No se encontró columna Nombre_Cliente');
-          setLoading(false);
-          return;
-        }
-
-        const clientesMap = new Map();
-        const expedientesData = [];
-
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          const nombre = row[idxNombre];
-          
-          if (!nombre) continue;
-
-          if (!clientesMap.has(nombre)) {
-            clientesMap.set(nombre, true);
-          }
-
-          expedientesData.push({
-            cliente: nombre,
-            sac: row[idxSAC] || '',
-            caratula: row[idxCaratula] || '',
-            juzgado: row[idxJuzgado] || '',
-            ciudad: row[idxCiudad] || '',
-            fuero: row[idxFuero] || '',
-          });
-        }
-
-        const clientesList = Array.from(clientesMap.keys()).sort();
-        console.log('Clientes encontrados:', clientesList.length);
-        console.log('Expedientes encontrados:', expedientesData.length);
-
-        if (clientesList.length === 0) {
-          setError('No se encontraron clientes');
-          setLoading(false);
-          return;
-        }
-
-        setClientes(clientesList);
-        setExpedientes(expedientesData);
-        setError('');
       } catch (e) {
-        console.error('Error:', e);
         setError('Error: ' + e.message);
       }
       setLoading(false);
@@ -101,7 +41,7 @@ export default function MobilePage() {
   }
 
   if (clientes.length === 0) {
-    return <div style={{ padding: '15px' }}>No hay clientes registrados.</div>;
+    return <div style={{ padding: '15px' }}>No hay clientes.</div>;
   }
 
   const clientesFiltrados = clientes.filter((cli) =>
@@ -122,12 +62,12 @@ export default function MobilePage() {
     : [];
 
   return (
-    <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif', maxWidth: '100%' }}>
+    <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif' }}>
       <h1 style={{ fontSize: '18px', marginBottom: '20px' }}>📋 Mis Casos</h1>
 
       <div style={{ marginBottom: '15px' }}>
         <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
-          Cliente ({clientes.length}):
+          Cliente:
         </label>
         <input
           type="text"
@@ -175,9 +115,9 @@ export default function MobilePage() {
       </div>
 
       {clienteSeleccionado && juzgadosDelCliente.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div>
           <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: 'bold' }}>
-            Juzgados ({juzgadosDelCliente.length}):
+            Juzgados:
           </label>
           {juzgadosDelCliente.map((juz) => {
             const expedientesJuz = expedientesCliente.filter((e) => e.juzgado === juz);
@@ -196,11 +136,8 @@ export default function MobilePage() {
                 <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#1e40af' }}>
                   ⚖️ {juz}
                 </div>
-                <div style={{ color: '#666', fontSize: '12px' }}>
-                  {expedientesJuz.length} caso{expedientesJuz.length !== 1 ? 's' : ''}
-                </div>
                 {expedientesJuz.map((exp) => (
-                  <div key={exp.sac} style={{ fontSize: '12px', marginTop: '5px', paddingLeft: '10px', borderLeft: '2px solid #e0e0e0' }}>
+                  <div key={exp.sac} style={{ fontSize: '12px', marginTop: '5px', paddingLeft: '10px' }}>
                     <div style={{ color: '#333' }}>📄 {exp.sac}</div>
                     {exp.caratula && <div style={{ color: '#666', fontSize: '11px' }}>{exp.caratula}</div>}
                   </div>
@@ -209,10 +146,6 @@ export default function MobilePage() {
             );
           })}
         </div>
-      )}
-
-      {clienteSeleccionado && juzgadosDelCliente.length === 0 && (
-        <p style={{ color: '#666' }}>Sin juzgados registrados para este cliente.</p>
       )}
     </div>
   );
