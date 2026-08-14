@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react';
 import { readSheet } from '../lib/googleSheets';
 
 export default function MobilePage() {
-  const [datos, setDatos] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [expedientes, setExpedientes] = useState([]);
   const [filtroCliente, setFiltroCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   const [loading, setLoading] = useState(true);
@@ -14,8 +15,57 @@ export default function MobilePage() {
     const cargar = async () => {
       try {
         const rows = await readSheet('Clientes_y_Expedientes');
-        console.log('Datos cargados:', rows);
-        setDatos(rows || []);
+        console.log('Raw rows:', rows);
+        
+        if (rows.length < 2) {
+          console.error('No hay datos');
+          setLoading(false);
+          return;
+        }
+
+        const headers = rows[0];
+        console.log('Headers:', headers);
+        
+        // Encontrar índices correctos
+        const idxNombre = headers.indexOf('Nombre_Cliente');
+        const idxSAC = headers.indexOf('Numero_SAC');
+        const idxCaratula = headers.indexOf('Caratula');
+        const idxJuzgado = headers.indexOf('Juzgado');
+        const idxCiudad = headers.indexOf('Ciudad');
+        const idxFuero = headers.indexOf('Fuero');
+
+        console.log('Índices:', { idxNombre, idxSAC, idxCaratula, idxJuzgado, idxCiudad, idxFuero });
+
+        // Procesar datos
+        const clientesMap = new Map();
+        const expedientesData = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const nombre = row[idxNombre];
+          
+          if (!nombre) continue;
+
+          if (!clientesMap.has(nombre)) {
+            clientesMap.set(nombre, true);
+          }
+
+          expedientesData.push({
+            cliente: nombre,
+            sac: row[idxSAC],
+            caratula: row[idxCaratula],
+            juzgado: row[idxJuzgado],
+            ciudad: row[idxCiudad],
+            fuero: row[idxFuero],
+          });
+        }
+
+        const clientesList = Array.from(clientesMap.keys()).sort();
+        console.log('Clientes:', clientesList);
+        console.log('Expedientes:', expedientesData);
+
+        setClientes(clientesList);
+        setExpedientes(expedientesData);
       } catch (e) {
         console.error('Error cargando:', e);
       }
@@ -24,44 +74,24 @@ export default function MobilePage() {
     cargar();
   }, []);
 
-  // Extraer clientes únicos
-  const clientesUnicos = datos.length > 0
-    ? [...new Set(
-        datos
-          .slice(1)
-          .map((row) => row[1]) // Nombre_Cliente generalmente está en índice 1
-          .filter(Boolean)
-      )].sort()
-    : [];
-
   // Filtrar clientes por búsqueda
-  const clientesFiltrados = clientesUnicos.filter((cli) =>
+  const clientesFiltrados = clientes.filter((cli) =>
     cli.toLowerCase().includes(filtroCliente.toLowerCase())
   );
 
-  // Extraer juzgados únicos del cliente seleccionado
-  const juzgadosDelCliente = clienteSeleccionado && datos.length > 0
+  // Juzgados del cliente seleccionado
+  const juzgadosDelCliente = clienteSeleccionado
     ? [...new Set(
-        datos
-          .slice(1)
-          .filter((row) => row[1] === clienteSeleccionado)
-          .map((row) => row[8]) // Juzgado generalmente en índice 8
+        expedientes
+          .filter((e) => e.cliente === clienteSeleccionado)
+          .map((e) => e.juzgado)
           .filter(Boolean)
       )].sort()
     : [];
 
-  // Expedientes filtrados
-  const expedientes = clienteSeleccionado && datos.length > 0
-    ? datos
-        .slice(1)
-        .filter((row) => row[1] === clienteSeleccionado)
-        .map((row) => ({
-          sac: row[4],
-          caratula: row[5],
-          juzgado: row[8],
-          ciudad: row[9],
-          fuero: row[7],
-        }))
+  // Expedientes del cliente seleccionado
+  const expedientesCliente = clienteSeleccionado
+    ? expedientes.filter((e) => e.cliente === clienteSeleccionado)
     : [];
 
   return (
@@ -70,6 +100,8 @@ export default function MobilePage() {
 
       {loading ? (
         <p>Cargando...</p>
+      ) : clientes.length === 0 ? (
+        <p>No hay clientes registrados.</p>
       ) : (
         <>
           {/* Búsqueda de cliente */}
@@ -129,7 +161,7 @@ export default function MobilePage() {
                 Juzgados ({juzgadosDelCliente.length}):
               </label>
               {juzgadosDelCliente.map((juz) => {
-                const expedientesJuz = expedientes.filter((e) => e.juzgado === juz);
+                const expedientesJuz = expedientesCliente.filter((e) => e.juzgado === juz);
                 return (
                   <div
                     key={juz}
