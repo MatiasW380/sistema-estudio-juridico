@@ -1,145 +1,167 @@
 // pages/mobile.js
-// Versión móvil simplificada - Solo dos desplegables
+// Versión móvil - Input de texto para cliente + Lista de juzgados
 
 import { useState, useEffect } from 'react';
-import { getClientes, getExpedientes } from '../lib/googleSheets';
+import { readSheet } from '../lib/googleSheets';
 
 export default function MobilePage() {
-  const [clientes, setClientes] = useState([]);
-  const [expedientes, setExpedientes] = useState([]);
-  const [clienteId, setClienteId] = useState('');
-  const [juzgado, setJuzgado] = useState('');
+  const [datos, setDatos] = useState([]);
+  const [filtroCliente, setFiltroCliente] = useState('');
+  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const cargar = async () => {
       try {
-        const cls = await getClientes();
-        console.log('Clientes cargados:', cls);
-        setClientes(cls || []);
+        const rows = await readSheet('Clientes_y_Expedientes');
+        console.log('Datos cargados:', rows);
+        setDatos(rows || []);
       } catch (e) {
-        console.error('Error cargando clientes:', e);
+        console.error('Error cargando:', e);
       }
       setLoading(false);
     };
     cargar();
   }, []);
 
-  const manejarCambioCliente = async (id) => {
-    setClienteId(id);
-    setJuzgado('');
-    if (id) {
-      try {
-        const exps = await getExpedientes(id);
-        console.log('Expedientes:', exps);
-        setExpedientes(exps || []);
-      } catch (e) {
-        console.error('Error cargando expedientes:', e);
-      }
-    } else {
-      setExpedientes([]);
-    }
-  };
+  // Extraer clientes únicos
+  const clientesUnicos = datos.length > 0
+    ? [...new Set(
+        datos
+          .slice(1)
+          .map((row) => row[1]) // Nombre_Cliente generalmente está en índice 1
+          .filter(Boolean)
+      )].sort()
+    : [];
 
-  const juzgadosUnicos = [...new Set(expedientes.map((e) => e.Juzgado).filter(Boolean))].sort();
+  // Filtrar clientes por búsqueda
+  const clientesFiltrados = clientesUnicos.filter((cli) =>
+    cli.toLowerCase().includes(filtroCliente.toLowerCase())
+  );
 
-  const expedientesFiltrados = juzgado
-    ? expedientes.filter((e) => e.Juzgado === juzgado)
-    : expedientes;
+  // Extraer juzgados únicos del cliente seleccionado
+  const juzgadosDelCliente = clienteSeleccionado && datos.length > 0
+    ? [...new Set(
+        datos
+          .slice(1)
+          .filter((row) => row[1] === clienteSeleccionado)
+          .map((row) => row[8]) // Juzgado generalmente en índice 8
+          .filter(Boolean)
+      )].sort()
+    : [];
+
+  // Expedientes filtrados
+  const expedientes = clienteSeleccionado && datos.length > 0
+    ? datos
+        .slice(1)
+        .filter((row) => row[1] === clienteSeleccionado)
+        .map((row) => ({
+          sac: row[4],
+          caratula: row[5],
+          juzgado: row[8],
+          ciudad: row[9],
+          fuero: row[7],
+        }))
+    : [];
 
   return (
-    <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif', maxWidth: '100%' }}>
       <h1 style={{ fontSize: '18px', marginBottom: '20px' }}>📋 Mis Casos</h1>
 
       {loading ? (
         <p>Cargando...</p>
       ) : (
         <>
+          {/* Búsqueda de cliente */}
           <div style={{ marginBottom: '15px' }}>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
               Cliente:
             </label>
-            <select
-              value={clienteId}
-              onChange={(e) => manejarCambioCliente(e.target.value)}
+            <input
+              type="text"
+              placeholder="Escribe para filtrar..."
+              value={filtroCliente}
+              onChange={(e) => setFiltroCliente(e.target.value)}
               style={{
                 width: '100%',
                 padding: '10px',
                 borderRadius: '6px',
                 border: '1px solid #ccc',
-                fontSize: '14px'
+                fontSize: '14px',
+                boxSizing: 'border-box'
               }}
-            >
-              <option value="">-- Selecciona un cliente --</option>
-              {clientes.map((cli) => (
-                <option key={cli.ID_Cliente} value={cli.ID_Cliente}>
-                  {cli.Nombre_Cliente}
-                </option>
-              ))}
-            </select>
+            />
+
+            {filtroCliente && clientesFiltrados.length > 0 && (
+              <div style={{
+                backgroundColor: 'white',
+                border: '1px solid #ccc',
+                borderTop: 'none',
+                borderRadius: '0 0 6px 6px',
+                maxHeight: '150px',
+                overflowY: 'auto'
+              }}>
+                {clientesFiltrados.map((cli) => (
+                  <div
+                    key={cli}
+                    onClick={() => {
+                      setClienteSeleccionado(cli);
+                      setFiltroCliente(cli);
+                    }}
+                    style={{
+                      padding: '10px',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {cli}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {clienteId && juzgadosUnicos.length > 0 && (
+          {/* Lista de juzgados */}
+          {clienteSeleccionado && juzgadosDelCliente.length > 0 && (
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
-                Juzgado:
+              <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: 'bold' }}>
+                Juzgados ({juzgadosDelCliente.length}):
               </label>
-              <select
-                value={juzgado}
-                onChange={(e) => setJuzgado(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  border: '1px solid #ccc',
-                  fontSize: '14px'
-                }}
-              >
-                <option value="">-- Todos los juzgados --</option>
-                {juzgadosUnicos.map((juz) => (
-                  <option key={juz} value={juz}>
-                    {juz}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {clienteId && expedientesFiltrados.length > 0 && (
-            <div>
-              <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
-                {expedientesFiltrados.length} expediente{expedientesFiltrados.length !== 1 ? 's' : ''}
-              </p>
-              {expedientesFiltrados.map((exp) => (
-                <div
-                  key={exp.Numero_SAC}
-                  style={{
-                    backgroundColor: '#f9f9f9',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    borderRadius: '6px',
-                    border: '1px solid #e0e0e0',
-                    fontSize: '13px'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#1e40af' }}>
-                    {exp.Numero_SAC}
+              {juzgadosDelCliente.map((juz) => {
+                const expedientesJuz = expedientes.filter((e) => e.juzgado === juz);
+                return (
+                  <div
+                    key={juz}
+                    style={{
+                      backgroundColor: '#f9f9f9',
+                      padding: '10px',
+                      marginBottom: '8px',
+                      borderRadius: '6px',
+                      border: '1px solid #ddd',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#1e40af' }}>
+                      ⚖️ {juz}
+                    </div>
+                    <div style={{ color: '#666', fontSize: '12px' }}>
+                      {expedientesJuz.length} caso{expedientesJuz.length !== 1 ? 's' : ''}
+                    </div>
+                    {expedientesJuz.map((exp) => (
+                      <div key={exp.sac} style={{ fontSize: '12px', marginTop: '5px', paddingLeft: '10px', borderLeft: '2px solid #e0e0e0' }}>
+                        <div style={{ color: '#333' }}>📄 {exp.sac}</div>
+                        {exp.caratula && <div style={{ color: '#666', fontSize: '11px' }}>{exp.caratula}</div>}
+                      </div>
+                    ))}
                   </div>
-                  {exp.Caratula && <div>📝 {exp.Caratula}</div>}
-                  {exp.Juzgado && <div>⚖️ {exp.Juzgado}</div>}
-                  {exp.Ciudad && <div>📍 {exp.Ciudad}</div>}
-                  {exp.Fuero && <div>📋 {exp.Fuero}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {clienteId && expedientesFiltrados.length === 0 && expedientes.length > 0 && (
-            <p style={{ color: '#666' }}>No hay expedientes para este juzgado.</p>
-          )}
-
-          {clienteId && expedientes.length === 0 && (
-            <p style={{ color: '#666' }}>Este cliente no tiene expedientes.</p>
+          {clienteSeleccionado && juzgadosDelCliente.length === 0 && (
+            <p style={{ color: '#666' }}>Sin juzgados registrados para este cliente.</p>
           )}
         </>
       )}
