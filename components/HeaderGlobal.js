@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import LogoLexHub from './LogoLexHub';
 import {
   IconHome,
   IconUsers,
@@ -49,7 +50,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
       }}
     >
-      {/* Logo/Nombre del Estudio - Izquierda */}
+      {/* Logo + Nombre - Izquierda */}
       <div
         style={{
           display: 'flex',
@@ -74,8 +75,8 @@ export default function HeaderGlobal({ userData, onLogout }) {
             onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
           >
-            <IconHome size={24} />
-            Estudio Jurídico
+            <LogoLexHub size={32} />
+            LexHub
           </a>
         </Link>
       </div>
