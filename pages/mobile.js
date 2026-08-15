@@ -19,7 +19,9 @@ export default function MobilePage() {
         const data = await res.json();
         
         if (res.ok) {
-          setClientes(data.clientes || []);
+          // Deduplicar clientes por si hay duplicados
+          const clientesUnicos = [...new Set(data.clientes || [])];
+          setClientes(clientesUnicos);
           setExpedientes(data.expedientes || []);
           setError('');
         } else {

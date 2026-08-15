@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const nombre = row[idxNombre];
+      const nombre = (row[idxNombre] || '').trim();
       
       if (!nombre) continue;
 
@@ -40,6 +40,8 @@ export default async function handler(req, res) {
     }
 
     const clientesList = Array.from(clientesMap.keys()).sort();
+    
+    console.log(`📱 Mobile: ${clientesList.length} clientes únicos, ${expedientesData.length} expedientes`);
 
     res.status(200).json({
       clientes: clientesList,
