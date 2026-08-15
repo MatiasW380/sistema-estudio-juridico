@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import LogoLexHub from '../components/LogoLexHub';
 
 const FALLBACK_EMAIL = 'matiasbaronetto@gmail.com';
 const FALLBACK_PIN = '3543';
@@ -97,9 +98,19 @@ export default function LoginPage() {
           maxWidth: '400px',
         }}
       >
-        <h1 style={{ textAlign: 'center', marginBottom: '20px', color: '#2d3748' }}>
-          🏛️ Sistema de Gestión
-        </h1>
+        {/* Logo + Nombre */}
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <div style={{ marginBottom: '15px' }}>
+            <LogoLexHub size={60} />
+          </div>
+          <h1 style={{ margin: '10px 0', color: '#1e40af', fontSize: '32px', fontWeight: 'bold' }}>
+            LexHub
+          </h1>
+          <p style={{ color: '#4a5568', fontSize: '14px' }}>
+            Sistema de Gestión Jurídica
+          </p>
+        </div>
+
         <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '30px' }}>
           Ingresá con tu email y PIN de 4 dígitos
         </p>
