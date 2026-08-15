@@ -28,9 +28,13 @@ export default async function handler(req, res) {
       
       if (!nombre) continue;
 
-      clientesMap.set(nombre, true);
+      // Normalizar: ordenar palabras alfabéticamente para agrupar variaciones
+      const palabras = nombre.split(' ').filter(Boolean).sort();
+      const nombreNormalizado = palabras.join(' ');
+
+      clientesMap.set(nombreNormalizado, nombre); // Guardar normalizado como key, original como value
       expedientesData.push({
-        cliente: nombre,
+        cliente: nombreNormalizado, // Usar normalizado
         sac: row[idxSAC] || '',
         caratula: row[idxCaratula] || '',
         juzgado: row[idxJuzgado] || '',
