@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 
 export default function MobilePage() {
   const [clientes, setClientes] = useState([]);
-  const [mapaClientes, setMapaClientes] = useState({});
   const [expedientes, setExpedientes] = useState([]);
   const [filtroCliente, setFiltroCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
@@ -20,18 +19,8 @@ export default function MobilePage() {
         const data = await res.json();
         
         if (res.ok) {
-          // Extraer nombres mostrables para filtrar
-          const clientesMostrables = (data.clientes || []).map(c => c.mostrable);
-          const clientesUnicos = [...new Set(clientesMostrables)];
-          
-          // Guardar mapeo normalizado -> mostrable
-          const mapaClientes = {};
-          (data.clientes || []).forEach(c => {
-            mapaClientes[c.mostrable] = c.normalizado;
-          });
-          
+          const clientesUnicos = [...new Set(data.clientes || [])];
           setClientes(clientesUnicos);
-          setMapaClientes(mapaClientes);
           setExpedientes(data.expedientes || []);
           setError('');
         } else {
@@ -60,7 +49,7 @@ export default function MobilePage() {
   const juzgadosDelCliente = clienteSeleccionado
     ? [...new Set(
         expedientes
-          .filter((e) => e.cliente === mapaClientes[clienteSeleccionado])
+          .filter((e) => e.cliente === clienteSeleccionado)
           .map((e) => e.juzgado)
           .filter(Boolean)
       )].sort()
@@ -68,7 +57,7 @@ export default function MobilePage() {
 
   const expedientesFiltered = clienteSeleccionado
     ? expedientes.filter((e) => 
-        e.cliente === mapaClientes[clienteSeleccionado] && 
+        e.cliente === clienteSeleccionado && 
         (juzgadoSeleccionado ? e.juzgado === juzgadoSeleccionado : true)
       )
     : [];
@@ -186,7 +175,7 @@ export default function MobilePage() {
                   Todos ({juzgadosDelCliente.length})
                 </button>
                 {juzgadosDelCliente.map((juz) => {
-                  const countExp = expedientes.filter(e => e.cliente === mapaClientes[clienteSeleccionado] && e.juzgado === juz).length;
+                  const countExp = expedientes.filter(e => e.cliente === clienteSeleccionado && e.juzgado === juz).length;
                   return (
                     <button
                       key={juz}
@@ -238,11 +227,6 @@ export default function MobilePage() {
                   {exp.juzgado && (
                     <div style={{ color: '#666', fontSize: '12px', marginBottom: '3px' }}>
                       ⚖️ {exp.juzgado}
-                    </div>
-                  )}
-                  {exp.ciudad && (
-                    <div style={{ color: '#666', fontSize: '12px' }}>
-                      📍 {exp.ciudad}
                     </div>
                   )}
                 </div>
