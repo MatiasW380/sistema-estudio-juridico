@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const idxCiudad = headers.indexOf('Ciudad');
     const idxFuero = headers.indexOf('Fuero');
 
-    const clientesMap = new Map();
+    const clientesMap = new Map(); // normalizado -> nombre mostrable
     const expedientesData = [];
 
     for (let i = 1; i < rows.length; i++) {
@@ -29,12 +29,16 @@ export default async function handler(req, res) {
       if (!nombre) continue;
 
       // Normalizar: ordenar palabras alfabéticamente para agrupar variaciones
-      const palabras = nombre.split(' ').filter(Boolean).sort();
-      const nombreNormalizado = palabras.join(' ');
+      const palabras = nombre.split(' ').filter(Boolean);
+      const nombreNormalizado = palabras.sort().join(' ');
 
-      clientesMap.set(nombreNormalizado, nombre); // Guardar normalizado como key, original como value
+      // Guardar el nombre más largo (probablemente más completo)
+      if (!clientesMap.has(nombreNormalizado) || nombre.length > clientesMap.get(nombreNormalizado).length) {
+        clientesMap.set(nombreNormalizado, nombre);
+      }
+
       expedientesData.push({
-        cliente: nombreNormalizado, // Usar normalizado
+        cliente: nombreNormalizado,
         sac: row[idxSAC] || '',
         caratula: row[idxCaratula] || '',
         juzgado: row[idxJuzgado] || '',
@@ -43,7 +47,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const clientesList = Array.from(clientesMap.keys()).sort();
+    // Convertir a lista: mantener relación normalizado -> mostrable
+    const clientesList = Array.from(clientesMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([normalizado, mostrable]) => ({
+        normalizado,
+        mostrable
+      }));
     
     console.log(`📱 Mobile: ${clientesList.length} clientes únicos, ${expedientesData.length} expedientes`);
 
