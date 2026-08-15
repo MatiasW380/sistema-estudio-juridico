@@ -52,7 +52,7 @@ function MyApp({ Component, pageProps }) {
   };
 
   // Agregar padding-top al body si el header está visible
-  const shouldShowHeader = userData && router.pathname !== '/login' && router.pathname !== '/registro';
+  const shouldShowHeader = userData && router.pathname !== '/login' && router.pathname !== '/registro' && router.pathname !== '/mobile';
 
   return (
     <>
