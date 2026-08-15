@@ -49,7 +49,7 @@ export default function MobilePage() {
   const juzgadosDelCliente = clienteSeleccionado
     ? [...new Set(
         expedientes
-          .filter((e) => e.cliente === clienteSeleccionado)
+          .filter((e) => e.clienteMostrable === clienteSeleccionado)
           .map((e) => e.juzgado)
           .filter(Boolean)
       )].sort()
@@ -57,7 +57,7 @@ export default function MobilePage() {
 
   const expedientesFiltered = clienteSeleccionado
     ? expedientes.filter((e) => 
-        e.cliente === clienteSeleccionado && 
+        e.clienteMostrable === clienteSeleccionado && 
         (juzgadoSeleccionado ? e.juzgado === juzgadoSeleccionado : true)
       )
     : [];
@@ -175,7 +175,7 @@ export default function MobilePage() {
                   Todos ({juzgadosDelCliente.length})
                 </button>
                 {juzgadosDelCliente.map((juz) => {
-                  const countExp = expedientes.filter(e => e.cliente === clienteSeleccionado && e.juzgado === juz).length;
+                  const countExp = expedientes.filter(e => e.clienteMostrable === clienteSeleccionado && e.juzgado === juz).length;
                   return (
                     <button
                       key={juz}
