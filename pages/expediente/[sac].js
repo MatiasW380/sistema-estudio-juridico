@@ -834,31 +834,50 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setCargando(true);
 
     try {
-      const datosActualizados = {
-        id: plazoSeleccionado.ID,
-        numeroSAC: expediente?.Numero_SAC || '',
-        cliente: cliente?.Nombre_Cliente || '',
-        tipo: plazoSeleccionado.Tipo || 'Plazo',
-        titulo: plazoSeleccionado.Titulo || '',
-        descripcion: plazoSeleccionado.Descripcion || '',
-        fecha: plazoSeleccionado.Fecha || '',
-        hora: plazoSeleccionado.Hora || '',
-        horaFin: plazoSeleccionado.Hora_Fin || '',
-        lugar: plazoSeleccionado.Lugar || '',
-        recordatorio: plazoSeleccionado.Recordatorio || 'SI',
-        diasAntes: plazoSeleccionado.Dias_Antes || '1',
-        estado: plazoSeleccionado.Estado || 'Pendiente',
-        compartidoCon: plazoSeleccionado.Compartido_Con || '',
-      };
-
       // Detectar si es un plazo nuevo o existente
       const esNuevo = plazoSeleccionado.ID.startsWith('NEW_');
+
+      // Para POST (nuevo): NO incluir ID
+      const datos = esNuevo
+        ? {
+            numeroSAC: expediente?.Numero_SAC || '',
+            cliente: cliente?.Nombre_Cliente || '',
+            tipo: plazoSeleccionado.Tipo || 'Plazo',
+            titulo: plazoSeleccionado.Titulo || '',
+            descripcion: plazoSeleccionado.Descripcion || '',
+            fecha: plazoSeleccionado.Fecha || '',
+            hora: plazoSeleccionado.Hora || '',
+            horaFin: plazoSeleccionado.Hora_Fin || '',
+            lugar: plazoSeleccionado.Lugar || '',
+            recordatorio: plazoSeleccionado.Recordatorio || 'SI',
+            diasAntes: plazoSeleccionado.Dias_Antes || '1',
+            estado: plazoSeleccionado.Estado || 'Pendiente',
+            compartidoCon: plazoSeleccionado.Compartido_Con || '',
+          }
+        : {
+            // Para PUT (existente): incluir ID
+            id: plazoSeleccionado.ID,
+            numeroSAC: expediente?.Numero_SAC || '',
+            cliente: cliente?.Nombre_Cliente || '',
+            tipo: plazoSeleccionado.Tipo || 'Plazo',
+            titulo: plazoSeleccionado.Titulo || '',
+            descripcion: plazoSeleccionado.Descripcion || '',
+            fecha: plazoSeleccionado.Fecha || '',
+            hora: plazoSeleccionado.Hora || '',
+            horaFin: plazoSeleccionado.Hora_Fin || '',
+            lugar: plazoSeleccionado.Lugar || '',
+            recordatorio: plazoSeleccionado.Recordatorio || 'SI',
+            diasAntes: plazoSeleccionado.Dias_Antes || '1',
+            estado: plazoSeleccionado.Estado || 'Pendiente',
+            compartidoCon: plazoSeleccionado.Compartido_Con || '',
+          };
+
       const metodo = esNuevo ? 'POST' : 'PUT';
 
       const response = await fetch('/api/agenda', {
         method: metodo,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosActualizados),
+        body: JSON.stringify(datos),
       });
 
       const resultado = await response.json();
@@ -866,7 +885,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       if (resultado.success) {
         setMensaje(esNuevo ? 'Plazo creado correctamente' : 'Plazo actualizado correctamente');
         setMostrarModalEditarPlazo(false);
-        cargarPlazos();
+        cargarPlazos(); // Solo recarga plazos en la ficha, no va a agenda
       } else {
         setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
       }
