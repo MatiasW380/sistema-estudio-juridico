@@ -851,8 +851,12 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         compartidoCon: plazoSeleccionado.Compartido_Con || '',
       };
 
+      // Detectar si es un plazo nuevo o existente
+      const esNuevo = plazoSeleccionado.ID.startsWith('NEW_');
+      const metodo = esNuevo ? 'POST' : 'PUT';
+
       const response = await fetch('/api/agenda', {
-        method: 'PUT',
+        method: metodo,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosActualizados),
       });
@@ -860,7 +864,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
       const resultado = await response.json();
 
       if (resultado.success) {
-        setMensaje('Plazo actualizado correctamente');
+        setMensaje(esNuevo ? 'Plazo creado correctamente' : 'Plazo actualizado correctamente');
         setMostrarModalEditarPlazo(false);
         cargarPlazos();
       } else {
