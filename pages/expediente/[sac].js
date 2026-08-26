@@ -744,12 +744,17 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   };
 
   const agregarPlazo = () => {
+    // Generar ID único para nuevo plazo
+    const idNuevo = `NEW_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     // Limpiar el plazo y abrir modal en el expediente
     setPlazoSeleccionado({
+      ID: idNuevo,
       Numero_SAC: sac,
       Titulo: '',
       Descripcion: '',
       Fecha_Vencimiento: '',
+      Fecha: '',
       Estado: 'Pendiente',
     });
     setMostrarModalEditarPlazo(true);
