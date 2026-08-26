@@ -833,64 +833,88 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     setMensaje('');
     setCargando(true);
 
+    if (!plazoSeleccionado.Fecha || !plazoSeleccionado.Titulo) {
+      setMensaje('⚠️ Fecha y Título son obligatorios');
+      setCargando(false);
+      return;
+    }
+
     try {
-      // Detectar si es un plazo nuevo o existente
-      const esNuevo = plazoSeleccionado.ID.startsWith('NEW_');
+      // Obtener usuario de la cookie o del contexto
+      const usuarioCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('user='))
+        ?.split('=')[1];
+      const usuario = usuarioCookie || 'sistema';
 
-      // Para POST (nuevo): NO incluir ID
-      const datos = esNuevo
-        ? {
-            numeroSAC: expediente?.Numero_SAC || '',
-            cliente: cliente?.Nombre_Cliente || '',
+      // Detectar si es nuevo o existente
+      const esNuevo = plazoSeleccionado.ID && plazoSeleccionado.ID.startsWith('NEW_');
+
+      if (esNuevo) {
+        // POST: Crear nuevo plazo - exactamente como en agenda
+        const response = await fetch('/api/agenda', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             tipo: plazoSeleccionado.Tipo || 'Plazo',
-            titulo: plazoSeleccionado.Titulo || '',
+            titulo: plazoSeleccionado.Titulo,
             descripcion: plazoSeleccionado.Descripcion || '',
-            fecha: plazoSeleccionado.Fecha || '',
+            fecha: plazoSeleccionado.Fecha,
             hora: plazoSeleccionado.Hora || '',
             horaFin: plazoSeleccionado.Hora_Fin || '',
             lugar: plazoSeleccionado.Lugar || '',
             recordatorio: plazoSeleccionado.Recordatorio || 'SI',
             diasAntes: plazoSeleccionado.Dias_Antes || '1',
             estado: plazoSeleccionado.Estado || 'Pendiente',
-            compartidoCon: plazoSeleccionado.Compartido_Con || '',
-          }
-        : {
-            // Para PUT (existente): incluir ID
-            id: plazoSeleccionado.ID,
-            numeroSAC: expediente?.Numero_SAC || '',
             cliente: cliente?.Nombre_Cliente || '',
-            tipo: plazoSeleccionado.Tipo || 'Plazo',
-            titulo: plazoSeleccionado.Titulo || '',
-            descripcion: plazoSeleccionado.Descripcion || '',
-            fecha: plazoSeleccionado.Fecha || '',
-            hora: plazoSeleccionado.Hora || '',
-            horaFin: plazoSeleccionado.Hora_Fin || '',
-            lugar: plazoSeleccionado.Lugar || '',
-            recordatorio: plazoSeleccionado.Recordatorio || 'SI',
-            diasAntes: plazoSeleccionado.Dias_Antes || '1',
-            estado: plazoSeleccionado.Estado || 'Pendiente',
+            numeroSAC: expediente?.Numero_SAC || '',
             compartidoCon: plazoSeleccionado.Compartido_Con || '',
-          };
+            creadoPor: usuario,
+          }),
+        });
 
-      const metodo = esNuevo ? 'POST' : 'PUT';
-
-      const response = await fetch('/api/agenda', {
-        method: metodo,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datos),
-      });
-
-      const resultado = await response.json();
-
-      if (resultado.success) {
-        setMensaje(esNuevo ? 'Plazo creado correctamente' : 'Plazo actualizado correctamente');
-        setMostrarModalEditarPlazo(false);
-        cargarPlazos(); // Solo recarga plazos en la ficha, no va a agenda
+        const resultado = await response.json();
+        if (resultado.success) {
+          setMensaje('✅ Plazo creado correctamente');
+          setMostrarModalEditarPlazo(false);
+          cargarPlazos();
+        } else {
+          setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        }
       } else {
-        setMensaje(`Error: ${resultado.error || 'Error desconocido'}`);
+        // PUT: Actualizar plazo existente
+        const response = await fetch('/api/agenda', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: plazoSeleccionado.ID,
+            tipo: plazoSeleccionado.Tipo || 'Plazo',
+            titulo: plazoSeleccionado.Titulo,
+            descripcion: plazoSeleccionado.Descripcion || '',
+            fecha: plazoSeleccionado.Fecha,
+            hora: plazoSeleccionado.Hora || '',
+            horaFin: plazoSeleccionado.Hora_Fin || '',
+            lugar: plazoSeleccionado.Lugar || '',
+            recordatorio: plazoSeleccionado.Recordatorio || 'SI',
+            diasAntes: plazoSeleccionado.Dias_Antes || '1',
+            estado: plazoSeleccionado.Estado || 'Pendiente',
+            cliente: cliente?.Nombre_Cliente || '',
+            numeroSAC: expediente?.Numero_SAC || '',
+            compartidoCon: plazoSeleccionado.Compartido_Con || '',
+          }),
+        });
+
+        const resultado = await response.json();
+        if (resultado.success) {
+          setMensaje('✅ Plazo actualizado correctamente');
+          setMostrarModalEditarPlazo(false);
+          cargarPlazos();
+        } else {
+          setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+        }
       }
     } catch (error) {
-      setMensaje(`Error: ${error.message}`);
+      setMensaje(`❌ Error: ${error.message}`);
     } finally {
       setCargando(false);
     }
