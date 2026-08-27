@@ -877,7 +877,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         if (resultado.success) {
           setMensaje('✅ Plazo creado correctamente');
           setMostrarModalEditarPlazo(false);
-          cargarPlazos();
+          // Recargar la página para mostrar el plazo nuevo
+          setTimeout(() => router.replace(router.asPath), 800);
         } else {
           setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
         }
@@ -908,7 +909,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         if (resultado.success) {
           setMensaje('✅ Plazo actualizado correctamente');
           setMostrarModalEditarPlazo(false);
-          cargarPlazos();
+          // Recargar la página
+          setTimeout(() => router.replace(router.asPath), 800);
         } else {
           setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
         }
