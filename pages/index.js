@@ -152,6 +152,10 @@ export default function Home({
   totalPendiente,
 }) {
   const [tareas_state] = useState(tareasUrgentes || []);
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
+  const [mensaje, setMensaje] = useState('');
+  const [cargando, setCargando] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -204,16 +208,137 @@ export default function Home({
   };
 
   const handleTareaClick = (tarea) => {
-    // Navegar a agenda con la tarea seleccionada
-    // La agenda mostrará los detalles y permitirá ir al expediente si existe
-    router.push({
-      pathname: '/agenda',
-      query: { tareaId: tarea.ID || tarea.Numero_SAC }
-    });
+    setTareaSeleccionada(tarea);
+    setMostrarModal(true);
+    setMensaje('');
+  };
+
+  const handleEditar = async (e) => {
+    e.preventDefault();
+    setMensaje('');
+    setCargando(true);
+
+    if (!tareaSeleccionada.Fecha || !tareaSeleccionada.Titulo) {
+      setMensaje('⚠️ Fecha y Título son obligatorios');
+      setCargando(false);
+      return;
+    }
+
+    try {
+      const usuarioCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('user='))
+        ?.split('=')[1];
+      const usuario = usuarioCookie || 'sistema';
+
+      const response = await fetch('/api/agenda', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: tareaSeleccionada.ID,
+          numeroSAC: tareaSeleccionada.Numero_SAC || '',
+          cliente: tareaSeleccionada.Cliente || '',
+          tipo: tareaSeleccionada.Tipo || 'Otro',
+          titulo: tareaSeleccionada.Titulo,
+          descripcion: tareaSeleccionada.Descripción || '',
+          fecha: tareaSeleccionada.Fecha,
+          hora: tareaSeleccionada.Hora || '',
+          horaFin: tareaSeleccionada.Hora_Fin || '',
+          lugar: tareaSeleccionada.Lugar || '',
+          recordatorio: tareaSeleccionada.Recordatorio || 'SI',
+          diasAntes: tareaSeleccionada.Dias_Antes || '1',
+          estado: tareaSeleccionada.Estado || 'Pendiente',
+          compartidoCon: tareaSeleccionada.Compartido_Con || '',
+        }),
+      });
+
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensaje('✅ Evento actualizado correctamente');
+        setTimeout(() => {
+          setMostrarModal(false);
+          window.location.reload();
+        }, 1000);
+      } else {
+        setMensaje(`❌ Error: ${resultado.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
     <div className="container">
+      {/* Modal de Edición de Tarea */}
+      {mostrarModal && tareaSeleccionada && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => { setMostrarModal(false); setMensaje(''); }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cuadro de vista previa - exacto a agenda */}
+            <div style={{ backgroundColor: '#ebf8ff', border: '1px solid #3182ce', borderRadius: '6px', padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 8px 0', color: '#0c3c26' }}>{tareaSeleccionada.Titulo}</h3>
+                {tareaSeleccionada.Descripcion && (
+                  <p style={{ margin: '0 0 8px 0', color: '#1e3a8a', fontSize: '0.95rem', lineHeight: '1.4' }}>
+                    {tareaSeleccionada.Descripcion}
+                  </p>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  <div><strong>Tipo:</strong> {tareaSeleccionada.Tipo}</div>
+                  <div><strong>Fecha:</strong> {tareaSeleccionada.Fecha}</div>
+                  {tareaSeleccionada.Cliente && <div><strong>Cliente:</strong> {tareaSeleccionada.Cliente}</div>}
+                  {tareaSeleccionada.Numero_SAC && <div><strong>SAC:</strong> {tareaSeleccionada.Numero_SAC}</div>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexDirection: 'column' }}>
+                {tareaSeleccionada.Numero_SAC && (
+                  <button 
+                    className="button button-sm button-primary"
+                    onClick={() => router.push(`/expediente/${encodeURIComponent(tareaSeleccionada.Numero_SAC)}`)}
+                  >
+                    IR AL EXPEDIENTE
+                  </button>
+                )}
+                <button 
+                  className="button button-sm button-secondary"
+                  onClick={() => setMostrarModal(false)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="container">
       <div style={{ marginBottom: '32px' }}>
         <h1>Dashboard</h1>
       </div>
