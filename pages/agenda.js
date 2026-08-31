@@ -387,108 +387,35 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
       </div>
 
       {tareaSeleccionada && (
-        <div style={{ 
-          backgroundColor: '#ffffff', 
-          border: '2px solid #2563eb', 
-          borderRadius: '12px', 
-          padding: '20px', 
-          marginBottom: '24px', 
-          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.1)',
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'flex-start', 
-          gap: '20px' 
-        }}>
+        <div style={{ backgroundColor: '#ebf8ff', border: '1px solid #3182ce', borderRadius: '6px', padding: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <h2 style={{ margin: 0, color: '#1e40af', fontSize: '1.3rem' }}>
-                {tareaSeleccionada.Titulo}
-              </h2>
-              <span style={{ 
-                backgroundColor: '#2563eb', 
-                color: 'white', 
-                padding: '4px 12px', 
-                borderRadius: '20px', 
-                fontSize: '0.75rem',
-                fontWeight: '600'
-              }}>
-                {tareaSeleccionada.Tipo || 'Otro'}
-              </span>
-            </div>
-            
+            <h3 style={{ margin: '0 0 8px 0', color: '#0c3c26' }}>{tareaSeleccionada.Titulo}</h3>
             {tareaSeleccionada.Descripcion && (
-              <p style={{ margin: '0 0 16px 0', color: '#4a5568', fontSize: '0.95rem', lineHeight: '1.5' }}>
+              <p style={{ margin: '0 0 8px 0', color: '#1e3a8a', fontSize: '0.95rem', lineHeight: '1.4' }}>
                 {tareaSeleccionada.Descripcion}
               </p>
             )}
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-              gap: '16px', 
-              fontSize: '0.9rem', 
-              color: '#2d3748',
-              backgroundColor: '#f8fafc',
-              padding: '16px',
-              borderRadius: '8px'
-            }}>
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#718096', fontWeight: '600', marginBottom: '4px' }}>
-                  FECHA
-                </div>
-                <div style={{ fontSize: '1rem', fontWeight: '500', color: '#1e40af' }}>
-                  {tareaSeleccionada.Fecha}
-                </div>
-              </div>
-              {tareaSeleccionada.Hora && (
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#718096', fontWeight: '600', marginBottom: '4px' }}>
-                    HORA
-                  </div>
-                  <div style={{ fontSize: '1rem', fontWeight: '500' }}>
-                    {tareaSeleccionada.Hora}
-                  </div>
-                </div>
-              )}
-              {tareaSeleccionada.Cliente && (
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#718096', fontWeight: '600', marginBottom: '4px' }}>
-                    CLIENTE
-                  </div>
-                  <div style={{ fontSize: '1rem', fontWeight: '500' }}>
-                    {tareaSeleccionada.Cliente}
-                  </div>
-                </div>
-              )}
-              {tareaSeleccionada.Numero_SAC && (
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#718096', fontWeight: '600', marginBottom: '4px' }}>
-                    SAC
-                  </div>
-                  <div style={{ fontSize: '1rem', fontWeight: '500' }}>
-                    {tareaSeleccionada.Numero_SAC}
-                  </div>
-                </div>
-              )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '0.85rem', color: '#1e3a8a' }}>
+              <div><strong>Tipo:</strong> {tareaSeleccionada.Tipo}</div>
+              <div><strong>Fecha:</strong> {tareaSeleccionada.Fecha}</div>
+              {tareaSeleccionada.Cliente && <div><strong>Cliente:</strong> {tareaSeleccionada.Cliente}</div>}
+              {tareaSeleccionada.Numero_SAC && <div><strong>SAC:</strong> {tareaSeleccionada.Numero_SAC}</div>}
             </div>
           </div>
-
-          <div style={{ display: 'flex', gap: '10px', flexShrink: 0, flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             {tareaSeleccionada.Numero_SAC && (
               <button 
                 className="button button-sm button-primary"
                 onClick={() => router.push(`/expediente/${encodeURIComponent(tareaSeleccionada.Numero_SAC)}`)}
-                style={{ whiteSpace: 'nowrap' }}
               >
-                📋 Ver Expediente
+                IR AL EXPEDIENTE
               </button>
             )}
             <button 
               className="button button-sm button-secondary"
               onClick={() => setTareaSeleccionada(null)}
-              style={{ whiteSpace: 'nowrap' }}
             >
-              ✕ Cerrar
+              Cerrar
             </button>
           </div>
         </div>
@@ -799,6 +726,15 @@ export default function AgendaPage({ eventos: eventosIniciales, tareas: tareasIn
                 <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
                   {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
                 </button>
+                {eventoSeleccionado?.Numero_SAC && (
+                  <button 
+                    type="button" 
+                    onClick={() => router.push(`/expediente/${encodeURIComponent(eventoSeleccionado.Numero_SAC)}`)}
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
+                    📋 IR AL EXPEDIENTE
+                  </button>
+                )}
                 <button type="button" onClick={handleEliminar} style={{ backgroundColor: '#e53e3e' }}>
                   🗑️ Eliminar
                 </button>
