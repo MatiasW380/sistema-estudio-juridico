@@ -444,7 +444,6 @@ export default function Home({
         </div>
       )}
 
-      <div className="container">
       <div style={{ marginBottom: '32px' }}>
         <h1>Dashboard</h1>
       </div>
