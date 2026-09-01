@@ -269,6 +269,43 @@ export default function Home({
     }
   };
 
+  const handleEliminar = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este evento?')) return;
+    
+    setCargando(true);
+    setMensaje('');
+    
+    try {
+      const response = await fetch(`/api/agenda?id=${encodeURIComponent(tareaSeleccionada.ID)}`, {
+        method: 'DELETE',
+      });
+      
+      const resultado = await response.json();
+      if (resultado.success) {
+        setMensaje('✅ Evento eliminado correctamente');
+        setTimeout(() => {
+          setMostrarModal(false);
+          window.location.reload();
+        }, 1000);
+      } else {
+        setMensaje(`❌ Error: ${resultado.error}`);
+      }
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const parsearFechaArgentina = (fecha) => {
+    if (!fecha) return '';
+    const [dia, mes, anio] = fecha.split('/');
+    if (dia && mes && anio) {
+      return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+    }
+    return fecha;
+  };
+
   return (
     <div className="container">
       {/* Modal de Edición de Tarea */}
@@ -301,38 +338,144 @@ export default function Home({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ backgroundColor: '#ebf8ff', border: '1px solid #3182ce', borderRadius: '6px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ margin: '0 0 8px 0', color: '#0c3c26' }}>{tareaSeleccionada.Titulo}</h3>
-                {tareaSeleccionada.Descripcion && (
-                  <p style={{ margin: '0 0 8px 0', color: '#1e3a8a', fontSize: '0.95rem', lineHeight: '1.4' }}>
-                    {tareaSeleccionada.Descripcion}
-                  </p>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '0.85rem', color: '#1e3a8a' }}>
-                  <div><strong>Tipo:</strong> {tareaSeleccionada.Tipo}</div>
-                  <div><strong>Fecha:</strong> {tareaSeleccionada.Fecha}</div>
-                  {tareaSeleccionada.Cliente && <div><strong>Cliente:</strong> {tareaSeleccionada.Cliente}</div>}
-                  {tareaSeleccionada.Numero_SAC && <div><strong>SAC:</strong> {tareaSeleccionada.Numero_SAC}</div>}
+            <h2 style={{ marginTop: 0 }}>{tareaSeleccionada.Titulo}</h2>
+            <form onSubmit={handleEditar}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label><strong>Tipo</strong></label>
+                  <select
+                    value={tareaSeleccionada.Tipo || 'Otro'}
+                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Tipo: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  >
+                    <option value="Entrevista">Entrevista</option>
+                    <option value="Plazo">Plazo</option>
+                    <option value="Audiencia">Audiencia</option>
+                    <option value="Pericia">Pericia</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label><strong>Fecha</strong></label>
+                  <input
+                    type="date"
+                    value={parsearFechaArgentina(tareaSeleccionada.Fecha) || ''}
+                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Fecha: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
+
+                <div>
+                  <label><strong>Hora</strong></label>
+                  <input
+                    type="time"
+                    value={tareaSeleccionada.Hora || ''}
+                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Hora: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
+
+                <div>
+                  <label><strong>Estado</strong></label>
+                  <select
+                    value={tareaSeleccionada.Estado || 'Pendiente'}
+                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Estado: e.target.value })}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  >
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Completado">Completado</option>
+                    <option value="Cancelado">Cancelado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label><strong>N° SAC</strong></label>
+                  <input
+                    type="text"
+                    value={tareaSeleccionada.Numero_SAC || ''}
+                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Numero_SAC: e.target.value })}
+                    placeholder="Ej: 123456"
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
+                </div>
+
+                <div>
+                  <label><strong>Cliente</strong></label>
+                  <input
+                    type="text"
+                    value={tareaSeleccionada.Cliente || ''}
+                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Cliente: e.target.value })}
+                    placeholder="Nombre del cliente"
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                  />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexDirection: 'column' }}>
-                {tareaSeleccionada.Numero_SAC && (
+
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Título</strong></label>
+                <input
+                  type="text"
+                  value={tareaSeleccionada.Titulo || ''}
+                  onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Titulo: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Descripción</strong></label>
+                <textarea
+                  value={tareaSeleccionada.Descripcion || ''}
+                  onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Descripcion: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }}
+                />
+              </div>
+
+              <div style={{ marginTop: '15px' }}>
+                <label><strong>Lugar</strong></label>
+                <input
+                  type="text"
+                  value={tareaSeleccionada.Lugar || ''}
+                  onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Lugar: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                />
+              </div>
+
+              {mensaje && (
+                <div
+                  style={{
+                    marginTop: '15px',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
+                    color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
+                  }}
+                >
+                  {mensaje}
+                </div>
+              )}
+
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
+                  {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
+                </button>
+                {tareaSeleccionada?.Numero_SAC && (
                   <button 
-                    className="button button-sm button-primary"
+                    type="button" 
                     onClick={() => router.push(`/expediente/${encodeURIComponent(tareaSeleccionada.Numero_SAC)}`)}
+                    style={{ backgroundColor: '#2563eb' }}
                   >
-                    IR AL EXPEDIENTE
+                    📋 IR AL EXPEDIENTE
                   </button>
                 )}
-                <button 
-                  className="button button-sm button-secondary"
-                  onClick={() => setMostrarModal(false)}
-                >
-                  Cerrar
+                <button type="button" onClick={handleEliminar} style={{ backgroundColor: '#e53e3e' }}>
+                  🗑️ Eliminar
+                </button>
+                <button type="button" onClick={() => { setMostrarModal(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
+                  ❌ Cerrar
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
