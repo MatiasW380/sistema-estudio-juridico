@@ -230,8 +230,6 @@ export default function Home({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: tareaSeleccionada.ID,
-          numeroSAC: tareaSeleccionada.Numero_SAC || '',
-          cliente: tareaSeleccionada.Cliente || '',
           tipo: tareaSeleccionada.Tipo || 'Otro',
           titulo: tareaSeleccionada.Titulo,
           descripcion: tareaSeleccionada.Descripcion || '',
@@ -239,10 +237,9 @@ export default function Home({
           hora: tareaSeleccionada.Hora || '',
           horaFin: tareaSeleccionada.Hora_Fin || '',
           lugar: tareaSeleccionada.Lugar || '',
-          recordatorio: tareaSeleccionada.Recordatorio || 'SI',
-          diasAntes: tareaSeleccionada.Dias_Antes || '1',
           estado: tareaSeleccionada.Estado || 'Pendiente',
-          compartidoCon: tareaSeleccionada.Compartido_Con || '',
+          numeroSAC: tareaSeleccionada.Numero_SAC || '',
+          cliente: tareaSeleccionada.Cliente || '',
         }),
       });
 
