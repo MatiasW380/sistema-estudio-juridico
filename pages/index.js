@@ -225,12 +225,6 @@ export default function Home({
     }
 
     try {
-      const usuarioCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('user='))
-        ?.split('=')[1];
-      const usuario = usuarioCookie || 'sistema';
-
       const response = await fetch('/api/agenda', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -240,7 +234,7 @@ export default function Home({
           cliente: tareaSeleccionada.Cliente || '',
           tipo: tareaSeleccionada.Tipo || 'Otro',
           titulo: tareaSeleccionada.Titulo,
-          descripcion: tareaSeleccionada.Descripción || '',
+          descripcion: tareaSeleccionada.Descripcion || '',
           fecha: tareaSeleccionada.Fecha,
           hora: tareaSeleccionada.Hora || '',
           horaFin: tareaSeleccionada.Hora_Fin || '',
