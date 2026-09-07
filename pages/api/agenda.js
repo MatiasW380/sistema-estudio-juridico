@@ -279,29 +279,27 @@ export default async function handler(req, res) {
 
       const existingObj = rowToObject(headers, rows[rowIndex]);
 
-      const updatedObj = {
-        ID: existingObj.ID,
-        Numero_SAC: numeroSAC !== undefined ? (numeroSAC || '') : (existingObj.Numero_SAC || ''),
-        Cliente: cliente !== undefined ? (cliente || '') : (existingObj.Cliente || ''),
-        Tipo: tipo !== undefined ? (tipo || 'Otro') : (existingObj.Tipo || 'Otro'),
-        Titulo: titulo !== undefined ? (titulo || '') : (existingObj.Titulo || ''),
-        'Descripción': descripcion !== undefined ? (descripcion || '') : (existingObj['Descripción'] || ''),
-        Fecha: fecha !== undefined ? parsearFechaArgentina(fecha || '') : (existingObj.Fecha || ''),
-        Hora: hora !== undefined ? (hora || '') : (existingObj.Hora || ''),
-        Hora_Fin: horaFin !== undefined ? (horaFin || '') : (existingObj.Hora_Fin || ''),
-        Lugar: lugar !== undefined ? (lugar || '') : (existingObj.Lugar || ''),
-        Recordatorio: recordatorio !== undefined ? (recordatorio || 'SI') : (existingObj.Recordatorio || 'SI'),
-        Dias_Antes: diasAntes !== undefined ? (diasAntes || '1') : (existingObj.Dias_Antes || '1'),
-        Estado: estado !== undefined ? (estado || 'Pendiente') : (existingObj.Estado || 'Pendiente'),
-        Creado_Por: existingObj.Creado_Por || '',
-        Compartido_Con: compartidoCon !== undefined ? (compartidoCon || '') : (existingObj.Compartido_Con || ''),
-        Notificacion_Enviada: existingObj.Notificacion_Enviada || 'NO',
-        Google_Calendar_ID: existingObj.Google_Calendar_ID || '',
-      };
+      // Construir la fila de exactamente 17 columnas A:Q
+      const fila = [
+        existingObj.ID || '',
+        numeroSAC !== undefined ? (numeroSAC || '') : (existingObj.Numero_SAC || ''),
+        cliente !== undefined ? (cliente || '') : (existingObj.Cliente || ''),
+        tipo !== undefined ? (tipo || 'Otro') : (existingObj.Tipo || 'Otro'),
+        titulo !== undefined ? (titulo || '') : (existingObj.Titulo || ''),
+        descripcion !== undefined ? (descripcion || '') : (existingObj['Descripción'] || ''),
+        fecha !== undefined ? parsearFechaArgentina(fecha || '') : (existingObj.Fecha || ''),
+        hora !== undefined ? (hora || '') : (existingObj.Hora || ''),
+        horaFin !== undefined ? (horaFin || '') : (existingObj.Hora_Fin || ''),
+        lugar !== undefined ? (lugar || '') : (existingObj.Lugar || ''),
+        recordatorio !== undefined ? (recordatorio || 'SI') : (existingObj.Recordatorio || 'SI'),
+        diasAntes !== undefined ? (diasAntes || '1') : (existingObj.Dias_Antes || '1'),
+        estado !== undefined ? (estado || 'Pendiente') : (existingObj.Estado || 'Pendiente'),
+        existingObj.Creado_Por || '',
+        compartidoCon !== undefined ? (compartidoCon || '') : (existingObj.Compartido_Con || ''),
+        existingObj.Notificacion_Enviada || 'NO',
+        existingObj.Google_Calendar_ID || '',
+      ];
 
-      const filaNormalizada = objectToRow17(updatedObj);
-
-      // +2 porque rowIndex está sobre bodyRows (sin headers) y A1 es 1-based
       const targetSheetRow = rowIndex + 2;
       const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Agenda!A${targetSheetRow}:Q${targetSheetRow}?valueInputOption=USER_ENTERED`;
 
@@ -311,7 +309,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ values: [filaNormalizada] }),
+        body: JSON.stringify({ values: [fila] }),
       });
 
       if (!updateResponse.ok) {
