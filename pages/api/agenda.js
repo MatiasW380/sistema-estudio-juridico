@@ -209,7 +209,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Fecha y Título son obligatorios' });
       }
 
-      const creador = creadoPor || usuarioCookie || 'sistema';
+      let creador = 'sistema';
+      if (creadoPor) {
+        try {
+          // Si es JSON URL-encoded, decodificar y extraer email
+          const decoded = decodeURIComponent(creadoPor);
+          const userObj = JSON.parse(decoded);
+          creador = userObj.email || creadoPor;
+        } catch (e) {
+          // Si no es JSON, usar tal cual
+          creador = creadoPor;
+        }
+      } else if (usuarioCookie) {
+        creador = usuarioCookie;
+      }
 
       // Normalizar fecha a YYYY-MM-DD antes de guardar en Sheets
       const fechaNormalizada = parsearFechaArgentina(fecha);

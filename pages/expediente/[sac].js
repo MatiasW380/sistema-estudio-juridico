@@ -845,7 +845,18 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         .split('; ')
         .find(row => row.startsWith('user='))
         ?.split('=')[1];
-      const usuario = usuarioCookie || 'sistema';
+      
+      let usuario = 'sistema';
+      if (usuarioCookie) {
+        try {
+          // Decodificar URL-encoded y parsear JSON
+          const userObj = JSON.parse(decodeURIComponent(usuarioCookie));
+          usuario = userObj.email || 'sistema';
+        } catch (e) {
+          // Si no es JSON, usar la cookie tal cual (para compatibilidad)
+          usuario = usuarioCookie;
+        }
+      }
 
       // Detectar si es nuevo o existente
       const esNuevo = plazoSeleccionado.ID && plazoSeleccionado.ID.startsWith('NEW_');
