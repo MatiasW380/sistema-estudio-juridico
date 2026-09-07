@@ -280,24 +280,23 @@ export default async function handler(req, res) {
       const existingObj = rowToObject(headers, rows[rowIndex]);
 
       const updatedObj = {
-        ...existingObj,
-        Numero_SAC: numeroSAC !== undefined ? (numeroSAC || '') : existingObj.Numero_SAC,
-        Cliente: cliente !== undefined ? (cliente || '') : existingObj.Cliente,
-        Tipo: tipo !== undefined ? (tipo || 'Otro') : existingObj.Tipo,
-        Titulo: titulo !== undefined ? (titulo || '') : existingObj.Titulo,
-        'Descripción':
-          descripcion !== undefined
-            ? (descripcion || '')
-            : (existingObj['Descripción'] || existingObj.Descripción || ''),
-        // Normalizar fecha a YYYY-MM-DD si viene en el body, sino mantener la existente
-        Fecha: fecha !== undefined ? parsearFechaArgentina(fecha || '') : existingObj.Fecha,
-        Hora: hora !== undefined ? (hora || '') : existingObj.Hora,
-        Hora_Fin: horaFin !== undefined ? (horaFin || '') : existingObj.Hora_Fin,
-        Lugar: lugar !== undefined ? (lugar || '') : existingObj.Lugar,
-        Recordatorio: recordatorio !== undefined ? (recordatorio || 'SI') : existingObj.Recordatorio,
-        Dias_Antes: diasAntes !== undefined ? (diasAntes || '1') : existingObj.Dias_Antes,
-        Estado: estado !== undefined ? (estado || 'Pendiente') : existingObj.Estado,
-        Compartido_Con: compartidoCon !== undefined ? (compartidoCon || '') : existingObj.Compartido_Con,
+        ID: existingObj.ID,
+        Numero_SAC: numeroSAC !== undefined ? (numeroSAC || '') : (existingObj.Numero_SAC || ''),
+        Cliente: cliente !== undefined ? (cliente || '') : (existingObj.Cliente || ''),
+        Tipo: tipo !== undefined ? (tipo || 'Otro') : (existingObj.Tipo || 'Otro'),
+        Titulo: titulo !== undefined ? (titulo || '') : (existingObj.Titulo || ''),
+        'Descripción': descripcion !== undefined ? (descripcion || '') : (existingObj['Descripción'] || ''),
+        Fecha: fecha !== undefined ? parsearFechaArgentina(fecha || '') : (existingObj.Fecha || ''),
+        Hora: hora !== undefined ? (hora || '') : (existingObj.Hora || ''),
+        Hora_Fin: horaFin !== undefined ? (horaFin || '') : (existingObj.Hora_Fin || ''),
+        Lugar: lugar !== undefined ? (lugar || '') : (existingObj.Lugar || ''),
+        Recordatorio: recordatorio !== undefined ? (recordatorio || 'SI') : (existingObj.Recordatorio || 'SI'),
+        Dias_Antes: diasAntes !== undefined ? (diasAntes || '1') : (existingObj.Dias_Antes || '1'),
+        Estado: estado !== undefined ? (estado || 'Pendiente') : (existingObj.Estado || 'Pendiente'),
+        Creado_Por: existingObj.Creado_Por || '',
+        Compartido_Con: compartidoCon !== undefined ? (compartidoCon || '') : (existingObj.Compartido_Con || ''),
+        Notificacion_Enviada: existingObj.Notificacion_Enviada || 'NO',
+        Google_Calendar_ID: existingObj.Google_Calendar_ID || '',
       };
 
       const filaNormalizada = objectToRow17(updatedObj);
