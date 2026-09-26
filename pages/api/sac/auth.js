@@ -2,7 +2,6 @@
 // Conectarse al SAC con usuario/contraseña y obtener lista de expedientes
 
 import puppeteer from 'puppeteer';
-import chromium from 'chrome-aws-lambda';
 
 const SAC_LOGIN_URL = 'https://www.justiciacordoba.gob.ar/portalee/Pages/Index.aspx';
 
@@ -23,23 +22,17 @@ export default async function handler(req, res) {
   let browser;
   try {
     console.log('🔐 Iniciando conexión con SAC...');
-    const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
     
-    if (isProduction) {
-      // En Vercel/Lambda, usar chrome-aws-lambda
-      browser = await chromium.puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
-        headless: chromium.headless
-      });
-    } else {
-      // En desarrollo local
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-    }
+    // Puppeteer maneja automáticamente Chrome en todos los ambientes
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--single-process',
+        '--no-first-run'
+      ]
+    });
 
     const page = await browser.newPage();
     
