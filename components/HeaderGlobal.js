@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import LogoLexHub from './LogoLexHub';
+import SACModal from './SACModal';
 import {
   IconHome,
   IconUsers,
@@ -18,6 +19,7 @@ import {
 export default function HeaderGlobal({ userData, onLogout }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [sacModalOpen, setSacModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -135,6 +137,33 @@ export default function HeaderGlobal({ userData, onLogout }) {
         />
       </nav>
 
+      {/* Botón SAC - Centro-Derecha */}
+      <button
+        onClick={() => setSacModalOpen(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          color: '#ffffff',
+          backgroundColor: '#10b981',
+          padding: '8px 14px',
+          borderRadius: '6px',
+          border: 'none',
+          fontSize: '0.875rem',
+          fontWeight: '600',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#059669';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = '#10b981';
+        }}
+      >
+        🔗 SAC
+      </button>
+
       {/* Usuario y Logout - Derecha */}
       <div
         style={{
@@ -194,6 +223,9 @@ export default function HeaderGlobal({ userData, onLogout }) {
           Logout
         </button>
       </div>
+
+      {/* SAC Modal */}
+      <SACModal isOpen={sacModalOpen} onClose={() => setSacModalOpen(false)} />
     </header>
   );
 }
