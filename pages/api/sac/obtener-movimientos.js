@@ -1,7 +1,11 @@
 // pages/api/sac/obtener-movimientos.js
 // Obtener movimientos y operaciones de un expediente del SAC
 
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import chromium from 'chrome-aws-lambda';
+
+puppeteer.use(StealthPlugin());
 
 const SAC_LOGIN_URL = 'https://www.justiciacordoba.gob.ar/portalee/Pages/Index.aspx';
 
@@ -22,9 +26,13 @@ export default async function handler(req, res) {
   let browser;
   try {
     console.log(`🔐 Obteniendo movimientos del expediente ${numeroSAC}...`);
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: isProduction ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox'],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: isProduction ? await chromium.executablePath : undefined,
+      headless: true
     });
 
     const page = await browser.newPage();
