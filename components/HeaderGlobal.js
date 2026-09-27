@@ -1,6 +1,3 @@
-// components/HeaderGlobal.js
-// Header global persistente - Azul Navy con navegación y usuario
-
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
@@ -25,12 +22,10 @@ export default function HeaderGlobal({ userData, onLogout }) {
     setMounted(true);
   }, []);
 
-  // Ocultar header SOLO en login/registro (verificar sin esperar router.isReady)
   if (typeof window !== 'undefined' && (router.pathname === '/login' || router.pathname === '/registro')) {
     return null;
   }
 
-  // currentPath siempre disponible, usa router.pathname directamente
   const currentPath = router.pathname || '';
   const isActive = (path) => currentPath === path ? '#2563eb' : 'transparent';
 
@@ -43,116 +38,79 @@ export default function HeaderGlobal({ userData, onLogout }) {
         right: 0,
         backgroundColor: '#0f172a',
         borderBottom: '1px solid #1e293b',
-        padding: '12px 20px',
+        padding: '8px 12px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '20px',
+        gap: '8px',
         zIndex: 1000,
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        overflow: 'hidden',
       }}
     >
-      {/* Logo + Nombre - Izquierda */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          minWidth: '200px',
-        }}
-      >
-        <Link href="/">
-          <a
-            style={{
-              color: '#ffffff',
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'opacity 0.2s',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            <LogoLexHub size={32} />
-            LexHub
-          </a>
-        </Link>
-      </div>
+      {/* Logo - Izquierda */}
+      <Link href="/">
+        <a
+          style={{
+            color: '#ffffff',
+            fontSize: '1rem',
+            fontWeight: 600,
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            minWidth: 'fit-content',
+            transition: 'opacity 0.2s',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+        >
+          <LogoLexHub size={28} />
+          <span style={{ display: 'none' }}>LexHub</span>
+        </a>
+      </Link>
 
-      {/* Navegación Principal - Centro */}
+      {/* Navegación - Centro */}
       <nav
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
+          gap: '2px',
           flex: 1,
-          justifyContent: 'center',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollBehavior: 'smooth',
+          minWidth: 0,
         }}
       >
-        <NavLink
-          href="/"
-          icon={<IconHome size={18} />}
-          label="Inicio"
-          isActive={isActive('/')}
-        />
-        <NavLink
-          href="/clientes"
-          icon={<IconUsers size={18} />}
-          label="Clientes"
-          isActive={isActive('/clientes')}
-        />
-        <NavLink
-          href="/expedientes"
-          icon={<IconExpedientes size={18} />}
-          label="Expedientes"
-          isActive={isActive('/expedientes')}
-        />
-        <NavLink
-          href="/agenda"
-          icon={<IconAgenda size={18} />}
-          label="Agenda"
-          isActive={isActive('/agenda')}
-        />
-        <NavLink
-          href="/honorarios"
-          icon={<IconHonorarios size={18} />}
-          label="Finanzas"
-          isActive={isActive('/honorarios')}
-        />
-        <NavLink
-          href="/biblioteca"
-          icon={<IconBiblioteca size={18} />}
-          label="Biblioteca"
-          isActive={isActive('/biblioteca')}
-        />
-        <NavLink
-          href="/ia-general"
-          icon={<IconIA size={18} />}
-          label="Asistente IA"
-          isActive={isActive('/ia-general')}
-        />
+        <NavLink href="/" icon={<IconHome size={16} />} label="Inicio" isActive={isActive('/')} />
+        <NavLink href="/clientes" icon={<IconUsers size={16} />} label="Clientes" isActive={isActive('/clientes')} />
+        <NavLink href="/expedientes" icon={<IconExpedientes size={16} />} label="Exp" isActive={isActive('/expedientes')} />
+        <NavLink href="/agenda" icon={<IconAgenda size={16} />} label="Agenda" isActive={isActive('/agenda')} />
+        <NavLink href="/honorarios" icon={<IconHonorarios size={16} />} label="Honor" isActive={isActive('/honorarios')} />
+        <NavLink href="/biblioteca" icon={<IconBiblioteca size={16} />} label="Lib" isActive={isActive('/biblioteca')} />
+        <NavLink href="/ia-general" icon={<IconIA size={16} />} label="IA" isActive={isActive('/ia-general')} />
       </nav>
 
-      {/* Botón SAC - Centro-Derecha */}
+      {/* SAC Button */}
       <button
         onClick={() => setSacModalOpen(true)}
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '4px',
           color: '#ffffff',
           backgroundColor: '#10b981',
-          padding: '8px 14px',
-          borderRadius: '6px',
+          padding: '6px 10px',
+          borderRadius: '4px',
           border: 'none',
-          fontSize: '0.875rem',
+          fontSize: '0.75rem',
           fontWeight: '600',
           cursor: 'pointer',
           transition: 'all 0.2s',
+          whiteSpace: 'nowrap',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = '#059669';
@@ -164,58 +122,43 @@ export default function HeaderGlobal({ userData, onLogout }) {
         🔗 SAC
       </button>
 
-      {/* Usuario y Logout - Derecha */}
+      {/* Usuario - Derecha */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-          minWidth: '200px',
-          justifyContent: 'flex-end',
+          gap: '6px',
+          marginLeft: '8px',
+          minWidth: 'fit-content',
         }}
       >
         {userData?.email && (
           <span
             style={{
               color: '#cbd5e1',
-              fontSize: '0.875rem',
-              maxWidth: '150px',
+              fontSize: '0.7rem',
+              maxWidth: '100px',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}
           >
-            {userData.email}
+            {userData.email.split('@')[0]}
           </span>
         )}
-        <Link href="/perfil">
-          <a
-            style={{
-              color: '#e2e8f0',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-          >
-            Mi Perfil
-          </a>
-        </Link>
         <button
           onClick={onLogout}
           style={{
             backgroundColor: '#7c3aed',
             color: '#ffffff',
             border: 'none',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            fontWeight: 500,
+            padding: '6px 10px',
+            borderRadius: '4px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
             cursor: 'pointer',
             transition: 'background-color 0.2s',
+            whiteSpace: 'nowrap',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#6d28d9')}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#7c3aed')}
@@ -230,7 +173,6 @@ export default function HeaderGlobal({ userData, onLogout }) {
   );
 }
 
-// Componente auxiliar para links de navegación
 function NavLink({ href, icon, label, isActive }) {
   return (
     <Link href={href}>
@@ -238,15 +180,16 @@ function NavLink({ href, icon, label, isActive }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '3px',
           color: '#e2e8f0',
-          fontSize: '0.875rem',
-          padding: '8px 12px',
-          borderRadius: '6px',
+          fontSize: '0.7rem',
+          padding: '6px 8px',
+          borderRadius: '4px',
           textDecoration: 'none',
           transition: 'all 0.2s',
           backgroundColor: isActive,
           cursor: 'pointer',
+          whiteSpace: 'nowrap',
         }}
         onMouseEnter={(e) => {
           if (isActive === 'transparent') {
@@ -262,7 +205,7 @@ function NavLink({ href, icon, label, isActive }) {
         }}
       >
         {icon}
-        <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+        <span>{label}</span>
       </a>
     </Link>
   );
