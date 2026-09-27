@@ -1,546 +1,265 @@
-// components/SACModal.js
-// Modal para sincronización con SAC - Integrado en Header
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function SACModal({ isOpen, onClose }) {
+  const [modo, setModo] = useState(null); // 'actualizar' o 'agregar'
   const [paso, setPaso] = useState(1);
   const [usuario, setUsuario] = useState('');
   const [contraseña, setContraseña] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState('');
-  const [expedientes, setExpedientes] = useState([]);
+  
+  // Para ACTUALIZAR
+  const [expedientesExistentes, setExpedientesExistentes] = useState([]);
   const [expedienteSeleccionado, setExpedienteSeleccionado] = useState(null);
-  const [movimientos, setMovimientos] = useState([]);
-  const [nombreCliente, setNombreCliente] = useState('');
-  const [telefonoCliente, setTelefonoCliente] = useState('');
-  const [dniCliente, setDniCliente] = useState('');
-  const [domicilioCliente, setDomicilioCliente] = useState('');
+  
+  // Para AGREGAR
+  const [expedientesDisponibles, setExpedientesDisponibles] = useState([]);
+  const [clientesExistentes, setClientesExistentes] = useState([]);
+  const [modoCliente, setModoCliente] = useState('existente'); // 'existente' o 'nuevo'
+  const [clienteExistenteId, setClienteExistenteId] = useState('');
+  const [nombreClienteNuevo, setNombreClienteNuevo] = useState('');
 
   if (!isOpen) return null;
 
-  const handleConectarSAC = async () => {
+  const handlePantallaPrincipal = () => {
+    setModo(null);
+    setPaso(1);
+    setMensaje('');
+    setUsuario('');
+    setContraseña('');
+  };
+
+  const handleSeleccionarModo = async (modoSeleccionado) => {
+    setModo(modoSeleccionado);
+    setPaso(2);
+    
+    if (modoSeleccionado === 'actualizar') {
+      // Obtener expedientes existentes
+      try {
+        const res = await fetch('/api/expedientes-existentes');
+        const data = await res.json();
+        if (data.success) {
+          setExpedientesExistentes(data.expedientes);
+          setMensaje(`✅ Se encontraron ${data.expedientes.length} expedientes`);
+        }
+      } catch (e) {
+        setMensaje('❌ Error al cargar expedientes: ' + e.message);
+      }
+    } else {
+      // Obtener clientes existentes
+      try {
+        const res = await fetch('/api/clientes-existentes');
+        const data = await res.json();
+        if (data.success) {
+          setClientesExistentes(data.clientes);
+        }
+      } catch (e) {
+        setMensaje('❌ Error al cargar clientes: ' + e.message);
+      }
+    }
+  };
+
+  const handleConectar = async () => {
     if (!usuario || !contraseña) {
       setMensaje('❌ Usuario y contraseña requeridos');
       return;
     }
-
+    
     setCargando(true);
     setMensaje('🔐 Conectando con SAC...');
-
+    
     try {
-      const response = await fetch('/api/sac/auth', {
+      const res = await fetch('/api/sac/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario, contraseña })
       });
-
-      const data = await response.json();
-
+      
+      const data = await res.json();
+      
       if (data.success) {
-        setExpedientes(data.expedientes || []);
-        setMensaje(`✅ Conectado. Se encontraron ${data.expedientes.length} expedientes`);
-        setPaso(2);
-      } else {
-        setMensaje(`❌ ${data.error}`);
-      }
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  const handleSeleccionarExpediente = async (expediente) => {
-    setCargando(true);
-    setMensaje('📋 Obteniendo movimientos del SAC...');
-
-    try {
-      const response = await fetch('/api/sac/obtener-movimientos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          usuario,
-          contraseña,
-          numeroSAC: expediente.numero
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setExpedienteSeleccionado(expediente);
-        setMovimientos(data.expediente.movimientos || []);
-        setNombreCliente(expediente.caratula || '');
-        setMensaje(`✅ Se obtuvieron ${data.expediente.totalMovimientos} movimientos`);
+        setExpedientesDisponibles(data.expedientes || []);
+        setMensaje(`✅ Conectado. ${data.expedientes.length} expedientes disponibles`);
         setPaso(3);
       } else {
         setMensaje(`❌ ${data.error}`);
       }
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+    } catch (e) {
+      setMensaje(`❌ Error: ${e.message}`);
     } finally {
       setCargando(false);
     }
   };
 
-  const handleGuardar = async () => {
-    if (!nombreCliente) {
-      setMensaje('❌ Nombre del cliente requerido');
-      return;
-    }
-
-    setCargando(true);
-    setMensaje('💾 Guardando en LexHub...');
-
-    try {
-      const clienteResponse = await fetch('/api/crear-cliente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: nombreCliente,
-          telefono: telefonoCliente,
-          dni: dniCliente,
-          domicilio: domicilioCliente
-        })
-      });
-
-      const clienteData = await clienteResponse.json();
-
-      if (!clienteData.success) {
-        setMensaje(`❌ Error al crear cliente: ${clienteData.error}`);
-        return;
-      }
-
-      const idCliente = clienteData.id;
-
-      const expedienteResponse = await fetch('/api/agregar-expediente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idCliente: idCliente,
-          numeroSAC: expedienteSeleccionado.numero,
-          caratula: expedienteSeleccionado.caratula,
-          movimientos: movimientos
-        })
-      });
-
-      const expedienteData = await expedienteResponse.json();
-
-      if (expedienteData.success) {
-        setMensaje('✅ Expediente guardado en LexHub');
-        setPaso(4);
-        setTimeout(() => {
-          handleReset();
-          onClose();
-        }, 2000);
-      } else {
-        setMensaje(`❌ Error al guardar expediente: ${expedienteData.error}`);
-      }
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  const handleReset = () => {
-    setPaso(1);
-    setUsuario('');
-    setContraseña('');
-    setMensaje('');
-    setExpedientes([]);
-    setExpedienteSeleccionado(null);
-    setMovimientos([]);
-    setNombreCliente('');
-    setTelefonoCliente('');
-    setDniCliente('');
-    setDomicilioCliente('');
-  };
-
-  return (
-    <>
-      {/* Overlay */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          zIndex: 2000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-          zIndex: 2001,
-          maxWidth: '500px',
-          width: '90%',
-          maxHeight: '80vh',
-          overflow: 'auto',
-          padding: '30px'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Botón Cerrar */}
-        <button
-          onClick={() => {
-            handleReset();
-            onClose();
-          }}
-          style={{
-            position: 'absolute',
-            top: '15px',
-            right: '15px',
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            cursor: 'pointer',
-            color: '#666'
-          }}
-        >
-          ✕
-        </button>
-
-        <h1 style={{ marginBottom: '20px', marginTop: 0, color: '#1e293b' }}>
-          🔗 Sincronizar con SAC
-        </h1>
-
-        {/* PASO 1: LOGIN */}
-        {paso === 1 && (
-          <div>
-            <h2 style={{ fontSize: '1.1rem', marginTop: 0, color: '#475569' }}>
-              Paso 1: Conectar con SAC
-            </h2>
-            <p style={{ color: '#64748b', fontSize: '0.95rem' }}>
-              Ingresa tus credenciales del Poder Judicial de Córdoba
-            </p>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b' }}>
-                Usuario (matrícula):
-              </label>
-              <input
-                type="text"
-                value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
-                placeholder="Tu usuario del SAC"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontSize: '0.95rem',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b' }}>
-                Contraseña:
-              </label>
-              <input
-                type="password"
-                value={contraseña}
-                onChange={(e) => setContraseña(e.target.value)}
-                placeholder="Tu contraseña"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontSize: '0.95rem',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {mensaje && (
-              <div
-                style={{
-                  padding: '10px',
-                  borderRadius: '4px',
-                  marginBottom: '15px',
-                  backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                  color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
-                  fontSize: '0.9rem'
-                }}
-              >
-                {mensaje}
-              </div>
-            )}
-
+  // INTERFAZ - Pantalla principal (modo null)
+  if (modo === null) {
+    return (
+      <>
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000}} onClick={onClose} />
+        <div style={{position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', borderRadius: '12px', zIndex: 2001, maxWidth: '500px', width: '90%', padding: '30px'}} onClick={(e) => e.stopPropagation()}>
+          <button onClick={onClose} style={{position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'}}>✕</button>
+          
+          <h1 style={{marginTop: 0, color: '#1e293b'}}>🔗 SAC - Sincronizar Expedientes</h1>
+          
+          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '30px'}}>
             <button
-              onClick={handleConectarSAC}
-              disabled={cargando}
-              style={{
-                width: '100%',
-                backgroundColor: '#3182ce',
-                color: '#fff',
-                padding: '10px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: cargando ? 'not-allowed' : 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
+              onClick={() => handleSeleccionarModo('actualizar')}
+              style={{padding: '20px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '1rem'}}
             >
-              {cargando ? '⏳ Conectando...' : '🔐 Conectar con SAC'}
+              🔄 ACTUALIZAR
+              <p style={{margin: '10px 0 0 0', fontSize: '0.85rem', opacity: 0.9}}>Agregar movimientos a expedientes existentes</p>
+            </button>
+            
+            <button
+              onClick={() => handleSeleccionarModo('agregar')}
+              style={{padding: '20px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '1rem'}}
+            >
+              ➕ AGREGAR EXPEDIENTE
+              <p style={{margin: '10px 0 0 0', fontSize: '0.85rem', opacity: 0.9}}>Traer expediente nuevo desde SAC</p>
             </button>
           </div>
-        )}
+        </div>
+      </>
+    );
+  }
 
-        {/* PASO 2: SELECCIONAR EXPEDIENTE */}
-        {paso === 2 && (
-          <div>
-            <h2 style={{ fontSize: '1.1rem', marginTop: 0, color: '#475569' }}>
-              Paso 2: Seleccionar Expediente
-            </h2>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '10px' }}>
-              Se encontraron {expedientes.length} expedientes
-            </p>
-
-            <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '15px' }}>
-              {expedientes.map((exp, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleSeleccionarExpediente(exp)}
-                  style={{
-                    backgroundColor: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '4px',
-                    padding: '12px',
-                    marginBottom: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f0f4f8';
-                    e.currentTarget.style.borderColor = '#3182ce';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                  }}
-                >
-                  <strong style={{ color: '#1e293b' }}>{exp.numero}</strong>
-                  <p style={{ margin: '5px 0', fontSize: '0.85rem', color: '#64748b' }}>
-                    {exp.caratula}
-                  </p>
-                  {exp.fuero && (
-                    <p style={{ margin: '2px 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-                      Fuero: {exp.fuero}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {mensaje && (
-              <div
-                style={{
-                  padding: '10px',
-                  borderRadius: '4px',
-                  marginBottom: '15px',
-                  backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                  color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
-                  fontSize: '0.9rem'
-                }}
-              >
-                {mensaje}
+  // ACTUALIZAR - Seleccionar expediente existente
+  if (modo === 'actualizar' && paso === 2) {
+    return (
+      <>
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000}} onClick={onClose} />
+        <div style={{position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', borderRadius: '12px', zIndex: 2001, maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto', padding: '30px'}} onClick={(e) => e.stopPropagation()}>
+          <button onClick={handlePantallaPrincipal} style={{position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'}}>✕</button>
+          
+          <h2 style={{marginTop: 0, color: '#1e293b'}}>🔄 Seleccionar Expediente</h2>
+          <p style={{color: '#64748b'}}>Elige un expediente existente para actualizar movimientos</p>
+          
+          {mensaje && <div style={{padding: '10px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c', borderRadius: '4px', marginBottom: '15px'}}>{mensaje}</div>}
+          
+          <div style={{maxHeight: '300px', overflowY: 'auto', marginBottom: '15px'}}>
+            {expedientesExistentes.map((exp, i) => (
+              <div key={i} onClick={() => {setExpedienteSeleccionado(exp); setPaso(3);}} style={{backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '12px', marginBottom: '8px', cursor: 'pointer'}}>
+                <strong style={{color: '#1e293b'}}>{exp.numeroSAC}</strong>
+                <p style={{margin: '5px 0', fontSize: '0.85rem', color: '#64748b'}}>{exp.nombreCliente}</p>
               </div>
-            )}
+            ))}
+          </div>
+          
+          <button onClick={handlePantallaPrincipal} style={{width: '100%', backgroundColor: '#718096', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600'}}>← Volver</button>
+        </div>
+      </>
+    );
+  }
 
-            <button
-              onClick={() => {
-                setPaso(1);
-                setMensaje('');
-              }}
-              style={{
-                width: '100%',
-                backgroundColor: '#718096',
-                color: '#fff',
-                padding: '10px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              ← Volver
+  // ACTUALIZAR - Conectar SAC y obtener movimientos
+  if (modo === 'actualizar' && paso === 3 && expedienteSeleccionado) {
+    return (
+      <>
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000}} onClick={onClose} />
+        <div style={{position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', borderRadius: '12px', zIndex: 2001, maxWidth: '500px', width: '90%', padding: '30px'}} onClick={(e) => e.stopPropagation()}>
+          <button onClick={handlePantallaPrincipal} style={{position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'}}>✕</button>
+          
+          <h2 style={{marginTop: 0, color: '#1e293b'}}>🔐 Actualizar {expedienteSeleccionado.numeroSAC}</h2>
+          
+          <div style={{marginBottom: '15px'}}>
+            <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b'}}>Usuario:</label>
+            <input type="text" value={usuario} onChange={(e) => setUsuario(e.target.value)} style={{width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px', boxSizing: 'border-box'}} />
+          </div>
+          
+          <div style={{marginBottom: '15px'}}>
+            <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b'}}>Contraseña:</label>
+            <input type="password" value={contraseña} onChange={(e) => setContraseña(e.target.value)} style={{width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px', boxSizing: 'border-box'}} />
+          </div>
+          
+          {mensaje && <div style={{padding: '10px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c', borderRadius: '4px', marginBottom: '15px'}}>{mensaje}</div>}
+          
+          <button onClick={handleConectar} disabled={cargando} style={{width: '100%', backgroundColor: '#3b82f6', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: cargando ? 'not-allowed' : 'pointer', fontWeight: '600', marginBottom: '10px'}}>
+            {cargando ? '⏳ Conectando...' : '🔐 Conectar y Actualizar'}
+          </button>
+          
+          <button onClick={() => setPaso(2)} style={{width: '100%', backgroundColor: '#718096', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600'}}>← Volver</button>
+        </div>
+      </>
+    );
+  }
+
+  // AGREGAR EXPEDIENTE - Modo cliente (paso 2)
+  if (modo === 'agregar' && paso === 2) {
+    return (
+      <>
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000}} onClick={onClose} />
+        <div style={{position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', borderRadius: '12px', zIndex: 2001, maxWidth: '500px', width: '90%', padding: '30px'}} onClick={(e) => e.stopPropagation()}>
+          <button onClick={handlePantallaPrincipal} style={{position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'}}>✕</button>
+          
+          <h2 style={{marginTop: 0, color: '#1e293b'}}>➕ Agregar Expediente - Seleccionar Cliente</h2>
+          
+          <div style={{display: 'flex', gap: '10px', marginBottom: '20px'}}>
+            <button onClick={() => setModoCliente('existente')} style={{flex: 1, padding: '10px', backgroundColor: modoCliente === 'existente' ? '#3b82f6' : '#e2e8f0', color: modoCliente === 'existente' ? '#fff' : '#1e293b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600'}}>
+              👥 Cliente Existente
+            </button>
+            <button onClick={() => setModoCliente('nuevo')} style={{flex: 1, padding: '10px', backgroundColor: modoCliente === 'nuevo' ? '#10b981' : '#e2e8f0', color: modoCliente === 'nuevo' ? '#fff' : '#1e293b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600'}}>
+              ➕ Cliente Nuevo
             </button>
           </div>
-        )}
-
-        {/* PASO 3: DATOS DEL CLIENTE */}
-        {paso === 3 && expedienteSeleccionado && (
-          <div>
-            <h2 style={{ fontSize: '1.1rem', marginTop: 0, color: '#475569' }}>
-              Paso 3: Datos del Cliente
-            </h2>
-            <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '10px' }}>
-              <strong>Expediente:</strong> {expedienteSeleccionado.numero}<br />
-              <strong>Movimientos:</strong> {movimientos.length}
-            </p>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b', fontSize: '0.9rem' }}>
-                Nombre del Cliente:
-              </label>
-              <input
-                type="text"
-                value={nombreCliente}
-                onChange={(e) => setNombreCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
-                  boxSizing: 'border-box'
-                }}
-              />
+          
+          {modoCliente === 'existente' && (
+            <div style={{marginBottom: '15px'}}>
+              <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b'}}>Seleccionar cliente:</label>
+              <select value={clienteExistenteId} onChange={(e) => setClienteExistenteId(e.target.value)} style={{width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px', boxSizing: 'border-box'}}>
+                <option value="">-- Elige un cliente --</option>
+                {clientesExistentes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
             </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b', fontSize: '0.9rem' }}>
-                Teléfono (opcional):
-              </label>
-              <input
-                type="text"
-                value={telefonoCliente}
-                onChange={(e) => setTelefonoCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
-                  boxSizing: 'border-box'
-                }}
-              />
+          )}
+          
+          {modoCliente === 'nuevo' && (
+            <div style={{marginBottom: '15px'}}>
+              <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b'}}>Nombre del nuevo cliente:</label>
+              <input type="text" value={nombreClienteNuevo} onChange={(e) => setNombreClienteNuevo(e.target.value)} style={{width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px', boxSizing: 'border-box'}} />
             </div>
+          )}
+          
+          <button onClick={() => setPaso(3)} disabled={modoCliente === 'existente' ? !clienteExistenteId : !nombreClienteNuevo} style={{width: '100%', backgroundColor: '#3b82f6', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', marginBottom: '10px', opacity: (modoCliente === 'existente' ? !clienteExistenteId : !nombreClienteNuevo) ? 0.5 : 1}}>
+            Continuar →
+          </button>
+          
+          <button onClick={handlePantallaPrincipal} style={{width: '100%', backgroundColor: '#718096', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600'}}>← Volver</button>
+        </div>
+      </>
+    );
+  }
 
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b', fontSize: '0.9rem' }}>
-                DNI (opcional):
-              </label>
-              <input
-                type="text"
-                value={dniCliente}
-                onChange={(e) => setDniCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b', fontSize: '0.9rem' }}>
-                Domicilio (opcional):
-              </label>
-              <input
-                type="text"
-                value={domicilioCliente}
-                onChange={(e) => setDomicilioCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {mensaje && (
-              <div
-                style={{
-                  padding: '10px',
-                  borderRadius: '4px',
-                  marginBottom: '15px',
-                  backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                  color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
-                  fontSize: '0.9rem'
-                }}
-              >
-                {mensaje}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={handleGuardar}
-                disabled={cargando}
-                style={{
-                  flex: 1,
-                  backgroundColor: '#48bb78',
-                  color: '#fff',
-                  padding: '10px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: cargando ? 'not-allowed' : 'pointer',
-                  fontWeight: '600',
-                  fontSize: '0.9rem'
-                }}
-              >
-                {cargando ? '⏳ Guardando...' : '💾 Guardar'}
-              </button>
-              <button
-                onClick={() => setPaso(2)}
-                style={{
-                  flex: 1,
-                  backgroundColor: '#718096',
-                  color: '#fff',
-                  padding: '10px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '0.9rem'
-                }}
-              >
-                ← Volver
-              </button>
-            </div>
+  // AGREGAR EXPEDIENTE - Conectar y seleccionar (paso 3)
+  if (modo === 'agregar' && paso === 3) {
+    return (
+      <>
+        <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000}} onClick={onClose} />
+        <div style={{position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', borderRadius: '12px', zIndex: 2001, maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto', padding: '30px'}} onClick={(e) => e.stopPropagation()}>
+          <button onClick={handlePantallaPrincipal} style={{position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'}}>✕</button>
+          
+          <h2 style={{marginTop: 0, color: '#1e293b'}}>🔐 Conectar con SAC</h2>
+          
+          <div style={{marginBottom: '15px'}}>
+            <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b'}}>Usuario:</label>
+            <input type="text" value={usuario} onChange={(e) => setUsuario(e.target.value)} style={{width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px', boxSizing: 'border-box'}} />
           </div>
-        )}
-
-        {/* PASO 4: COMPLETADO */}
-        {paso === 4 && (
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ color: '#22863a', marginTop: 0 }}>✅ Expediente Sincronizado</h2>
-            <p style={{ color: '#64748b' }}>
-              El expediente se ha guardado exitosamente en LexHub
-            </p>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-              Redirigiendo...
-            </p>
+          
+          <div style={{marginBottom: '15px'}}>
+            <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#1e293b'}}>Contraseña:</label>
+            <input type="password" value={contraseña} onChange={(e) => setContraseña(e.target.value)} style={{width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '4px', boxSizing: 'border-box'}} />
           </div>
-        )}
-      </div>
-    </>
-  );
+          
+          {mensaje && <div style={{padding: '10px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c', borderRadius: '4px', marginBottom: '15px'}}>{mensaje}</div>}
+          
+          <button onClick={handleConectar} disabled={cargando} style={{width: '100%', backgroundColor: '#10b981', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: cargando ? 'not-allowed' : 'pointer', fontWeight: '600', marginBottom: '10px'}}>
+            {cargando ? '⏳ Conectando...' : '🔐 Conectar con SAC'}
+          </button>
+          
+          <button onClick={() => setPaso(2)} style={{width: '100%', backgroundColor: '#718096', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600'}}>← Volver</button>
+        </div>
+      </>
+    );
+  }
+
+  return null;
 }
