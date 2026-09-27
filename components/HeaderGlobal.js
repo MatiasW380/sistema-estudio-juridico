@@ -42,18 +42,18 @@ export default function HeaderGlobal({ userData, onLogout }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '8px',
+        gap: '10px',
         zIndex: 1000,
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         overflow: 'hidden',
       }}
     >
-      {/* Logo - Izquierda */}
+      {/* Logo + Nombre - Izquierda */}
       <Link href="/">
         <a
           style={{
             color: '#ffffff',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             fontWeight: 600,
             textDecoration: 'none',
             display: 'flex',
@@ -68,7 +68,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
           onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
         >
           <LogoLexHub size={28} />
-          <span style={{ display: 'none' }}>LexHub</span>
+          LexHub
         </a>
       </Link>
 
@@ -77,7 +77,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '2px',
+          gap: '3px',
           flex: 1,
           overflowX: 'auto',
           overflowY: 'hidden',
@@ -87,10 +87,10 @@ export default function HeaderGlobal({ userData, onLogout }) {
       >
         <NavLink href="/" icon={<IconHome size={16} />} label="Inicio" isActive={isActive('/')} />
         <NavLink href="/clientes" icon={<IconUsers size={16} />} label="Clientes" isActive={isActive('/clientes')} />
-        <NavLink href="/expedientes" icon={<IconExpedientes size={16} />} label="Exp" isActive={isActive('/expedientes')} />
+        <NavLink href="/expedientes" icon={<IconExpedientes size={16} />} label="Expedientes" isActive={isActive('/expedientes')} />
         <NavLink href="/agenda" icon={<IconAgenda size={16} />} label="Agenda" isActive={isActive('/agenda')} />
-        <NavLink href="/honorarios" icon={<IconHonorarios size={16} />} label="Honor" isActive={isActive('/honorarios')} />
-        <NavLink href="/biblioteca" icon={<IconBiblioteca size={16} />} label="Lib" isActive={isActive('/biblioteca')} />
+        <NavLink href="/honorarios" icon={<IconHonorarios size={16} />} label="Honorarios" isActive={isActive('/honorarios')} />
+        <NavLink href="/biblioteca" icon={<IconBiblioteca size={16} />} label="Biblioteca" isActive={isActive('/biblioteca')} />
         <NavLink href="/ia-general" icon={<IconIA size={16} />} label="IA" isActive={isActive('/ia-general')} />
       </nav>
 
@@ -106,7 +106,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
           padding: '6px 10px',
           borderRadius: '4px',
           border: 'none',
-          fontSize: '0.75rem',
+          fontSize: '0.8rem',
           fontWeight: '600',
           cursor: 'pointer',
           transition: 'all 0.2s',
@@ -128,7 +128,6 @@ export default function HeaderGlobal({ userData, onLogout }) {
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          marginLeft: '8px',
           minWidth: 'fit-content',
         }}
       >
@@ -136,7 +135,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
           <span
             style={{
               color: '#cbd5e1',
-              fontSize: '0.7rem',
+              fontSize: '0.75rem',
               maxWidth: '100px',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -154,7 +153,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
             border: 'none',
             padding: '6px 10px',
             borderRadius: '4px',
-            fontSize: '0.75rem',
+            fontSize: '0.8rem',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'background-color 0.2s',
@@ -182,7 +181,7 @@ function NavLink({ href, icon, label, isActive }) {
           alignItems: 'center',
           gap: '3px',
           color: '#e2e8f0',
-          fontSize: '0.7rem',
+          fontSize: '0.78rem',
           padding: '6px 8px',
           borderRadius: '4px',
           textDecoration: 'none',
