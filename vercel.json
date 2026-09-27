@@ -6,11 +6,5 @@
     "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "false",
     "NODE_ENV": "production"
   },
-  "functions": {
-    "pages/api/**/*.js": {
-      "maxDuration": 60,
-      "memory": 1536
-    }
-  },
-  "regions": ["syd"]
+  "regions": ["syd1"]
 }
