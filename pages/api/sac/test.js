@@ -1,5 +1,3 @@
-import cheerio from 'cheerio';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -12,54 +10,61 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('🔐 Conectando al SAC...');
+    console.log('🔐 Intentando conectar al SAC...');
     
-    // Paso 1: Obtener la página de login
-    const loginPageRes = await fetch('https://sac.juscordoba.gob.ar/', {
+    const url = 'https://sac.juscordoba.gob.ar/';
+    console.log('URL:', url);
+    
+    const loginRes = await fetch(url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 10000
+    }).catch(err => {
+      throw new Error(`Fetch error: ${err.message} | URL: ${url}`);
     });
 
-    if (!loginPageRes.ok) {
-      return res.status(500).json({
+    console.log('Response status:', loginRes.status);
+    console.log('Response headers:', Object.fromEntries(loginRes.headers));
+
+    if (!loginRes.ok) {
+      const text = await loginRes.text();
+      return res.status(loginRes.status).json({
         success: false,
-        error: `No se pudo acceder al SAC (HTTP ${loginPageRes.status})`,
+        error: `SAC respondió con HTTP ${loginRes.status}`,
         debug: {
-          status: loginPageRes.status,
-          statusText: loginPageRes.statusText,
-          url: loginPageRes.url
+          status: loginRes.status,
+          statusText: loginRes.statusText,
+          url: loginRes.url,
+          htmlSnippet: text.substring(0, 1000)
         }
       });
     }
 
-    const htmlLogin = await loginPageRes.text();
-    console.log('📄 HTML login capturado, length:', htmlLogin.length);
+    const html = await loginRes.text();
+    console.log('HTML obtenido, length:', html.length);
 
-    const $ = cheerio.load(htmlLogin);
-    
-    // Verificar si tiene formulario de login
-    const formAction = $('form').attr('action');
-    const formMethod = $('form').attr('method');
-    
     return res.status(200).json({
       success: true,
       message: 'Conexión exitosa al SAC',
       debug: {
-        htmlLength: htmlLogin.length,
-        formAction: formAction || 'No encontrado',
-        formMethod: formMethod || 'No encontrado',
-        htmlSnippet: htmlLogin.substring(0, 3000),
-        textoVisible: $('body').text().substring(0, 2000)
+        htmlLength: html.length,
+        htmlSnippet: html.substring(0, 3000),
+        url: loginRes.url
       }
     });
 
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('❌ Error detallado:', error);
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      errorType: error.constructor.name,
+      debug: {
+        message: error.message,
+        stack: error.stack?.substring(0, 500)
+      }
     });
   }
 }
