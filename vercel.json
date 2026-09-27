@@ -2,9 +2,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "env": {
-    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "false",
-    "NODE_ENV": "production"
-  },
   "regions": ["syd1"]
 }
