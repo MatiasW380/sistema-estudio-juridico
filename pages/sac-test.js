@@ -20,10 +20,11 @@ export default function SACTest() {
       });
 
       const data = await res.json();
-      setResultado(data);
-
+      
       if (!data.success) {
         setError(data.error);
+      } else {
+        setResultado(data);
       }
     } catch (e) {
       setError('Error: ' + e.message);
@@ -33,17 +34,19 @@ export default function SACTest() {
   };
 
   return (
-    <div style={{ padding: '60px 20px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '60px 20px 20px', maxWidth: '100%', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <h1>🧪 Prueba de Conexión al SAC</h1>
+      <p style={{ color: '#666', fontSize: '0.95rem' }}>
+        Ingresa tus credenciales del SAC para ver exactamente qué información contiene
+      </p>
       
       <div style={{ 
         backgroundColor: '#f0f4f8', 
         padding: '20px', 
         borderRadius: '8px',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        maxWidth: '600px'
       }}>
-        <h2>Credenciales SAC</h2>
-        
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>
             Usuario (matrícula):
@@ -99,7 +102,7 @@ export default function SACTest() {
             opacity: (cargando || !usuario || !contraseña) ? 0.5 : 1
           }}
         >
-          {cargando ? '⏳ Conectando...' : '🔐 Conectar y Ver Datos'}
+          {cargando ? '⏳ Conectando...' : '🔐 Conectar y Ver HTML'}
         </button>
       </div>
 
@@ -112,7 +115,7 @@ export default function SACTest() {
           marginBottom: '20px'
         }}>
           <h3>❌ Error:</h3>
-          <p>{error}</p>
+          <p><strong>{error}</strong></p>
         </div>
       )}
 
@@ -124,56 +127,62 @@ export default function SACTest() {
           borderRadius: '4px',
           marginBottom: '20px'
         }}>
-          <h3>✅ Resultado:</h3>
-          <p>{resultado.message}</p>
-
+          <h3>✅ {resultado.message}</h3>
+          
           {resultado.debug && (
             <div style={{ marginTop: '15px' }}>
-              <h4>📊 Información Técnica:</h4>
-              <pre style={{
-                backgroundColor: '#f3f4f6',
-                padding: '10px',
-                borderRadius: '4px',
-                overflow: 'auto',
-                maxHeight: '400px',
-                fontSize: '0.85rem'
-              }}>
-                {JSON.stringify({
-                  urlActual: resultado.debug.urlActual,
-                  htmlLengthAntes: resultado.debug.htmlLengthAntes,
-                  htmlLengthDespues: resultado.debug.htmlLengthDespues
-                }, null, 2)}
-              </pre>
+              <div style={{ marginBottom: '20px' }}>
+                <h4>📊 Información:</h4>
+                <p><strong>Tamaño del HTML:</strong> {resultado.debug.htmlLength} bytes</p>
+                <p><strong>Form Action:</strong> {resultado.debug.formAction}</p>
+                <p><strong>Form Method:</strong> {resultado.debug.formMethod}</p>
+              </div>
 
-              <h4>📝 HTML de la página (primeros 5000 caracteres):</h4>
-              <pre style={{
-                backgroundColor: '#f3f4f6',
-                padding: '10px',
-                borderRadius: '4px',
-                overflow: 'auto',
-                maxHeight: '500px',
-                fontSize: '0.75rem',
-                color: '#666'
-              }}>
-                {resultado.debug.htmlSnippetDespues}
-              </pre>
+              <div style={{ marginBottom: '20px' }}>
+                <h4>👁️ Texto visible en la página:</h4>
+                <pre style={{
+                  backgroundColor: '#f3f4f6',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  maxHeight: '400px',
+                  fontSize: '0.9rem',
+                  color: '#1f2937'
+                }}>
+                  {resultado.debug.textoVisible}
+                </pre>
+              </div>
 
-              <h4>👁️ Texto visible en la página:</h4>
-              <pre style={{
-                backgroundColor: '#f3f4f6',
-                padding: '10px',
-                borderRadius: '4px',
-                overflow: 'auto',
-                maxHeight: '500px',
-                fontSize: '0.8rem',
-                color: '#1f2937'
-              }}>
-                {resultado.debug.textoVisiblePrimeras500lineas}
-              </pre>
+              <div style={{ marginBottom: '20px' }}>
+                <h4>📝 HTML (primeros 5000 caracteres):</h4>
+                <pre style={{
+                  backgroundColor: '#f3f4f6',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  maxHeight: '600px',
+                  fontSize: '0.8rem',
+                  color: '#666'
+                }}>
+                  {resultado.debug.htmlSnippet}
+                </pre>
+              </div>
             </div>
           )}
         </div>
       )}
+
+      <div style={{ marginTop: '40px', color: '#666', fontSize: '0.9rem' }}>
+        <p>
+          <strong>¿Qué hace esta página?</strong><br/>
+          1. Se conecta al SAC<br/>
+          2. Obtiene el HTML de la página<br/>
+          3. Muestra exactamente qué estructura tiene<br/>
+          4. Muestra el texto visible<br/>
+          <br/>
+          Con esta información podemos escribir el scraping correcto.
+        </p>
+      </div>
     </div>
   );
 }
