@@ -2,13 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   
-  // Ignorar warnings de puppeteer
   webpack: (config, { isServer }) => {
     if (isServer) {
-      config.externals.push({
-        'pino': 'pino',
-        'lru-cache': 'lru-cache'
-      });
+      config.externals.push(
+        '@sparticuz/chromium',
+        'puppeteer-core',
+        'pino',
+        'lru-cache'
+      );
     }
     return config;
   }
