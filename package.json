@@ -12,6 +12,7 @@
     "@google/generative-ai": "^0.21.0",
     "@sparticuz/chromium": "^153.0.0",
     "formidable": "^3.5.1",
+    "googleapis": "^182.0.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.408.0",
     "next": "15.2.8",
