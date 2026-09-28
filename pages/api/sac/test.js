@@ -10,61 +10,66 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('🔐 Intentando conectar al SAC...');
+    console.log('🔐 Conectando al SAC real...');
     
-    const url = 'https://sac.juscordoba.gob.ar/';
+    const url = 'https://www.justiciacordoba.gob.ar/JusticiaCordoba/extranet.aspx';
     console.log('URL:', url);
     
-    const loginRes = await fetch(url, {
+    // Paso 1: Obtener la página de login
+    const loginPageRes = await fetch(url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      timeout: 10000
-    }).catch(err => {
-      throw new Error(`Fetch error: ${err.message} | URL: ${url}`);
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
     });
 
-    console.log('Response status:', loginRes.status);
-    console.log('Response headers:', Object.fromEntries(loginRes.headers));
-
-    if (!loginRes.ok) {
-      const text = await loginRes.text();
-      return res.status(loginRes.status).json({
+    if (!loginPageRes.ok) {
+      return res.status(loginPageRes.status).json({
         success: false,
-        error: `SAC respondió con HTTP ${loginRes.status}`,
-        debug: {
-          status: loginRes.status,
-          statusText: loginRes.statusText,
-          url: loginRes.url,
-          htmlSnippet: text.substring(0, 1000)
-        }
+        error: `HTTP ${loginPageRes.status} - ${loginPageRes.statusText}`
       });
     }
 
-    const html = await loginRes.text();
-    console.log('HTML obtenido, length:', html.length);
+    const html = await loginPageRes.text();
+    console.log('✅ HTML obtenido, length:', html.length);
+
+    // Extraer ViewState (típico de ASP.NET)
+    const viewStateMatch = html.match(/name="__VIEWSTATE" value="([^"]+)"/);
+    const viewState = viewStateMatch ? viewStateMatch[1] : '';
+    
+    const eventValidationMatch = html.match(/name="__EVENTVALIDATION" value="([^"]+)"/);
+    const eventValidation = eventValidationMatch ? eventValidationMatch[1] : '';
 
     return res.status(200).json({
       success: true,
       message: 'Conexión exitosa al SAC',
       debug: {
+        url: url,
         htmlLength: html.length,
-        htmlSnippet: html.substring(0, 3000),
-        url: loginRes.url
+        hasViewState: !!viewState,
+        hasEventValidation: !!eventValidation,
+        htmlSnippet: html.substring(0, 4000),
+        textoVisible: extraerTextoVisible(html)
       }
     });
 
   } catch (error) {
-    console.error('❌ Error detallado:', error);
+    console.error('❌ Error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message,
-      errorType: error.constructor.name,
-      debug: {
-        message: error.message,
-        stack: error.stack?.substring(0, 500)
-      }
+      error: error.message
     });
   }
+}
+
+function extraerTextoVisible(html) {
+  // Remover scripts y styles
+  let texto = html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  return texto.substring(0, 2000);
 }
