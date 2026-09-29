@@ -40,13 +40,16 @@ export default function SACSync() {
       });
 
       const data = await response.json();
+      console.log('[SAC auth] respuesta completa:', data);
 
       if (data.success) {
         setExpedientes(data.expedientes || []);
-        setMensaje(`✅ Conectado. Se encontraron ${data.expedientes.length} expedientes`);
-        setPaso(2);
+        setMensaje(`✅ ${data.mensaje || 'Conectado al SAC'}`);
+        // Por ahora no avanzamos de paso automáticamente: todavía no
+        // traemos la lista real de expedientes. Esto solo confirma la
+        // conexión (revisá la consola del navegador para el diagnóstico).
       } else {
-        setMensaje(`❌ ${data.error}`);
+        setMensaje(`❌ ${data.mensaje || data.error || 'No se pudo conectar'}`);
       }
     } catch (error) {
       setMensaje(`❌ Error: ${error.message}`);
