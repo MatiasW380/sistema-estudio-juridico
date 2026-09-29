@@ -177,7 +177,8 @@ export default async function handler(req, res) {
       diagnosticoExpedientes = {
         status: resExp.status,
         esJSON: !!jsonExp,
-        muestraCruda: jsonExp ? undefined : textoExp.slice(0, 800),
+        camposDetectados: jsonExp && typeof jsonExp === 'object' ? Object.keys(jsonExp) : null,
+        muestraCruda: textoExp.slice(0, 1500),
       };
 
       if (jsonExp) {
