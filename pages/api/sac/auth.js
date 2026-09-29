@@ -120,23 +120,87 @@ export default async function handler(req, res) {
     const tienePrometeo = Object.keys(cookieJar).some((c) => c.toUpperCase() === '.PROMETEO');
     const location = resPost.headers.get('location') || null;
 
+    if (!tienePrometeo) {
+      return res.status(200).json({
+        success: false,
+        conectado: false,
+        etapa: 'login',
+        diagnostico: {
+          statusLogin: resPost.status,
+          redirigioA: location,
+          cookiesRecibidas: Object.keys(cookiesPost),
+          tienePrometeo,
+        },
+        mensaje:
+          'El SAC no entregó la cookie de sesión. Lo más probable es que haya bloqueado el intento por el captcha (Cloudflare Turnstile), que un servidor no puede resolver.',
+        htmlSnippet: htmlPost.slice(0, 1500),
+        expedientes: [],
+      });
+    }
+
+    // Paso 3: con la sesión ya iniciada (.PROMETEO), entrar a MarcoPoloNet
+    // (el módulo "SAC para abogados y auxiliares") y pedir la lista de
+    // expedientes con movimientos recientes.
+    let expedientes = [];
+    let diagnosticoExpedientes = null;
+    try {
+      const resMarco = await fetch('https://www.justiciacordoba.gob.ar/marcopolonet/misnovedades', {
+        headers: { ...headersComunes, Cookie: armarCookieHeader(cookieJar) },
+      });
+      const cookiesMarco = extraerCookies(resMarco);
+      cookieJar = { ...cookieJar, ...cookiesMarco };
+
+      const resExp = await fetch(
+        'https://www.justiciacordoba.gob.ar/marcopolonet/api/Novedades/ObtenerExpedientes',
+        {
+          method: 'POST',
+          headers: {
+            ...headersComunes,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Origin: 'https://www.justiciacordoba.gob.ar',
+            Referer: 'https://www.justiciacordoba.gob.ar/MarcoPoloNet/misnovedades',
+            Cookie: armarCookieHeader(cookieJar),
+          },
+          body: JSON.stringify({ pageIndex: null, pageSize: 20 }),
+        },
+      );
+
+      const textoExp = await resExp.text();
+      let jsonExp = null;
+      try {
+        jsonExp = JSON.parse(textoExp);
+      } catch {
+        // Puede no ser JSON si la sesión de MarcoPoloNet no quedó bien establecida
+      }
+
+      diagnosticoExpedientes = {
+        status: resExp.status,
+        esJSON: !!jsonExp,
+        muestraCruda: jsonExp ? undefined : textoExp.slice(0, 800),
+      };
+
+      if (jsonExp) {
+        // Todavía no conocemos los nombres exactos de campo que devuelve el
+        // SAC (numero de expediente, carátula, etc.). Devolvemos el JSON tal
+        // cual para poder mapearlo con un caso real.
+        expedientes = Array.isArray(jsonExp) ? jsonExp : jsonExp.data || jsonExp.items || jsonExp.Expedientes || [];
+      }
+    } catch (errorMarco) {
+      diagnosticoExpedientes = { error: errorMarco.message };
+    }
+
     return res.status(200).json({
-      success: tienePrometeo,
-      conectado: tienePrometeo,
-      etapa: 'login',
+      success: true,
+      conectado: true,
+      etapa: 'expedientes',
       diagnostico: {
         statusLogin: resPost.status,
-        redirigioA: location,
-        cookiesRecibidas: Object.keys(cookiesPost),
         tienePrometeo,
       },
-      mensaje: tienePrometeo
-        ? 'Login exitoso: el SAC entregó la cookie de sesión (.PROMETEO).'
-        : 'El SAC no entregó la cookie de sesión. Lo más probable es que haya bloqueado el intento por el captcha (Cloudflare Turnstile), que un servidor no puede resolver.',
-      // Solo mandamos un fragmento de HTML si falló, para poder diagnosticar
-      // sin acumular contenido innecesario en la respuesta.
-      htmlSnippet: tienePrometeo ? undefined : htmlPost.slice(0, 1500),
-      expedientes: [], // TODO: se completa cuando confirmemos que el login funciona
+      diagnosticoExpedientes,
+      mensaje: `Login exitoso. Se obtuvieron ${expedientes.length} expediente(s) de MarcoPoloNet (formato aún sin mapear).`,
+      expedientes,
     });
   } catch (error) {
     return res.status(500).json({

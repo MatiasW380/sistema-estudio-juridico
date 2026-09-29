@@ -45,9 +45,6 @@ export default function SACSync() {
       if (data.success) {
         setExpedientes(data.expedientes || []);
         setMensaje(`✅ ${data.mensaje || 'Conectado al SAC'}`);
-        // Por ahora no avanzamos de paso automáticamente: todavía no
-        // traemos la lista real de expedientes. Esto solo confirma la
-        // conexión (revisá la consola del navegador para el diagnóstico).
       } else {
         setMensaje(`❌ ${data.mensaje || data.error || 'No se pudo conectar'}`);
       }
@@ -230,6 +227,23 @@ export default function SACSync() {
           >
             {cargando ? '⏳ Conectando...' : '🔐 Conectar con SAC'}
           </button>
+
+          {expedientes.length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <p><strong>JSON crudo recibido de MarcoPoloNet (para mapear campos):</strong></p>
+              <pre style={{
+                backgroundColor: '#1a202c',
+                color: '#e2e8f0',
+                padding: '15px',
+                borderRadius: '4px',
+                overflowX: 'auto',
+                fontSize: '0.8rem',
+                maxHeight: '400px'
+              }}>
+                {JSON.stringify(expedientes, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
