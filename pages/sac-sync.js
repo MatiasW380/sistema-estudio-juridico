@@ -11,6 +11,7 @@ export default function SACSync() {
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [expedientes, setExpedientes] = useState([]);
+  const [diagnostico, setDiagnostico] = useState(null);
 
   // Paso 2: Seleccionar expediente
   const [expedienteSeleccionado, setExpedienteSeleccionado] = useState(null);
@@ -44,8 +45,10 @@ export default function SACSync() {
 
       if (data.success) {
         setExpedientes(data.expedientes || []);
+        setDiagnostico(data.diagnosticoExpedientes || null);
         setMensaje(`✅ ${data.mensaje || 'Conectado al SAC'}`);
       } else {
+        setDiagnostico(data.diagnostico || null);
         setMensaje(`❌ ${data.mensaje || data.error || 'No se pudo conectar'}`);
       }
     } catch (error) {
@@ -241,6 +244,24 @@ export default function SACSync() {
                 maxHeight: '400px'
               }}>
                 {JSON.stringify(expedientes, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {diagnostico && (
+            <div style={{ marginTop: '20px' }}>
+              <p><strong>Diagnóstico (para revisar qué pasó):</strong></p>
+              <pre style={{
+                backgroundColor: '#1a202c',
+                color: '#f6e05e',
+                padding: '15px',
+                borderRadius: '4px',
+                overflowX: 'auto',
+                fontSize: '0.8rem',
+                maxHeight: '400px',
+                whiteSpace: 'pre-wrap'
+              }}>
+                {JSON.stringify(diagnostico, null, 2)}
               </pre>
             </div>
           )}
