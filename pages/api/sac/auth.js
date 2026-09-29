@@ -10,7 +10,7 @@
 // Turnstile no exige nada si la sesión/IP no resulta sospechosa) o si la
 // rechaza. El resultado de esa prueba decide el próximo paso.
 
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 
 const EXTRANET_URL = 'https://www.justiciacordoba.gob.ar/JusticiaCordoba/extranet.aspx';
 
