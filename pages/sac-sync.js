@@ -75,7 +75,15 @@ export default function SACSync() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario, contraseña })
       });
-      const data = await response.json();
+      const texto = await response.text();
+      let data;
+      try {
+        data = JSON.parse(texto);
+      } catch {
+        throw new Error(
+          `El servidor no devolvió una respuesta válida (status ${response.status}). Puede haber excedido el tiempo máximo. Detalle: ${texto.slice(0, 200)}`
+        );
+      }
       console.log('[SAC sincronizar] respuesta completa:', data);
       setResultadoSync(data);
       setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);

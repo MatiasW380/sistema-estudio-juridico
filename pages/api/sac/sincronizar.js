@@ -2,13 +2,21 @@
 // Compara los expedientes del SAC con los que ya existen en LexHub
 // (por Número de expediente = Numero_SAC, que es único) y agrega en la
 // hoja "Actuaciones" solo los movimientos que todavía no estaban.
+//
+// Optimizado para no pasarse del límite de tiempo de las funciones de
+// Vercel: lee la hoja "Actuaciones" UNA sola vez, pide los movimientos de
+// todos los expedientes en paralelo, y hace UNA sola escritura final con
+// todas las filas nuevas (en vez de una llamada a Sheets por cada
+// movimiento, que es lo que hacía que esto tardara demasiado).
 
 import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones } from '../../../lib/sac';
-import { readSheet, getActuaciones, agregarActuacion } from '../../../lib/googleSheets';
+import { readSheet, appendToSheet } from '../../../lib/googleSheets';
+
+export const config = { maxDuration: 60 };
 
 // Cada movimiento se guarda con un marcador [SAC:idOperacion] al inicio del
-// contenido. Así, en la próxima sincronización, sabemos cuáles ya están
-// cargados sin necesidad de una columna nueva en la hoja.
+// contenido. Así sabemos, en la próxima sincronización, cuáles ya están
+// cargados sin necesitar una columna nueva en la hoja.
 function marcarContenido(idOperacion, texto) {
   return `[SAC:${idOperacion}] ${texto}`;
 }
@@ -39,36 +47,61 @@ export default async function handler(req, res) {
       });
     }
 
-    // 1) Expedientes con novedades recientes, según el SAC.
-    const { expedientes: expedientesSAC, diagnostico: diagExp } = await obtenerExpedientesConNovedades(
-      login.cookieJar,
-    );
+    // 1) Expedientes con novedades recientes, según el SAC, y expedientes
+    //    ya cargados en LexHub, en paralelo (son fuentes independientes).
+    const [{ expedientes: expedientesSAC, diagnostico: diagExp }, filasClientes, filasActuaciones] =
+      await Promise.all([
+        obtenerExpedientesConNovedades(login.cookieJar),
+        readSheet('Clientes_y_Expedientes'),
+        readSheet('Actuaciones'),
+      ]);
 
-    // 2) Expedientes que ya tenemos cargados en LexHub (hoja
-    //    Clientes_y_Expedientes), para saber cuáles nos interesa actualizar.
-    const filas = await readSheet('Clientes_y_Expedientes');
-    const locales = new Map(); // numeroSAC -> { nombreCliente, caratula }
-    for (let i = 1; i < filas.length; i++) {
-      const fila = filas[i];
-      const numeroSAC = fila[5]; // columna F
+    const locales = new Map(); // numeroSAC -> { caratula }
+    for (let i = 1; i < filasClientes.length; i++) {
+      const numeroSAC = filasClientes[i][5]; // columna F
       if (numeroSAC) {
-        locales.set(String(numeroSAC).trim(), {
-          nombreCliente: fila[1] || '',
-          caratula: fila[6] || '',
-        });
+        locales.set(String(numeroSAC).trim(), { caratula: filasClientes[i][6] || '' });
       }
     }
 
-    // 3) Cruzar: solo expedientes que YA existen en LexHub.
+    // Encabezados reales de la hoja Actuaciones (por si cambia el orden).
+    const headersAct = filasActuaciones[0] || [];
+    const idxNumeroSAC = headersAct.indexOf('Numero_SAC');
+    const idxContenido = headersAct.indexOf('Contenido');
+    const idxID = headersAct.indexOf('ID');
+
+    let maxId = 0;
+    const idsExistentesPorExpediente = new Map(); // numeroSAC -> Set(idOperacion)
+    for (let i = 1; i < filasActuaciones.length; i++) {
+      const fila = filasActuaciones[i];
+      const idNum = parseInt(fila[idxID], 10);
+      if (!Number.isNaN(idNum) && idNum > maxId) maxId = idNum;
+
+      const numeroSAC = String(fila[idxNumeroSAC] || '').trim();
+      const idOp = extraerIdOperacion(fila[idxContenido]);
+      if (numeroSAC && idOp) {
+        if (!idsExistentesPorExpediente.has(numeroSAC)) idsExistentesPorExpediente.set(numeroSAC, new Set());
+        idsExistentesPorExpediente.get(numeroSAC).add(idOp);
+      }
+    }
+
+    // 2) Solo expedientes que YA existen en LexHub.
     const coincidencias = expedientesSAC.filter((e) => locales.has(String(e.numeroExpediente).trim()));
 
-    const resultados = [];
-    for (const exp of coincidencias) {
-      const numeroSAC = String(exp.numeroExpediente).trim();
-      const { operaciones } = await obtenerOperaciones(login.cookieJar, exp.idExpediente);
+    // 3) Traer los movimientos de todos los expedientes coincidentes en
+    //    paralelo (no uno por uno) para no acumular tiempos de espera.
+    const operacionesPorExpediente = await Promise.all(
+      coincidencias.map((exp) => obtenerOperaciones(login.cookieJar, exp.idExpediente)),
+    );
 
-      const existentes = await getActuaciones(numeroSAC);
-      const idsExistentes = new Set(existentes.map((a) => extraerIdOperacion(a.Contenido)).filter(Boolean));
+    const filasNuevas = [];
+    const resultados = [];
+    let siguienteId = maxId + 1;
+
+    coincidencias.forEach((exp, i) => {
+      const numeroSAC = String(exp.numeroExpediente).trim();
+      const operaciones = operacionesPorExpediente[i].operaciones;
+      const idsExistentes = idsExistentesPorExpediente.get(numeroSAC) || new Set();
 
       const nuevas = operaciones.filter((op) => !idsExistentes.has(op.idOperacion));
 
@@ -77,20 +110,21 @@ export default async function handler(req, res) {
           op.idOperacion,
           `${op.tipoOperacion || 'Movimiento'} — ${op.ubicacion || ''}`.trim(),
         );
-        await agregarActuacion(
+        filasNuevas.push([
+          String(siguienteId++),
           numeroSAC,
           op.fecha || '',
           op.tipoOperacion || 'Movimiento SAC',
           'SAC',
           contenido,
-          false, // presentado
-          false, // enviado
-          false, // tienePDF
+          'NO', // presentado
+          'NO', // enviado
+          'NO', // tienePDF
           '', // idPDFDrive
-          false, // esBorrador
+          'NO', // esBorrador
           'Sync SAC', // creadoPor
           '', // compartidoCon
-        );
+        ]);
       }
 
       resultados.push({
@@ -99,17 +133,21 @@ export default async function handler(req, res) {
         totalOperacionesSAC: operaciones.length,
         movimientosNuevos: nuevas.length,
       });
+    });
+
+    if (filasNuevas.length > 0) {
+      await appendToSheet('Actuaciones', filasNuevas);
     }
 
     return res.status(200).json({
       success: true,
-      mensaje: `Se revisaron ${coincidencias.length} expediente(s) que coinciden con LexHub. Se agregaron ${resultados.reduce((acc, r) => acc + r.movimientosNuevos, 0)} movimiento(s) nuevo(s).`,
+      mensaje: `Se revisaron ${coincidencias.length} expediente(s) que coinciden con LexHub. Se agregaron ${filasNuevas.length} movimiento(s) nuevo(s).`,
       totalExpedientesSAC: expedientesSAC.length,
       totalCoincidencias: coincidencias.length,
       resultados,
       diagnosticoListaSAC: diagExp,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: error.message, stack: error.stack });
   }
 }
