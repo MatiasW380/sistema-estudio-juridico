@@ -58,6 +58,34 @@ export default function SACSync() {
     }
   };
 
+  const [resultadoSync, setResultadoSync] = useState(null);
+
+  const handleSincronizar = async () => {
+    if (!usuario || !contraseña) {
+      setMensaje('❌ Usuario y contraseña requeridos');
+      return;
+    }
+    setCargando(true);
+    setMensaje('🔄 Sincronizando movimientos con LexHub...');
+    setResultadoSync(null);
+
+    try {
+      const response = await fetch('/api/sac/sincronizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, contraseña })
+      });
+      const data = await response.json();
+      console.log('[SAC sincronizar] respuesta completa:', data);
+      setResultadoSync(data);
+      setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   // Obtener movimientos del expediente seleccionado
   const handleSeleccionarExpediente = async (expediente) => {
     setCargando(true);
@@ -230,6 +258,50 @@ export default function SACSync() {
           >
             {cargando ? '⏳ Conectando...' : '🔐 Conectar con SAC'}
           </button>
+
+          <button
+            onClick={handleSincronizar}
+            disabled={cargando}
+            style={{
+              backgroundColor: '#2f855a',
+              color: '#fff',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: cargando ? 'not-allowed' : 'pointer',
+              marginLeft: '10px'
+            }}
+          >
+            {cargando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos con LexHub'}
+          </button>
+
+          {resultadoSync && resultadoSync.resultados && (
+            <div style={{ marginTop: '20px' }}>
+              <p><strong>Resultado de la sincronización:</strong></p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '2px solid #ccc' }}>
+                    <th style={{ padding: '6px' }}>N° Expediente</th>
+                    <th style={{ padding: '6px' }}>Carátula</th>
+                    <th style={{ padding: '6px' }}>Movimientos en SAC</th>
+                    <th style={{ padding: '6px' }}>Nuevos agregados</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultadoSync.resultados.map((r) => (
+                    <tr key={r.numeroSAC} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '6px' }}>{r.numeroSAC}</td>
+                      <td style={{ padding: '6px' }}>{r.caratula}</td>
+                      <td style={{ padding: '6px' }}>{r.totalOperacionesSAC}</td>
+                      <td style={{ padding: '6px', fontWeight: r.movimientosNuevos > 0 ? 'bold' : 'normal' }}>
+                        {r.movimientosNuevos}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {expedientes.length > 0 && (
             <div style={{ marginTop: '20px' }}>
