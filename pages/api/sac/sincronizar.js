@@ -106,9 +106,15 @@ export default async function handler(req, res) {
       const nuevas = operaciones.filter((op) => !idsExistentes.has(op.idOperacion));
 
       for (const op of nuevas) {
+        const detalles = [];
+        if (op.estado) detalles.push(`Estado: ${op.estado}`);
+        if (op.ubicacion) detalles.push(`Ubicación: ${op.ubicacion}`);
+        if (op.presentadoPor) detalles.push(`Presentado por: ${op.presentadoPor}`);
+        if (op.firmada) detalles.push('Firmada');
+        if (op.adjunto) detalles.push('Tiene documento adjunto');
         const contenido = marcarContenido(
           op.idOperacion,
-          `${op.tipoOperacion || 'Movimiento'} — ${op.ubicacion || ''}`.trim(),
+          detalles.length > 0 ? detalles.join('\n') : '(el SAC no informó detalles adicionales para este movimiento)',
         );
         filasNuevas.push([
           String(siguienteId++),

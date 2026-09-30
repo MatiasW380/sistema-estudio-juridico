@@ -436,10 +436,16 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
     }));
   };
 
+  // Los movimientos importados del SAC guardan un marcador interno
+  // [SAC:idOperacion] al inicio del Contenido para no duplicarlos en
+  // futuras sincronizaciones. No tiene por qué verse en pantalla.
+  const limpiarMarcadorSAC = (contenido) => (contenido || '').replace(/^\[SAC:[^\]]+\]\s*/, '');
+
   const getResumen = (contenido, maxChars = 200) => {
-    if (!contenido) return '';
-    if (contenido.length <= maxChars) return contenido;
-    return contenido.substring(0, maxChars) + '...';
+    const limpio = limpiarMarcadorSAC(contenido);
+    if (!limpio) return '';
+    if (limpio.length <= maxChars) return limpio;
+    return limpio.substring(0, maxChars) + '...';
   };
 
   const getTipoColor = (tipo) => {
@@ -1375,7 +1381,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {actuaciones.map((act, index) => {
                   const resumen = getResumen(act.Contenido, 200);
                   const estaExpandido = expandidos[index] || false;
-                  const tieneMas = act.Contenido && act.Contenido.length > 200;
+                  const tieneMas = limpiarMarcadorSAC(act.Contenido).length > 200;
                   const esBorrador = act.Es_Borrador === 'SI';
                   const esCreador = act.Creado_Por === sessionEmail;
                   const esApertura = act.Tipo === 'Apertura';
@@ -1581,7 +1587,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {act.Contenido}
+                              {limpiarMarcadorSAC(act.Contenido)}
                             </div>
                           )}
 
