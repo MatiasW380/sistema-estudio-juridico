@@ -59,6 +59,38 @@ export default function SACSync() {
   };
 
   const [resultadoSync, setResultadoSync] = useState(null);
+  const [resultadoReparar, setResultadoReparar] = useState(null);
+
+  const handleReparar = async () => {
+    if (!usuario || !contraseña) {
+      setMensaje('❌ Usuario y contraseña requeridos');
+      return;
+    }
+    setCargando(true);
+    setMensaje('🛠️ Reparando movimientos viejos...');
+    setResultadoReparar(null);
+
+    try {
+      const response = await fetch('/api/sac/reparar-contenido', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, contraseña })
+      });
+      const texto = await response.text();
+      let data;
+      try {
+        data = JSON.parse(texto);
+      } catch {
+        throw new Error(`Respuesta no válida (status ${response.status}): ${texto.slice(0, 200)}`);
+      }
+      setResultadoReparar(data);
+      setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
+  };
 
   const handleSincronizar = async () => {
     if (!usuario || !contraseña) {
@@ -282,6 +314,28 @@ export default function SACSync() {
           >
             {cargando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos con LexHub'}
           </button>
+
+          <button
+            onClick={handleReparar}
+            disabled={cargando}
+            style={{
+              backgroundColor: '#b7791f',
+              color: '#fff',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: cargando ? 'not-allowed' : 'pointer',
+              marginLeft: '10px'
+            }}
+          >
+            {cargando ? '⏳ Reparando...' : '🛠️ Reparar movimientos viejos (sin texto real)'}
+          </button>
+
+          {resultadoReparar && (
+            <p style={{ marginTop: '10px' }}>
+              <strong>Reparación:</strong> {resultadoReparar.mensaje}
+            </p>
+          )}
 
           {resultadoSync && resultadoSync.resultados && (
             <div style={{ marginTop: '20px' }}>
