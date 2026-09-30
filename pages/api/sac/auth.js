@@ -190,6 +190,45 @@ export default async function handler(req, res) {
       diagnosticoExpedientes = { error: errorMarco.message };
     }
 
+    // Paso 4 (prueba): pedir las "operaciones" (movimientos) del primer
+    // expediente de la lista, para descubrir qué formato usa el SAC.
+    let diagnosticoOperaciones = null;
+    if (expedientes.length > 0 && expedientes[0].idExpediente) {
+      try {
+        const resOps = await fetch(
+          'https://www.justiciacordoba.gob.ar/marcopolonet/api/Radiografia/ObtenerOperaciones',
+          {
+            method: 'POST',
+            headers: {
+              ...headersComunes,
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              Origin: 'https://www.justiciacordoba.gob.ar',
+              Referer: 'https://www.justiciacordoba.gob.ar/MarcoPoloNet/misexpedientes/radiografia',
+              Cookie: armarCookieHeader(cookieJar),
+            },
+            body: JSON.stringify({ idExpediente: expedientes[0].idExpediente, includeEspeciales: false }),
+          },
+        );
+        const textoOps = await resOps.text();
+        let jsonOps = null;
+        try {
+          jsonOps = JSON.parse(textoOps);
+        } catch {
+          // no era JSON
+        }
+        diagnosticoOperaciones = {
+          expedienteProbado: expedientes[0].numeroExpediente,
+          status: resOps.status,
+          esJSON: !!jsonOps,
+          camposDetectados: jsonOps && typeof jsonOps === 'object' ? Object.keys(jsonOps) : null,
+          muestraCruda: textoOps.slice(0, 2500),
+        };
+      } catch (errorOps) {
+        diagnosticoOperaciones = { error: errorOps.message };
+      }
+    }
+
     return res.status(200).json({
       success: true,
       conectado: true,
@@ -199,6 +238,7 @@ export default async function handler(req, res) {
         tienePrometeo,
       },
       diagnosticoExpedientes,
+      diagnosticoOperaciones,
       mensaje: `Login exitoso. Se obtuvieron ${expedientes.length} expediente(s) de MarcoPoloNet (formato aún sin mapear).`,
       expedientes,
     });
