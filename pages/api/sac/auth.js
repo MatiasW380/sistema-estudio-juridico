@@ -182,10 +182,9 @@ export default async function handler(req, res) {
       };
 
       if (jsonExp) {
-        // Todavía no conocemos los nombres exactos de campo que devuelve el
-        // SAC (numero de expediente, carátula, etc.). Devolvemos el JSON tal
-        // cual para poder mapearlo con un caso real.
-        expedientes = Array.isArray(jsonExp) ? jsonExp : jsonExp.data || jsonExp.items || jsonExp.Expedientes || [];
+        expedientes =
+          jsonExp.expedienteNovedades ||
+          (Array.isArray(jsonExp) ? jsonExp : jsonExp.data || jsonExp.items || jsonExp.Expedientes || []);
       }
     } catch (errorMarco) {
       diagnosticoExpedientes = { error: errorMarco.message };

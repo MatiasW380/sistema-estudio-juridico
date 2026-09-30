@@ -233,18 +233,27 @@ export default function SACSync() {
 
           {expedientes.length > 0 && (
             <div style={{ marginTop: '20px' }}>
-              <p><strong>JSON crudo recibido de MarcoPoloNet (para mapear campos):</strong></p>
-              <pre style={{
-                backgroundColor: '#1a202c',
-                color: '#e2e8f0',
-                padding: '15px',
-                borderRadius: '4px',
-                overflowX: 'auto',
-                fontSize: '0.8rem',
-                maxHeight: '400px'
-              }}>
-                {JSON.stringify(expedientes, null, 2)}
-              </pre>
+              <p><strong>Expedientes con movimientos recientes en el SAC ({expedientes.length}):</strong></p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '2px solid #ccc' }}>
+                    <th style={{ padding: '6px' }}>N° Expediente</th>
+                    <th style={{ padding: '6px' }}>Carátula</th>
+                    <th style={{ padding: '6px' }}>Dependencia</th>
+                    <th style={{ padding: '6px' }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expedientes.map((e) => (
+                    <tr key={e.idExpediente} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '6px' }}>{e.numeroExpediente}</td>
+                      <td style={{ padding: '6px' }}>{e.caratula}</td>
+                      <td style={{ padding: '6px' }}>{e.dependencia}</td>
+                      <td style={{ padding: '6px' }}>{e.estado}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
