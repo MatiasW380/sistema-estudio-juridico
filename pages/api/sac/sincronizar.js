@@ -9,7 +9,13 @@
 // todas las filas nuevas (en vez de una llamada a Sheets por cada
 // movimiento, que es lo que hacía que esto tardara demasiado).
 
-import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones } from '../../../lib/sac';
+import {
+  loginSAC,
+  obtenerExpedientesConNovedades,
+  obtenerOperaciones,
+  obtenerTextoOperacion,
+  limpiarHtmlOperacion,
+} from '../../../lib/sac';
 import { readSheet, appendToSheet } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 60 };
@@ -94,28 +100,54 @@ export default async function handler(req, res) {
       coincidencias.map((exp) => obtenerOperaciones(login.cookieJar, exp.idExpediente)),
     );
 
+    // Armamos, por cada expediente, la lista de movimientos realmente
+    // nuevos (los que no están todavía en Actuaciones).
+    const porExpediente = coincidencias.map((exp, i) => {
+      const numeroSAC = String(exp.numeroExpediente).trim();
+      const operaciones = operacionesPorExpediente[i].operaciones;
+      const idsExistentes = idsExistentesPorExpediente.get(numeroSAC) || new Set();
+      const nuevas = operaciones.filter((op) => !idsExistentes.has(op.idOperacion));
+      return { exp, numeroSAC, operaciones, nuevas };
+    });
+
+    // Traemos el TEXTO REAL de todos los movimientos nuevos (de todos los
+    // expedientes), en paralelo, con un límite prudente para no saturar al
+    // SAC ni pasarnos del tiempo máximo de la función.
+    const LIMITE_TEXTOS_PARALELOS = 25;
+    const todasLasNuevas = porExpediente.flatMap((p) => p.nuevas.map((op) => ({ numeroSAC: p.numeroSAC, op })));
+    const aBuscar = todasLasNuevas.slice(0, LIMITE_TEXTOS_PARALELOS);
+    const textos = await Promise.all(
+      aBuscar.map(({ op }) =>
+        obtenerTextoOperacion(login.cookieJar, op.idOperacion).catch(() => ({ contenido: '' })),
+      ),
+    );
+    const textoPorIdOperacion = new Map();
+    aBuscar.forEach(({ op }, i) => {
+      textoPorIdOperacion.set(op.idOperacion, limpiarHtmlOperacion(textos[i].contenido));
+    });
+
     const filasNuevas = [];
     const resultados = [];
     let siguienteId = maxId + 1;
 
-    coincidencias.forEach((exp, i) => {
-      const numeroSAC = String(exp.numeroExpediente).trim();
-      const operaciones = operacionesPorExpediente[i].operaciones;
-      const idsExistentes = idsExistentesPorExpediente.get(numeroSAC) || new Set();
-
-      const nuevas = operaciones.filter((op) => !idsExistentes.has(op.idOperacion));
-
+    for (const { exp, numeroSAC, operaciones, nuevas } of porExpediente) {
       for (const op of nuevas) {
-        const detalles = [];
-        if (op.estado) detalles.push(`Estado: ${op.estado}`);
-        if (op.ubicacion) detalles.push(`Ubicación: ${op.ubicacion}`);
-        if (op.presentadoPor) detalles.push(`Presentado por: ${op.presentadoPor}`);
-        if (op.firmada) detalles.push('Firmada');
-        if (op.adjunto) detalles.push('Tiene documento adjunto');
-        const contenido = marcarContenido(
-          op.idOperacion,
-          detalles.length > 0 ? detalles.join('\n') : '(el SAC no informó detalles adicionales para este movimiento)',
-        );
+        const textoReal = textoPorIdOperacion.get(op.idOperacion);
+        let cuerpo;
+        if (textoReal) {
+          cuerpo = textoReal;
+        } else {
+          // No se pudo traer el texto (superó el límite en paralelo, o el
+          // SAC no devolvió nada): guardamos al menos estos datos.
+          const detalles = [];
+          if (op.estado) detalles.push(`Estado: ${op.estado}`);
+          if (op.ubicacion) detalles.push(`Ubicación: ${op.ubicacion}`);
+          if (op.presentadoPor) detalles.push(`Presentado por: ${op.presentadoPor}`);
+          if (op.firmada) detalles.push('Firmada');
+          if (op.adjunto) detalles.push('Tiene documento adjunto');
+          cuerpo = detalles.length > 0 ? detalles.join('\n') : '(sin detalle disponible)';
+        }
+        const contenido = marcarContenido(op.idOperacion, cuerpo);
         filasNuevas.push([
           String(siguienteId++),
           numeroSAC,
@@ -139,7 +171,7 @@ export default async function handler(req, res) {
         totalOperacionesSAC: operaciones.length,
         movimientosNuevos: nuevas.length,
       });
-    });
+    }
 
     if (filasNuevas.length > 0) {
       await appendToSheet('Actuaciones', filasNuevas);
