@@ -52,21 +52,23 @@ export default async function handler(req, res) {
     const idxOrigen = headers.indexOf('Origen');
     const idxContenido = headers.indexOf('Contenido');
 
-    // Candidatas a reparar: Origen "SAC" cuyo contenido NO es el que ya
-    // generamos con el texto real (evitamos reprocesar lo que ya está bien
-    // detectando el patrón viejo " — " pegado al final, típico del formato
-    // anterior, o contenido muy corto).
+    let totalFilas = 0;
+    let totalOrigenSAC = 0;
+    let totalConMarcador = 0;
+
+    // Reparamos TODOS los movimientos de origen SAC (volver a pedir el
+    // texto real no hace daño aunque ya estuviera bien; así no dependemos
+    // de adivinar qué está "viejo" y qué no).
     const candidatas = [];
     for (let i = 1; i < filas.length; i++) {
       const fila = filas[i];
+      totalFilas++;
       if (fila[idxOrigen] !== 'SAC') continue;
+      totalOrigenSAC++;
       const idOp = extraerIdOperacion(fila[idxContenido]);
       if (!idOp) continue;
-      const sinMarcador = (fila[idxContenido] || '').replace(/^\[SAC:[^\]]+\]\s*/, '');
-      const pareceViejo = /—\s*$/.test(sinMarcador) || sinMarcador.length < 15;
-      if (pareceViejo) {
-        candidatas.push({ filaIndice: i, idOperacion: idOp });
-      }
+      totalConMarcador++;
+      candidatas.push({ filaIndice: i, idOperacion: idOp });
     }
 
     const aProcesar = candidatas.slice(0, LIMITE_POR_CORRIDA);
@@ -100,11 +102,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      mensaje: `Se encontraron ${candidatas.length} movimiento(s) con formato viejo. Se repararon ${actualizados} en esta corrida (límite ${LIMITE_POR_CORRIDA} por vez). ${
-        candidatas.length > LIMITE_POR_CORRIDA
-          ? 'Corré de nuevo para seguir con el resto.'
-          : ''
+      mensaje: `Filas en Actuaciones: ${totalFilas}. Con Origen=SAC: ${totalOrigenSAC}. Con marcador reconocible: ${totalConMarcador}. Se repararon ${actualizados} en esta corrida (límite ${LIMITE_POR_CORRIDA} por vez).${
+        candidatas.length > LIMITE_POR_CORRIDA ? ' Corré de nuevo para seguir con el resto.' : ''
       }`,
+      diagnostico: { totalFilas, totalOrigenSAC, totalConMarcador, headersDetectados: headers },
       totalCandidatas: candidatas.length,
       actualizados,
     });
