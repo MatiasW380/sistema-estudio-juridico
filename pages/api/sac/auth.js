@@ -3,7 +3,7 @@
 // prueba de movimientos del primer expediente. La lógica real vive en
 // lib/sac.js (compartida con /api/sac/sincronizar).
 
-import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones } from '../../../lib/sac';
+import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerTextoOperacion } from '../../../lib/sac';
 
 export const config = { maxDuration: 60 };
 
@@ -36,6 +36,7 @@ export default async function handler(req, res) {
     );
 
     let diagnosticoOperaciones = null;
+    let diagnosticoTexto = null;
     if (expedientes.length > 0 && expedientes[0].idExpediente) {
       const { operaciones, diagnostico } = await obtenerOperaciones(login.cookieJar, expedientes[0].idExpediente);
       diagnosticoOperaciones = {
@@ -43,6 +44,11 @@ export default async function handler(req, res) {
         totalOperaciones: operaciones.length,
         ...diagnostico,
       };
+
+      if (operaciones.length > 0 && operaciones[0].idOperacion) {
+        const { diagnostico: diagTexto } = await obtenerTextoOperacion(login.cookieJar, operaciones[0].idOperacion);
+        diagnosticoTexto = { idOperacionProbado: operaciones[0].idOperacion, ...diagTexto };
+      }
     }
 
     return res.status(200).json({
@@ -51,6 +57,7 @@ export default async function handler(req, res) {
       diagnostico: login.diagnostico,
       diagnosticoExpedientes,
       diagnosticoOperaciones,
+      diagnosticoTexto,
       mensaje: `Login exitoso. Se obtuvieron ${expedientes.length} expediente(s) con novedades recientes.`,
       expedientes,
     });

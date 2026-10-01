@@ -45,7 +45,7 @@ export default function SACSync() {
 
       if (data.success) {
         setExpedientes(data.expedientes || []);
-        setDiagnostico(data.diagnosticoOperaciones || data.diagnosticoExpedientes || null);
+        setDiagnostico(data.diagnosticoTexto || data.diagnosticoOperaciones || data.diagnosticoExpedientes || null);
         setMensaje(`✅ ${data.mensaje || 'Conectado al SAC'}`);
       } else {
         setDiagnostico(data.diagnostico || null);
