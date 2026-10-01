@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import LogoLexHub from './LogoLexHub';
-import SACModal from './SACModal';
 import {
   IconHome,
   IconUsers,
@@ -16,7 +15,6 @@ import {
 export default function HeaderGlobal({ userData, onLogout }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [sacModalOpen, setSacModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -86,6 +84,7 @@ export default function HeaderGlobal({ userData, onLogout }) {
         }}
       >
         <NavLink href="/" icon={<IconHome size={16} />} label="Inicio" isActive={isActive('/')} />
+        <NavLink href="/sac-sync" icon={<span style={{ fontSize: '14px' }}>🔗</span>} label="SAC" isActive={isActive('/sac-sync')} />
         <NavLink href="/clientes" icon={<IconUsers size={16} />} label="Clientes" isActive={isActive('/clientes')} />
         <NavLink href="/expedientes" icon={<IconExpedientes size={16} />} label="Expedientes" isActive={isActive('/expedientes')} />
         <NavLink href="/agenda" icon={<IconAgenda size={16} />} label="Agenda" isActive={isActive('/agenda')} />
@@ -93,34 +92,6 @@ export default function HeaderGlobal({ userData, onLogout }) {
         <NavLink href="/biblioteca" icon={<IconBiblioteca size={16} />} label="Biblioteca" isActive={isActive('/biblioteca')} />
         <NavLink href="/ia-general" icon={<IconIA size={16} />} label="IA" isActive={isActive('/ia-general')} />
       </nav>
-
-      {/* SAC Button */}
-      <button
-        onClick={() => setSacModalOpen(true)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          color: '#ffffff',
-          backgroundColor: '#10b981',
-          padding: '6px 10px',
-          borderRadius: '4px',
-          border: 'none',
-          fontSize: '0.8rem',
-          fontWeight: '600',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          whiteSpace: 'nowrap',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#059669';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = '#10b981';
-        }}
-      >
-        🔗 SAC
-      </button>
 
       {/* Usuario - Derecha */}
       <div
@@ -165,9 +136,6 @@ export default function HeaderGlobal({ userData, onLogout }) {
           Logout
         </button>
       </div>
-
-      {/* SAC Modal */}
-      <SACModal isOpen={sacModalOpen} onClose={() => setSacModalOpen(false)} />
     </header>
   );
 }
