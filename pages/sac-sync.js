@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Button from '../components/Button';
+
 
 export default function SACSync() {
   const router = useRouter();
@@ -130,6 +130,18 @@ export default function SACSync() {
     padding: '20px',
   };
 
+  const botonPrimario = (size) => ({
+    backgroundColor: 'var(--color-cobalt)',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background-color 0.15s',
+    padding: size === 'lg' ? '12px 28px' : '8px 16px',
+    fontSize: size === 'lg' ? '0.95rem' : '0.85rem',
+  });
+
   return (
     <div style={{ maxWidth: '720px', margin: '40px auto', padding: '0 20px' }}>
       <div style={{ marginBottom: '24px' }}>
@@ -203,9 +215,14 @@ export default function SACSync() {
                 }}
               />
             </div>
-            <Button variant="primary" size="sm" onClick={handleConectarManual}>
+            <button
+              onClick={handleConectarManual}
+              style={botonPrimario('sm')}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-cobalt-dark)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-cobalt)'; }}
+            >
               Conectar
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -213,9 +230,19 @@ export default function SACSync() {
       {/* Acción principal: sincronizar */}
       {estadoConexion === 'conectado' && (
         <div style={{ ...card, marginBottom: '16px', textAlign: 'center' }}>
-          <Button variant="primary" size="lg" onClick={handleSincronizar} disabled={sincronizando}>
+          <button
+            onClick={handleSincronizar}
+            disabled={sincronizando}
+            style={{
+              ...botonPrimario('lg'),
+              opacity: sincronizando ? 0.7 : 1,
+              cursor: sincronizando ? 'not-allowed' : 'pointer',
+            }}
+            onMouseEnter={(e) => { if (!sincronizando) e.currentTarget.style.backgroundColor = 'var(--color-cobalt-dark)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-cobalt)'; }}
+          >
             {sincronizando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos nuevos'}
-          </Button>
+          </button>
           <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', marginTop: '10px' }}>
             Revisa tus expedientes en el SAC y agrega a LexHub los movimientos nuevos que tengan contenido.
           </p>
