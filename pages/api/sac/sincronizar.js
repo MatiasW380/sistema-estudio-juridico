@@ -1,9 +1,9 @@
 // pages/api/sac/sincronizar.js
-// PREVISUALIZACIÓN: compara los expedientes del SAC con los que ya existen
-// en LexHub (por Número de expediente = Numero_SAC) y devuelve los
-// movimientos nuevos para que la persona elija cuáles agregar. NO escribe
-// nada en Sheets — eso lo hace /api/sac/confirmar-movimientos con lo que
-// el usuario seleccione.
+// Compara los expedientes del SAC con los que ya existen en LexHub (por
+// Número de expediente = Numero_SAC) y agrega a "Actuaciones" los
+// movimientos nuevos que tengan texto real (se descartan los que no
+// trajeron texto: son operaciones administrativas sin contenido útil).
+// Si hay datos de notificación (cédulas), se incluyen en el contenido.
 
 import {
   loginSAC,
@@ -14,13 +14,27 @@ import {
   limpiarHtmlOperacion,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
-import { readSheet } from '../../../lib/googleSheets';
+import { readSheet, appendToSheet } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 60 };
+
+function marcarContenido(idOperacion, texto) {
+  return `[SAC:${idOperacion}] ${texto}`;
+}
 
 function extraerIdOperacion(contenido) {
   const m = /^\[SAC:([^\]]+)\]/.exec(contenido || '');
   return m ? m[1] : null;
+}
+
+function formatearNotificacion(masDatos) {
+  const cedulas = masDatos?.datos?.detalleOperacion?.listadoCedulas || [];
+  if (cedulas.length === 0) return '';
+  const lineas = cedulas.map((c) => {
+    const otros = c.otrosDestinatarios ? ` · también: ${c.otrosDestinatarios}` : '';
+    return `${c.nombre || ''} (${c.rol || ''}) — ${c.fecha || ''}${otros}`;
+  });
+  return `\n\nNotificado a:\n${lineas.join('\n')}`;
 }
 
 export default async function handler(req, res) {
@@ -44,14 +58,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // 1) Expedientes con novedades recientes, según el SAC, y expedientes
-    //    ya cargados en LexHub, en paralelo (son fuentes independientes).
-    const [{ expedientes: expedientesSAC, diagnostico: diagExp }, filasClientes, filasActuaciones] =
-      await Promise.all([
-        obtenerExpedientesConNovedades(login.cookieJar),
-        readSheet('Clientes_y_Expedientes'),
-        readSheet('Actuaciones'),
-      ]);
+    // 1) Expedientes con novedades recientes, expedientes ya cargados en
+    //    LexHub, y Actuaciones ya guardadas, en paralelo.
+    const [{ expedientes: expedientesSAC }, filasClientes, filasActuaciones] = await Promise.all([
+      obtenerExpedientesConNovedades(login.cookieJar),
+      readSheet('Clientes_y_Expedientes'),
+      readSheet('Actuaciones'),
+    ]);
 
     const locales = new Map(); // numeroSAC -> { caratula }
     for (let i = 1; i < filasClientes.length; i++) {
@@ -61,14 +74,18 @@ export default async function handler(req, res) {
       }
     }
 
-    // Encabezados reales de la hoja Actuaciones (por si cambia el orden).
     const headersAct = filasActuaciones[0] || [];
     const idxNumeroSAC = headersAct.indexOf('Numero_SAC');
     const idxContenido = headersAct.indexOf('Contenido');
+    const idxID = headersAct.indexOf('ID');
 
-    const idsExistentesPorExpediente = new Map(); // numeroSAC -> Set(idOperacion)
+    let maxId = 0;
+    const idsExistentesPorExpediente = new Map();
     for (let i = 1; i < filasActuaciones.length; i++) {
       const fila = filasActuaciones[i];
+      const idNum = parseInt(fila[idxID], 10);
+      if (!Number.isNaN(idNum) && idNum > maxId) maxId = idNum;
+
       const numeroSAC = String(fila[idxNumeroSAC] || '').trim();
       const idOp = extraerIdOperacion(fila[idxContenido]);
       if (numeroSAC && idOp) {
@@ -80,8 +97,7 @@ export default async function handler(req, res) {
     // 2) Solo expedientes que YA existen en LexHub.
     const coincidencias = expedientesSAC.filter((e) => locales.has(String(e.numeroExpediente).trim()));
 
-    // 3) Traer los movimientos de todos los expedientes coincidentes en
-    //    paralelo (no uno por uno) para no acumular tiempos de espera.
+    // 3) Movimientos de cada expediente coincidente, en paralelo.
     const operacionesPorExpediente = await Promise.all(
       coincidencias.map((exp) => obtenerOperaciones(login.cookieJar, exp.idExpediente)),
     );
@@ -94,91 +110,102 @@ export default async function handler(req, res) {
       return { exp, numeroSAC, operaciones, nuevas };
     });
 
-    // Traemos el TEXTO REAL de todos los movimientos nuevos, en paralelo,
-    // con un límite prudente para no saturar al SAC ni pasarnos del tiempo
-    // máximo de la función.
-    const LIMITE_TEXTOS_PARALELOS = 25;
+    // 4) Texto real y datos de notificación de cada movimiento nuevo, en
+    //    paralelo, con un límite prudente.
+    const LIMITE_PARALELO = 30;
     const todasLasNuevas = porExpediente.flatMap((p) => p.nuevas.map((op) => ({ numeroSAC: p.numeroSAC, op })));
-    const aBuscar = todasLasNuevas.slice(0, LIMITE_TEXTOS_PARALELOS);
-    const textos = await Promise.all(
-      aBuscar.map(({ op }) => obtenerTextoDeOperacion(login.cookieJar, op).catch(() => ({ contenido: '' }))),
-    );
-    const textoPorIdOperacion = new Map();
-    aBuscar.forEach(({ op }, i) => {
-      textoPorIdOperacion.set(op.idOperacion, limpiarHtmlOperacion(textos[i].contenido));
-    });
-
-    // Probamos traer también "más datos" (a quién y cuándo se notificó),
-    // para los mismos candidatos, sin sumar llamadas extra a las ya
-    // previstas. Si el SAC lo rechaza (como vimos antes, posible límite de
-    // pedidos seguidos) simplemente no mostramos ese dato para esa fila,
-    // sin romper nada más.
+    const aBuscar = todasLasNuevas.slice(0, LIMITE_PARALELO);
     const idExpedientePorNumero = new Map(coincidencias.map((e) => [String(e.numeroExpediente).trim(), e.idExpediente]));
-    const masDatos = await Promise.all(
-      aBuscar.map(({ numeroSAC, op }) =>
-        obtenerMasDatosOperacion(login.cookieJar, idExpedientePorNumero.get(numeroSAC), op.idOperacion, op.esEscrito).catch(
-          () => ({ datos: null, diagnostico: { status: 'error' } }),
+
+    const [textos, masDatosLista] = await Promise.all([
+      Promise.all(aBuscar.map(({ op }) => obtenerTextoDeOperacion(login.cookieJar, op).catch(() => ({ contenido: '' })))),
+      Promise.all(
+        aBuscar.map(({ numeroSAC, op }) =>
+          obtenerMasDatosOperacion(login.cookieJar, idExpedientePorNumero.get(numeroSAC), op.idOperacion, op.esEscrito).catch(
+            () => ({ datos: null }),
+          ),
         ),
       ),
-    );
+    ]);
+
+    const textoPorIdOperacion = new Map();
     const masDatosPorIdOperacion = new Map();
     aBuscar.forEach(({ op }, i) => {
-      masDatosPorIdOperacion.set(op.idOperacion, masDatos[i]);
+      textoPorIdOperacion.set(op.idOperacion, limpiarHtmlOperacion(textos[i].contenido));
+      masDatosPorIdOperacion.set(op.idOperacion, masDatosLista[i]);
     });
 
-    // Armamos la lista de candidatos (sin escribir nada todavía).
-    const candidatos = [];
-    const resultados = [];
+    // 5) Solo nos quedamos con los movimientos que SÍ tienen texto real.
+    //    Los que no (operaciones administrativas sin contenido) se
+    //    descartan: no aportan nada y no hace falta elegir uno por uno.
+    const filasNuevas = [];
+    const agregados = [];
+    const omitidosSinTexto = { total: 0, porExpediente: {} };
+    let siguienteId = maxId + 1;
+    let noRevisados = 0; // superaron el límite en paralelo, quedan para la próxima corrida
 
-    for (const { exp, numeroSAC, operaciones, nuevas } of porExpediente) {
+    for (const { exp, numeroSAC, nuevas } of porExpediente) {
       for (const op of nuevas) {
+        if (!textoPorIdOperacion.has(op.idOperacion)) {
+          noRevisados++;
+          continue; // no llegamos a pedir su texto esta vez, queda para la próxima
+        }
         const textoReal = textoPorIdOperacion.get(op.idOperacion);
-        let contenido;
-        if (textoReal) {
-          contenido = textoReal;
-        } else {
-          const detalles = [];
-          if (op.estado) detalles.push(`Estado: ${op.estado}`);
-          if (op.ubicacion) detalles.push(`Ubicación: ${op.ubicacion}`);
-          if (op.presentadoPor) detalles.push(`Presentado por: ${op.presentadoPor}`);
-          if (op.firmada) detalles.push('Firmada');
-          if (op.adjunto) detalles.push('Tiene documento adjunto');
-          contenido = detalles.length > 0 ? detalles.join('\n') : '(sin detalle disponible)';
+        if (!textoReal) {
+          omitidosSinTexto.total++;
+          omitidosSinTexto.porExpediente[numeroSAC] = (omitidosSinTexto.porExpediente[numeroSAC] || 0) + 1;
+          continue;
         }
 
-        const masDatosOp = masDatosPorIdOperacion.get(op.idOperacion);
+        const notificacion = formatearNotificacion(masDatosPorIdOperacion.get(op.idOperacion));
+        const contenido = marcarContenido(op.idOperacion, textoReal + notificacion);
 
-        candidatos.push({
-          clave: `${numeroSAC}::${op.idOperacion}`,
+        filasNuevas.push([
+          String(siguienteId++),
+          numeroSAC,
+          op.fecha || '',
+          op.tipoOperacion || 'Movimiento SAC',
+          'SAC',
+          contenido,
+          'NO',
+          'NO',
+          'NO',
+          '',
+          'NO',
+          'Sync SAC',
+          '',
+        ]);
+
+        agregados.push({
           numeroSAC,
           caratula: locales.get(numeroSAC).caratula || exp.caratula,
-          idOperacion: op.idOperacion,
-          fecha: op.fecha || '',
           tipoOperacion: op.tipoOperacion || 'Movimiento SAC',
-          contenido,
-          tieneTextoReal: !!textoReal,
-          // Temporal: mandamos el dato crudo de notificación (si vino) para
-          // poder ver su formato real antes de mostrarlo formateado.
-          notificacionCruda: masDatosOp?.datos || null,
+          fecha: op.fecha || '',
+          resumen: textoReal.slice(0, 180) + (textoReal.length > 180 ? '...' : ''),
         });
       }
+    }
 
-      resultados.push({
-        numeroSAC,
-        caratula: locales.get(numeroSAC).caratula || exp.caratula,
-        totalOperacionesSAC: operaciones.length,
-        movimientosNuevos: nuevas.length,
-      });
+    if (filasNuevas.length > 0) {
+      await appendToSheet('Actuaciones', filasNuevas);
+    }
+
+    const partesMensaje = [`Se agregaron ${filasNuevas.length} movimiento(s) nuevo(s) a LexHub.`];
+    if (omitidosSinTexto.total > 0) {
+      partesMensaje.push(`${omitidosSinTexto.total} se omitieron por no tener texto (operaciones administrativas).`);
+    }
+    if (noRevisados > 0) {
+      partesMensaje.push(`${noRevisados} quedaron sin revisar por el límite de esta corrida — volvé a sincronizar para completarlos.`);
     }
 
     return res.status(200).json({
       success: true,
-      mensaje: `Se revisaron ${coincidencias.length} expediente(s) que coinciden con LexHub. Hay ${candidatos.length} movimiento(s) nuevo(s) para revisar.`,
+      mensaje: partesMensaje.join(' '),
       totalExpedientesSAC: expedientesSAC.length,
       totalCoincidencias: coincidencias.length,
-      resultados,
-      candidatos,
-      diagnosticoListaSAC: diagExp,
+      agregados,
+      omitidosSinTexto,
+      noRevisados,
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message, stack: error.stack });

@@ -156,6 +156,9 @@ export default function Home({
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [movimientosSAC, setMovimientosSAC] = useState([]);
+  const [cargandoSAC, setCargandoSAC] = useState(true);
+  const [errorSAC, setErrorSAC] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -169,6 +172,30 @@ export default function Home({
       router.push('/login');
     }
   }, [router]);
+
+  // Movimientos del SAC (últimos 3 días), solo de expedientes que ya
+  // existen en LexHub. Se consulta cada vez que se entra al dashboard,
+  // sin bloquear el resto de la página.
+  useEffect(() => {
+    if (!usuarioEmail) return;
+    fetch('/api/sac/movimientos-dashboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: usuarioEmail })
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setMovimientosSAC(data.movimientos || []);
+        } else {
+          setErrorSAC(data.mensaje || 'No se pudo consultar el SAC');
+        }
+      })
+      .catch(() => setErrorSAC('No se pudo consultar el SAC'))
+      .finally(() => setCargandoSAC(false));
+  }, [usuarioEmail]);
+
+  const colorMovimientoSAC = { rojo: '#dc2626', amarillo: '#d97706', verde: '#16a34a' };
 
   const formatMoney = (value) => {
     const n = parseFloat(value || 0);
@@ -560,6 +587,62 @@ export default function Home({
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Movimientos SAC - últimos 3 días, solo expedientes en LexHub */}
+      <div style={{ marginTop: '24px' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
+          Movimientos SAC
+        </h2>
+
+        {cargandoSAC ? (
+          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+            Consultando el SAC...
+          </div>
+        ) : errorSAC ? (
+          <div style={{ backgroundColor: '#fff7ed', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#9a3412', border: '1px solid #fed7aa', fontSize: '0.85rem' }}>
+            {errorSAC}
+          </div>
+        ) : movimientosSAC.length === 0 ? (
+          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+            Sin movimientos en los últimos 3 días.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {movimientosSAC.map((m) => (
+              <div
+                key={`${m.numeroSAC}-${m.fecha}`}
+                onClick={() => router.push(`/expediente/${encodeURIComponent(m.numeroSAC)}`)}
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderLeft: `3px solid ${colorMovimientoSAC[m.color]}`,
+                  borderRadius: '4px',
+                  padding: '8px 10px',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+              >
+                <div style={{ overflow: 'hidden' }}>
+                  <strong style={{ color: '#0f172a' }}>{m.numeroSAC}</strong>
+                  <span style={{ color: '#64748b' }}> — {m.caratula}</span>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{m.tipoOperacion} · {m.fecha}</div>
+                </div>
+                <span style={{ backgroundColor: colorMovimientoSAC[m.color], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {m.dias === 0 ? 'HOY' : m.dias === 1 ? '1 día' : `${m.dias} días`}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>

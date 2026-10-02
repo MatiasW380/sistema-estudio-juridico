@@ -108,52 +108,6 @@ export default function SACSync() {
   };
 
   const [resultadoSync, setResultadoSync] = useState(null);
-  const [seleccionados, setSeleccionados] = useState({}); // clave -> boolean
-  const [resultadoConfirmar, setResultadoConfirmar] = useState(null);
-
-  const toggleSeleccionado = (clave) => {
-    setSeleccionados((prev) => ({ ...prev, [clave]: !prev[clave] }));
-  };
-
-  const handleConfirmarSeleccionados = async () => {
-    const elegidos = (resultadoSync?.candidatos || []).filter((c) => seleccionados[c.clave]);
-    if (elegidos.length === 0) {
-      setMensaje('❌ No tildaste ningún movimiento para agregar');
-      return;
-    }
-    setCargando(true);
-    setMensaje(`➕ Agregando ${elegidos.length} movimiento(s) a LexHub...`);
-    setResultadoConfirmar(null);
-
-    try {
-      const response = await fetch('/api/sac/confirmar-movimientos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seleccionados: elegidos })
-      });
-      const texto = await response.text();
-      let data;
-      try {
-        data = JSON.parse(texto);
-      } catch {
-        throw new Error(`Respuesta no válida (status ${response.status}): ${texto.slice(0, 200)}`);
-      }
-      setResultadoConfirmar(data);
-      setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
-      if (data.success) {
-        // Sacamos de la lista los que ya se agregaron, para no confirmarlos dos veces.
-        setResultadoSync((prev) =>
-          prev
-            ? { ...prev, candidatos: prev.candidatos.filter((c) => !seleccionados[c.clave]) }
-            : prev
-        );
-      }
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
-    }
-  };
   const [resultadoReparar, setResultadoReparar] = useState(null);
 
   const handleReparar = async () => {
@@ -216,14 +170,6 @@ export default function SACSync() {
       console.log('[SAC sincronizar] respuesta completa:', data);
       setResultadoSync(data);
       setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
-
-      // Por defecto dejamos todos los movimientos nuevos tildados: la
-      // persona destilda los que no quiere agregar.
-      if (data.success && data.candidatos) {
-        const inicial = {};
-        data.candidatos.forEach((c) => { inicial[c.clave] = true; });
-        setSeleccionados(inicial);
-      }
     } catch (error) {
       setMensaje(`❌ Error: ${error.message}`);
     } finally {
@@ -424,7 +370,7 @@ export default function SACSync() {
               marginLeft: '10px'
             }}
           >
-            {cargando ? '⏳ Revisando...' : '🔄 Revisar movimientos nuevos'}
+            {cargando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos nuevos'}
           </button>
 
           <button
@@ -449,149 +395,20 @@ export default function SACSync() {
             </p>
           )}
 
-          {resultadoSync && resultadoSync.resultados && (
+          {resultadoSync && resultadoSync.agregados && resultadoSync.agregados.length > 0 && (
             <div style={{ marginTop: '20px' }}>
-              <p><strong>Resultado de la sincronización:</strong></p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ textAlign: 'left', borderBottom: '2px solid #ccc' }}>
-                    <th style={{ padding: '6px' }}>N° Expediente</th>
-                    <th style={{ padding: '6px' }}>Carátula</th>
-                    <th style={{ padding: '6px' }}>Movimientos en SAC</th>
-                    <th style={{ padding: '6px' }}>Nuevos agregados</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resultadoSync.resultados.map((r) => (
-                    <tr key={r.numeroSAC} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '6px' }}>{r.numeroSAC}</td>
-                      <td style={{ padding: '6px' }}>{r.caratula}</td>
-                      <td style={{ padding: '6px' }}>{r.totalOperacionesSAC}</td>
-                      <td style={{ padding: '6px', fontWeight: r.movimientosNuevos > 0 ? 'bold' : 'normal' }}>
-                        {r.movimientosNuevos}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {resultadoSync && resultadoSync.candidatos && resultadoSync.candidatos.length > 0 && (
-            <div style={{ marginTop: '20px' }}>
-              <p>
-                <strong>Movimientos nuevos — elegí cuáles agregar a LexHub:</strong>
-              </p>
-              <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                {resultadoSync.candidatos.map((c) => (
-                  <label
-                    key={c.clave}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      padding: '12px',
-                      borderBottom: '1px solid #eee',
-                      cursor: 'pointer',
-                      backgroundColor: seleccionados[c.clave] ? '#f0fff4' : '#fff'
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!seleccionados[c.clave]}
-                      onChange={() => toggleSeleccionado(c.clave)}
-                      style={{ marginTop: '4px' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
-                        Exp. {c.numeroSAC} — {c.tipoOperacion} ({c.fecha})
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#718096', marginBottom: '4px' }}>
-                        {c.caratula}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
-                        {c.contenido.length > 300 ? c.contenido.slice(0, 300) + '...' : c.contenido}
-                      </div>
-                      {!c.tieneTextoReal && (
-                        <div style={{ fontSize: '0.75rem', color: '#b7791f', marginTop: '4px' }}>
-                          (no se pudo traer el texto completo, se muestra un resumen)
-                        </div>
-                      )}
-                      {(() => {
-                        const det = c.notificacionCruda?.detalleOperacion;
-                        if (!det) return null;
-                        const cedulas = det.listadoCedulas || [];
-                        const comunicaciones = det.listadoComunicaciones || [];
-                        const adjuntos = det.listadoAdjuntos || [];
-                        if (cedulas.length === 0 && comunicaciones.length === 0 && adjuntos.length === 0) {
-                          return null; // sin notificaciones para este movimiento
-                        }
-                        return (
-                          <details style={{ marginTop: '6px', fontSize: '0.75rem' }}>
-                            <summary style={{ cursor: 'pointer', color: '#2563eb' }}>
-                              📨 {cedulas.length} cédula(s), {comunicaciones.length} comunicación(es), {adjuntos.length} adjunto(s)
-                            </summary>
-                            <div style={{ backgroundColor: '#f7fafc', padding: '6px', borderRadius: '4px', marginTop: '4px' }}>
-                              {adjuntos.length > 0 && (
-                                <div style={{ marginBottom: cedulas.length || comunicaciones.length ? '8px' : 0 }}>
-                                  <strong>Documentos:</strong>
-                                  <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
-                                    {adjuntos.map((a, i) => (
-                                      <li key={a.idAdjunto || i}>
-                                        {a.fileName} ({a.fecha})
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              {cedulas.length > 0 && (
-                                <div style={{ marginBottom: comunicaciones.length ? '8px' : 0 }}>
-                                  <strong>Notificado a:</strong>
-                                  <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
-                                    {cedulas.map((ced, i) => (
-                                      <li key={ced.idCedulaDestinatario || i}>
-                                        {ced.nombre} ({ced.rol}) — {ced.fecha}
-                                        {ced.otrosDestinatarios ? ` · también: ${ced.otrosDestinatarios}` : ''}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              {comunicaciones.length > 0 && (
-                                <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                                  {JSON.stringify(comunicaciones, null, 2)}
-                                </pre>
-                              )}
-                            </div>
-                          </details>
-                        );
-                      })()}
+              <p><strong>Movimientos agregados ({resultadoSync.agregados.length}):</strong></p>
+              <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                {resultadoSync.agregados.map((a, i) => (
+                  <div key={i} style={{ padding: '10px 12px', borderBottom: '1px solid #eee' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+                      Exp. {a.numeroSAC} — {a.tipoOperacion} ({a.fecha})
                     </div>
-                  </label>
+                    <div style={{ fontSize: '0.78rem', color: '#718096', marginBottom: '4px' }}>{a.caratula}</div>
+                    <div style={{ fontSize: '0.82rem' }}>{a.resumen}</div>
+                  </div>
                 ))}
               </div>
-
-              <button
-                onClick={handleConfirmarSeleccionados}
-                disabled={cargando}
-                style={{
-                  backgroundColor: '#2563eb',
-                  color: '#fff',
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: cargando ? 'not-allowed' : 'pointer',
-                  marginTop: '15px'
-                }}
-              >
-                {cargando ? '⏳ Agregando...' : `✅ Agregar seleccionados a LexHub (${Object.values(seleccionados).filter(Boolean).length})`}
-              </button>
-
-              {resultadoConfirmar && (
-                <p style={{ marginTop: '10px' }}>
-                  <strong>Resultado:</strong> {resultadoConfirmar.mensaje}
-                </p>
-              )}
             </div>
           )}
 
