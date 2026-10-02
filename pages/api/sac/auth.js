@@ -77,7 +77,10 @@ export default async function handler(req, res) {
         };
       }
 
-      if (operaciones.length > 0 && operaciones[0].idOperacion) {
+      // obtenerMasDatosOperacion solo se prueba si se pide explícitamente
+      // (?probarMasDatos=1), para no sumar una llamada extra en cada
+      // conexión normal y arriesgar un bloqueo por exceso de pedidos.
+      if (req.query?.probarMasDatos === '1' && operaciones.length > 0 && operaciones[0].idOperacion) {
         const { diagnostico: diagMas } = await obtenerMasDatosOperacion(
           login.cookieJar,
           expedientes[0].idExpediente,
