@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Button from '../components/Button';
 
 export default function SACSync() {
   const router = useRouter();
-  const [paso, setPaso] = useState(1); // 1: Login, 2: Seleccionar expediente, 3: Datos cliente, 4: Confirmación
-  
-  // Paso 1: Login
+
   const [usuario, setUsuario] = useState('');
   const [contraseña, setContraseña] = useState('');
-  const [cargando, setCargando] = useState(false);
-  const [mensaje, setMensaje] = useState('');
-  const [expedientes, setExpedientes] = useState([]);
-  const [diagnostico, setDiagnostico] = useState(null);
   const [emailUsuario, setEmailUsuario] = useState('');
   const [autoIntentado, setAutoIntentado] = useState(false);
+
+  // Estado de la conexión: 'verificando' | 'conectado' | 'desconectado'
+  const [estadoConexion, setEstadoConexion] = useState('verificando');
+  const [mensajeConexion, setMensajeConexion] = useState('');
+  const [diagnosticoConexion, setDiagnosticoConexion] = useState(null);
+
+  const [sincronizando, setSincronizando] = useState(false);
+  const [resultadoSync, setResultadoSync] = useState(null);
+  const [errorSync, setErrorSync] = useState('');
 
   // Leer el usuario logueado (cookie "user") para poder conectar
   // automáticamente con las credenciales del SAC que ya tenga guardadas.
@@ -29,127 +33,67 @@ export default function SACSync() {
         if (u?.email) setEmailUsuario(u.email);
       }
     } catch (e) {
-      // sin cookie de sesión, no pasa nada: queda el login manual
+      // sin cookie de sesión: queda el login manual
     }
   }, []);
 
-  // Al entrar a la página, si tenemos el email del usuario logueado,
-  // probamos conectar solos con las credenciales guardadas (USUARIO_SAC /
-  // CLAVE_SAC). Si no las tiene cargadas, el mensaje lo va a decir y puede
-  // usar los campos manuales de abajo.
-  useEffect(() => {
-    if (emailUsuario && !autoIntentado) {
-      setAutoIntentado(true);
-      handleConectarSAC({ auto: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emailUsuario]);
-
-  // Paso 2: Seleccionar expediente
-  const [expedienteSeleccionado, setExpedienteSeleccionado] = useState(null);
-  const [movimientos, setMovimientos] = useState([]);
-
-  // Paso 3: Datos del cliente
-  const [nombreCliente, setNombreCliente] = useState('');
-  const [telefonoCliente, setTelefonoCliente] = useState('');
-  const [dniCliente, setDniCliente] = useState('');
-  const [domicilioCliente, setDomicilioCliente] = useState('');
-
-  // Conectar con SAC y obtener expedientes
-  // Devuelve el cuerpo a mandar al servidor: usuario/contraseña tipeados a
-  // mano si existen, o el email del usuario logueado (para que el servidor
-  // use las credenciales guardadas). null si no hay ninguna de las dos.
   const cuerpoCredenciales = () => {
     if (usuario && contraseña) return { usuario, contraseña };
     if (emailUsuario) return { email: emailUsuario };
     return null;
   };
 
-  const handleConectarSAC = async (opts = {}) => {
-    const cuerpo = cuerpoCredenciales();
-    if (!cuerpo) {
-      if (!opts.auto) setMensaje('❌ Usuario y contraseña requeridos');
-      return;
-    }
-
-    setCargando(true);
-    setMensaje(opts.auto ? '🔐 Conectando con tus credenciales guardadas del SAC...' : '🔐 Conectando con SAC...');
-
+  const verificarConexion = async (cuerpo) => {
+    setEstadoConexion('verificando');
+    setMensajeConexion('');
     try {
       const response = await fetch('/api/sac/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cuerpo)
       });
-
       const data = await response.json();
-      console.log('[SAC auth] respuesta completa:', data);
-
+      setDiagnosticoConexion(data);
       if (data.success) {
-        setExpedientes(data.expedientes || []);
-        setDiagnostico(
-          data.diagnosticoMasDatos ||
-          data.diagnosticoTextoEscrito ||
-          data.diagnosticoTexto ||
-          data.diagnosticoOperaciones ||
-          data.diagnosticoExpedientes ||
-          null
-        );
-        setMensaje(`✅ ${data.mensaje || 'Conectado al SAC'}`);
+        setEstadoConexion('conectado');
+        setMensajeConexion(data.mensaje || 'Conectado al SAC');
       } else {
-        setDiagnostico(data.diagnostico || null);
-        setMensaje(`❌ ${data.mensaje || data.error || 'No se pudo conectar'}`);
+        setEstadoConexion('desconectado');
+        setMensajeConexion(data.mensaje || data.error || 'No se pudo conectar');
       }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
+      setEstadoConexion('desconectado');
+      setMensajeConexion(`Error: ${error.message}`);
     }
   };
 
-  const [resultadoSync, setResultadoSync] = useState(null);
-  const [resultadoReparar, setResultadoReparar] = useState(null);
+  // Al entrar a la página, si tenemos el email del usuario logueado,
+  // probamos conectar solos con las credenciales guardadas.
+  useEffect(() => {
+    if (emailUsuario && !autoIntentado) {
+      setAutoIntentado(true);
+      verificarConexion({ email: emailUsuario });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailUsuario]);
 
-  const handleReparar = async () => {
+  const handleConectarManual = () => {
     const cuerpo = cuerpoCredenciales();
     if (!cuerpo) {
-      setMensaje('❌ Usuario y contraseña requeridos');
+      setMensajeConexion('Ingresá usuario y contraseña del SAC');
       return;
     }
-    setCargando(true);
-    setMensaje('🛠️ Reparando movimientos viejos...');
-    setResultadoReparar(null);
-
-    try {
-      const response = await fetch('/api/sac/reparar-contenido', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cuerpo)
-      });
-      const texto = await response.text();
-      let data;
-      try {
-        data = JSON.parse(texto);
-      } catch {
-        throw new Error(`Respuesta no válida (status ${response.status}): ${texto.slice(0, 200)}`);
-      }
-      setResultadoReparar(data);
-      setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
-    }
+    verificarConexion(cuerpo);
   };
 
   const handleSincronizar = async () => {
     const cuerpo = cuerpoCredenciales();
     if (!cuerpo) {
-      setMensaje('❌ Usuario y contraseña requeridos');
+      setErrorSync('No hay credenciales del SAC disponibles');
       return;
     }
-    setCargando(true);
-    setMensaje('🔄 Sincronizando movimientos con LexHub...');
+    setSincronizando(true);
+    setErrorSync('');
     setResultadoSync(null);
 
     try {
@@ -164,495 +108,185 @@ export default function SACSync() {
         data = JSON.parse(texto);
       } catch {
         throw new Error(
-          `El servidor no devolvió una respuesta válida (status ${response.status}). Puede haber excedido el tiempo máximo. Detalle: ${texto.slice(0, 200)}`
+          `El servidor no devolvió una respuesta válida (status ${response.status}). Puede haber excedido el tiempo máximo.`
         );
       }
-      console.log('[SAC sincronizar] respuesta completa:', data);
       setResultadoSync(data);
-      setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
+      if (!data.success) {
+        setErrorSync(data.mensaje || data.error || 'No se pudo sincronizar');
+      }
     } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
+      setErrorSync(error.message);
     } finally {
-      setCargando(false);
+      setSincronizando(false);
     }
   };
 
-  // Obtener movimientos del expediente seleccionado
-  const handleSeleccionarExpediente = async (expediente) => {
-    setCargando(true);
-    setMensaje('📋 Obteniendo movimientos del SAC...');
-
-    try {
-      const response = await fetch('/api/sac/obtener-movimientos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          usuario,
-          contraseña,
-          numeroSAC: expediente.numero
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setExpedienteSeleccionado(expediente);
-        setMovimientos(data.expediente.movimientos || []);
-        setNombreCliente(expediente.caratula || '');
-        setMensaje(`✅ Se obtuvieron ${data.expediente.totalMovimientos} movimientos`);
-        setPaso(3);
-      } else {
-        setMensaje(`❌ ${data.error}`);
-      }
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  // Guardar en LexHub
-  const handleGuardar = async () => {
-    if (!nombreCliente) {
-      setMensaje('❌ Nombre del cliente requerido');
-      return;
-    }
-
-    setCargando(true);
-    setMensaje('💾 Guardando en LexHub...');
-
-    try {
-      // 1. Crear el cliente
-      const clienteResponse = await fetch('/api/crear-cliente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: nombreCliente,
-          telefono: telefonoCliente,
-          dni: dniCliente,
-          domicilio: domicilioCliente
-        })
-      });
-
-      const clienteData = await clienteResponse.json();
-
-      if (!clienteData.success) {
-        setMensaje(`❌ Error al crear cliente: ${clienteData.error}`);
-        return;
-      }
-
-      const idCliente = clienteData.id;
-
-      // 2. Guardar expediente con movimientos
-      const expedienteResponse = await fetch('/api/agregar-expediente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idCliente: idCliente,
-          numeroSAC: expedienteSeleccionado.numero,
-          caratula: expedienteSeleccionado.caratula,
-          movimientos: movimientos
-        })
-      });
-
-      const expedienteData = await expedienteResponse.json();
-
-      if (expedienteData.success) {
-        setMensaje('✅ Expediente guardado en LexHub');
-        setPaso(4);
-        setTimeout(() => {
-          router.push(`/clientes/${idCliente}`);
-        }, 2000);
-      } else {
-        setMensaje(`❌ Error al guardar expediente: ${expedienteData.error}`);
-      }
-    } catch (error) {
-      setMensaje(`❌ Error: ${error.message}`);
-    } finally {
-      setCargando(false);
-    }
+  const card = {
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border-light)',
+    borderRadius: 'var(--radius-lg)',
+    boxShadow: 'var(--shadow-sm)',
+    padding: '20px',
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
-      <h1>🔗 Sincronizar con SAC</h1>
+    <div style={{ maxWidth: '720px', margin: '40px auto', padding: '0 20px' }}>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '4px' }}>
+          🔗 Sincronización con SAC
+        </h1>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+          Trae los movimientos nuevos del Poder Judicial de Córdoba a los expedientes que ya tenés en LexHub.
+        </p>
+      </div>
 
-      {/* PASO 1: LOGIN */}
-      {paso === 1 && (
-        <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px' }}>
-          <h2>Paso 1: Conectar con SAC</h2>
-          {emailUsuario ? (
-            <p style={{ color: '#2f855a' }}>
-              Probando conectar automáticamente con tus credenciales guardadas ({emailUsuario}). Si no tenés
-              USUARIO_SAC / CLAVE_SAC cargados en tu perfil, completá los campos de abajo manualmente.
-            </p>
-          ) : (
-            <p>Ingresa tus credenciales del Poder Judicial de Córdoba</p>
-          )}
+      {/* Estado de conexión */}
+      <div style={{ ...card, marginBottom: '16px' }}>
+        {estadoConexion === 'verificando' && (
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            ⏳ Conectando con el SAC...
+          </div>
+        )}
 
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <strong>Usuario (matrícula):</strong>
+        {estadoConexion === 'conectado' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--color-success-text)', display: 'inline-block' }} />
+              <span style={{ color: 'var(--color-text-primary)', fontSize: '0.9rem', fontWeight: 500 }}>
+                Conectado al SAC
+              </span>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)' }}>{emailUsuario}</span>
+          </div>
+        )}
+
+        {estadoConexion === 'desconectado' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--color-urgent-text)', display: 'inline-block' }} />
+              <span style={{ color: 'var(--color-text-primary)', fontSize: '0.9rem', fontWeight: 500 }}>
+                No conectado
+              </span>
+            </div>
+            {mensajeConexion && (
+              <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '14px' }}>
+                {mensajeConexion}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
               <input
                 type="text"
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
-                placeholder="Tu usuario del SAC"
+                placeholder="Usuario (matrícula) del SAC"
                 style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '5px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px'
+                  flex: '1 1 220px',
+                  padding: '9px 12px',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.88rem',
                 }}
               />
-            </label>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <strong>Contraseña:</strong>
               <input
                 type="password"
                 value={contraseña}
                 onChange={(e) => setContraseña(e.target.value)}
-                placeholder="Tu contraseña"
+                placeholder="Contraseña del SAC"
                 style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '5px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px'
+                  flex: '1 1 220px',
+                  padding: '9px 12px',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.88rem',
                 }}
               />
-            </label>
+            </div>
+            <Button variant="primary" size="sm" onClick={handleConectarManual}>
+              Conectar
+            </Button>
           </div>
+        )}
+      </div>
 
-          {mensaje && (
-            <div
-              style={{
-                padding: '10px',
-                borderRadius: '4px',
-                marginBottom: '15px',
-                backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c'
-              }}
-            >
-              {mensaje}
-            </div>
-          )}
-
-          <button
-            onClick={handleConectarSAC}
-            disabled={cargando}
-            style={{
-              backgroundColor: '#3182ce',
-              color: '#fff',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: cargando ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {cargando ? '⏳ Conectando...' : '🔐 Conectar con SAC'}
-          </button>
-
-          <button
-            onClick={handleSincronizar}
-            disabled={cargando}
-            style={{
-              backgroundColor: '#2f855a',
-              color: '#fff',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: cargando ? 'not-allowed' : 'pointer',
-              marginLeft: '10px'
-            }}
-          >
-            {cargando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos nuevos'}
-          </button>
-
-          <button
-            onClick={handleReparar}
-            disabled={cargando}
-            style={{
-              backgroundColor: '#b7791f',
-              color: '#fff',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: cargando ? 'not-allowed' : 'pointer',
-              marginLeft: '10px'
-            }}
-          >
-            {cargando ? '⏳ Reparando...' : '🛠️ Reparar movimientos viejos (sin texto real)'}
-          </button>
-
-          {resultadoReparar && (
-            <p style={{ marginTop: '10px' }}>
-              <strong>Reparación:</strong> {resultadoReparar.mensaje}
-            </p>
-          )}
-
-          {resultadoSync && resultadoSync.agregados && resultadoSync.agregados.length > 0 && (
-            <div style={{ marginTop: '20px' }}>
-              <p><strong>Movimientos agregados ({resultadoSync.agregados.length}):</strong></p>
-              <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                {resultadoSync.agregados.map((a, i) => (
-                  <div key={i} style={{ padding: '10px 12px', borderBottom: '1px solid #eee' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
-                      Exp. {a.numeroSAC} — {a.tipoOperacion} ({a.fecha})
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#718096', marginBottom: '4px' }}>{a.caratula}</div>
-                    <div style={{ fontSize: '0.82rem' }}>{a.resumen}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {expedientes.length > 0 && (
-            <div style={{ marginTop: '20px' }}>
-              <p><strong>Expedientes con movimientos recientes en el SAC ({expedientes.length}):</strong></p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ textAlign: 'left', borderBottom: '2px solid #ccc' }}>
-                    <th style={{ padding: '6px' }}>N° Expediente</th>
-                    <th style={{ padding: '6px' }}>Carátula</th>
-                    <th style={{ padding: '6px' }}>Dependencia</th>
-                    <th style={{ padding: '6px' }}>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expedientes.map((e) => (
-                    <tr key={e.idExpediente} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '6px' }}>{e.numeroExpediente}</td>
-                      <td style={{ padding: '6px' }}>{e.caratula}</td>
-                      <td style={{ padding: '6px' }}>{e.dependencia}</td>
-                      <td style={{ padding: '6px' }}>{e.estado}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {diagnostico && (
-            <div style={{ marginTop: '20px' }}>
-              <p><strong>Diagnóstico (para revisar qué pasó):</strong></p>
-              <pre style={{
-                backgroundColor: '#1a202c',
-                color: '#f6e05e',
-                padding: '15px',
-                borderRadius: '4px',
-                overflowX: 'auto',
-                fontSize: '0.8rem',
-                maxHeight: '400px',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {JSON.stringify(diagnostico, null, 2)}
-              </pre>
-            </div>
-          )}
+      {/* Acción principal: sincronizar */}
+      {estadoConexion === 'conectado' && (
+        <div style={{ ...card, marginBottom: '16px', textAlign: 'center' }}>
+          <Button variant="primary" size="lg" onClick={handleSincronizar} disabled={sincronizando}>
+            {sincronizando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos nuevos'}
+          </Button>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', marginTop: '10px' }}>
+            Revisa tus expedientes en el SAC y agrega a LexHub los movimientos nuevos que tengan contenido.
+          </p>
         </div>
       )}
 
-      {/* PASO 2: SELECCIONAR EXPEDIENTE */}
-      {paso === 2 && (
-        <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px' }}>
-          <h2>Paso 2: Seleccionar Expediente</h2>
-          <p>Se encontraron {expedientes.length} expedientes</p>
+      {/* Error de sincronización */}
+      {errorSync && (
+        <div style={{ ...card, marginBottom: '16px', borderColor: 'var(--color-urgent-border)', backgroundColor: 'var(--color-urgent-bg)' }}>
+          <p style={{ color: 'var(--color-urgent-text)', fontSize: '0.85rem', margin: 0 }}>{errorSync}</p>
+        </div>
+      )}
 
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            {expedientes.map((exp, idx) => (
+      {/* Resultado de la sincronización */}
+      {resultadoSync && resultadoSync.success && (
+        <div style={{ ...card, marginBottom: '16px', borderColor: 'var(--color-success-border)', backgroundColor: 'var(--color-success-bg)' }}>
+          <p style={{ color: 'var(--color-success-text)', fontSize: '0.88rem', fontWeight: 600, margin: 0 }}>
+            {resultadoSync.mensaje}
+          </p>
+        </div>
+      )}
+
+      {resultadoSync && resultadoSync.agregados && resultadoSync.agregados.length > 0 && (
+        <div style={{ ...card, marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-light)', fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
+            Movimientos agregados ({resultadoSync.agregados.length})
+          </div>
+          <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+            {resultadoSync.agregados.map((a, i) => (
               <div
-                key={idx}
-                onClick={() => handleSeleccionarExpediente(exp)}
+                key={i}
+                onClick={() => router.push(`/expediente/${encodeURIComponent(a.numeroSAC)}`)}
                 style={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px',
-                  padding: '15px',
-                  marginBottom: '10px',
+                  padding: '12px 20px',
+                  borderBottom: '1px solid var(--color-border-light)',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'background-color 0.15s',
                 }}
-                onMouseEnter={(e) => (e.target.style.backgroundColor = '#f0f4f8')}
-                onMouseLeave={(e) => (e.target.style.backgroundColor = '#fff')}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-bg-primary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
-                <strong>{exp.numero}</strong>
-                <p style={{ margin: '5px 0', fontSize: '0.9rem', color: '#666' }}>
-                  {exp.caratula}
-                </p>
-                {exp.fuero && <p style={{ margin: '5px 0', fontSize: '0.85rem', color: '#999' }}>Fuero: {exp.fuero}</p>}
+                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-primary)' }}>
+                  Exp. {a.numeroSAC} — {a.tipoOperacion}
+                  <span style={{ fontWeight: 400, color: 'var(--color-text-tertiary)' }}> ({a.fecha})</span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
+                  {a.caratula}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--color-text-primary)' }}>{a.resumen}</div>
               </div>
             ))}
           </div>
-
-          {mensaje && (
-            <div
-              style={{
-                padding: '10px',
-                borderRadius: '4px',
-                marginTop: '15px',
-                backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c'
-              }}
-            >
-              {mensaje}
-            </div>
-          )}
-
-          <button
-            onClick={() => setPaso(1)}
-            style={{
-              backgroundColor: '#718096',
-              color: '#fff',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              marginTop: '15px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Volver
-          </button>
         </div>
       )}
 
-      {/* PASO 3: DATOS DEL CLIENTE */}
-      {paso === 3 && expedienteSeleccionado && (
-        <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px' }}>
-          <h2>Paso 3: Datos del Cliente</h2>
-          <p>Expediente: <strong>{expedienteSeleccionado.numero}</strong></p>
-          <p>Se traerán {movimientos.length} movimientos del SAC</p>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <strong>Nombre del Cliente:</strong>
-              <input
-                type="text"
-                value={nombreCliente}
-                onChange={(e) => setNombreCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '5px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px'
-                }}
-              />
-            </label>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <strong>Teléfono (opcional):</strong>
-              <input
-                type="text"
-                value={telefonoCliente}
-                onChange={(e) => setTelefonoCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '5px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px'
-                }}
-              />
-            </label>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <strong>DNI (opcional):</strong>
-              <input
-                type="text"
-                value={dniCliente}
-                onChange={(e) => setDniCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '5px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px'
-                }}
-              />
-            </label>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <strong>Domicilio (opcional):</strong>
-              <input
-                type="text"
-                value={domicilioCliente}
-                onChange={(e) => setDomicilioCliente(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '5px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '4px'
-                }}
-              />
-            </label>
-          </div>
-
-          {mensaje && (
-            <div
-              style={{
-                padding: '10px',
-                borderRadius: '4px',
-                marginBottom: '15px',
-                backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c'
-              }}
-            >
-              {mensaje}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={handleGuardar}
-              disabled={cargando}
-              style={{
-                backgroundColor: '#48bb78',
-                color: '#fff',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: cargando ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {cargando ? '⏳ Guardando...' : '💾 Guardar en LexHub'}
-            </button>
-            <button
-              onClick={() => setPaso(2)}
-              style={{
-                backgroundColor: '#718096',
-                color: '#fff',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              ← Volver
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PASO 4: COMPLETADO */}
-      {paso === 4 && (
-        <div style={{ backgroundColor: '#c6f6d5', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>
-          <h2>✅ Expediente Sincronizado</h2>
-          <p>El expediente se ha guardado exitosamente en LexHub</p>
-          <p>Redirigiendo...</p>
-        </div>
+      {/* Detalle técnico, por si hace falta diagnosticar algo */}
+      {diagnosticoConexion && (
+        <details style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', marginTop: '20px' }}>
+          <summary style={{ cursor: 'pointer' }}>Ver detalle técnico de la conexión</summary>
+          <pre style={{
+            whiteSpace: 'pre-wrap',
+            backgroundColor: 'var(--color-bg-primary)',
+            padding: '10px',
+            borderRadius: 'var(--radius-md)',
+            marginTop: '8px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+          }}>
+            {JSON.stringify(diagnosticoConexion, null, 2)}
+          </pre>
+        </details>
       )}
     </div>
   );
