@@ -504,10 +504,28 @@ export default function Home({
         <h1>Dashboard</h1>
       </div>
 
-      {/* Próximos Plazos - 5 Columnas por Tipo */}
+      {/* Próximos Plazos - Columnas por Tipo (solo las que tienen datos) */}
+      {(() => {
+        const hoyPlazos = new Date();
+        hoyPlazos.setHours(0, 0, 0, 0);
+        const columnasConDatos = ['ENTREVISTA', 'PLAZO', 'AUDIENCIA', 'TAREAS', 'VENCIDOS']
+          .map((tipoColumna) => {
+            const tareasColumnna = tareas_state.filter((t) => {
+              const tipo = (t.Tipo || 'OTRO').toUpperCase();
+              const fecha = getFechaLocalObj(t.Fecha);
+              const esVencido = fecha && fecha < hoyPlazos;
+              if (tipoColumna === 'VENCIDOS') return esVencido;
+              if (tipoColumna === 'TAREAS') return !esVencido && (tipo === 'OTRO' || tipo === 'TAREAS');
+              return !esVencido && tipo === tipoColumna;
+            });
+            return { tipoColumna, tareasColumnna };
+          })
+          .filter((c) => c.tareasColumnna.length > 0);
+
+        return (
       <div style={{ marginTop: '24px' }}>
         <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Próximos Plazos
+          Próximos Plazos{tareas_state.length > 0 ? ` (${tareas_state.length})` : ''}
         </h2>
 
         {tareas_state.length === 0 ? (
@@ -515,21 +533,8 @@ export default function Home({
             No hay plazos en los próximos 5 días.
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginTop: '15px' }}>
-            {['ENTREVISTA', 'PLAZO', 'AUDIENCIA', 'TAREAS', 'VENCIDOS'].map((tipoColumna) => {
-              const hoy = new Date();
-              hoy.setHours(0, 0, 0, 0);
-              
-              const tareasColumnna = tareas_state.filter((t) => {
-                const tipo = (t.Tipo || 'OTRO').toUpperCase();
-                const fecha = getFechaLocalObj(t.Fecha);
-                const esVencido = fecha && fecha < hoy;
-                
-                if (tipoColumna === 'VENCIDOS') return esVencido;
-                if (tipoColumna === 'TAREAS') return !esVencido && (tipo === 'OTRO' || tipo === 'TAREAS');
-                return !esVencido && tipo === tipoColumna;
-              });
-              
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columnasConDatos.length}, 1fr)`, gap: '12px', marginTop: '15px' }}>
+            {columnasConDatos.map(({ tipoColumna, tareasColumnna }) => {
               return (
                 <div key={tipoColumna}>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', paddingBottom: '6px', borderBottom: '2px solid #e2e8f0' }}>
@@ -592,11 +597,14 @@ export default function Home({
           </div>
         )}
       </div>
+        );
+      })()}
 
-      {/* Movimientos SAC - últimos 3 días, solo expedientes en LexHub */}
-      <div style={{ marginTop: '24px' }}>
+      {/* Movimientos SAC + Cédulas SAC - últimos 3 días, en dos columnas, solo expedientes en LexHub */}
+      <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: movimientosSAC.length > 0 && cedulasSAC.length > 0 ? '1fr 1fr' : '1fr', gap: '24px' }}>
+      <div>
         <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Movimientos SAC
+          Movimientos SAC{movimientosSAC.length > 0 ? ` (${movimientosSAC.length})` : ''}
         </h2>
 
         {cargandoSAC ? (
@@ -649,10 +657,9 @@ export default function Home({
         )}
       </div>
 
-      {/* Cédulas SAC - últimos 3 días, solo expedientes en LexHub */}
-      <div style={{ marginTop: '24px' }}>
+      <div>
         <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Cédulas SAC
+          Cédulas SAC{cedulasSAC.length > 0 ? ` (${cedulasSAC.length})` : ''}
         </h2>
 
         {cargandoSAC ? (
@@ -703,6 +710,7 @@ export default function Home({
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
