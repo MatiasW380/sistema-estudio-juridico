@@ -8,6 +8,7 @@ import {
   obtenerExpedientesConNovedades,
   obtenerOperaciones,
   obtenerTextoOperacion,
+  obtenerTextoEscrito,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
 
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
 
     let diagnosticoOperaciones = null;
     let diagnosticoTexto = null;
+    let diagnosticoTextoEscrito = null;
     if (expedientes.length > 0 && expedientes[0].idExpediente) {
       const { operaciones, diagnostico } = await obtenerOperaciones(login.cookieJar, expedientes[0].idExpediente);
       diagnosticoOperaciones = {
@@ -53,7 +55,24 @@ export default async function handler(req, res) {
 
       if (operaciones.length > 0 && operaciones[0].idOperacion) {
         const { diagnostico: diagTexto } = await obtenerTextoOperacion(login.cookieJar, operaciones[0].idOperacion);
-        diagnosticoTexto = { idOperacionProbado: operaciones[0].idOperacion, ...diagTexto };
+        diagnosticoTexto = {
+          idOperacionProbado: operaciones[0].idOperacion,
+          esEscrito: operaciones[0].esEscrito,
+          endpoint: 'ObtenerTextoOperacion',
+          ...diagTexto,
+        };
+      }
+
+      // Si hay alguna operación marcada como escrito, probamos también el
+      // otro endpoint para ver su respuesta real.
+      const operacionEscrito = operaciones.find((o) => o.esEscrito && o.idOperacion);
+      if (operacionEscrito) {
+        const { diagnostico: diagEscrito } = await obtenerTextoEscrito(login.cookieJar, operacionEscrito.idOperacion);
+        diagnosticoTextoEscrito = {
+          idOperacionProbado: operacionEscrito.idOperacion,
+          endpoint: 'ObtenerTextoEscrito',
+          ...diagEscrito,
+        };
       }
     }
 
@@ -64,6 +83,7 @@ export default async function handler(req, res) {
       diagnosticoExpedientes,
       diagnosticoOperaciones,
       diagnosticoTexto,
+      diagnosticoTextoEscrito,
       mensaje: `Login exitoso. Se obtuvieron ${expedientes.length} expediente(s) con novedades recientes.`,
       expedientes,
     });

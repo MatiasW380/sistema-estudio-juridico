@@ -9,7 +9,7 @@ import {
   loginSAC,
   obtenerExpedientesConNovedades,
   obtenerOperaciones,
-  obtenerTextoOperacion,
+  obtenerTextoDeOperacion,
   limpiarHtmlOperacion,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
@@ -100,9 +100,7 @@ export default async function handler(req, res) {
     const todasLasNuevas = porExpediente.flatMap((p) => p.nuevas.map((op) => ({ numeroSAC: p.numeroSAC, op })));
     const aBuscar = todasLasNuevas.slice(0, LIMITE_TEXTOS_PARALELOS);
     const textos = await Promise.all(
-      aBuscar.map(({ op }) =>
-        obtenerTextoOperacion(login.cookieJar, op.idOperacion).catch(() => ({ contenido: '' })),
-      ),
+      aBuscar.map(({ op }) => obtenerTextoDeOperacion(login.cookieJar, op).catch(() => ({ contenido: '' }))),
     );
     const textoPorIdOperacion = new Map();
     aBuscar.forEach(({ op }, i) => {

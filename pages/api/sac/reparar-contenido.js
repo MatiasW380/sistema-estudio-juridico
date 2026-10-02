@@ -4,7 +4,12 @@
 // ObtenerTextoOperacion), reemplazando su Contenido por el texto real.
 // No agrega filas nuevas ni toca nada que no sea Origen = "SAC".
 
-import { loginSAC, obtenerTextoOperacion, limpiarHtmlOperacion, resolverCredencialesSAC } from '../../../lib/sac';
+import {
+  loginSAC,
+  obtenerTextoProbandoAmbos,
+  limpiarHtmlOperacion,
+  resolverCredencialesSAC,
+} from '../../../lib/sac';
 import { readSheet, getAccessToken } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 60 };
@@ -74,7 +79,7 @@ export default async function handler(req, res) {
     const aProcesar = candidatas.slice(0, LIMITE_POR_CORRIDA);
 
     const textos = await Promise.all(
-      aProcesar.map((c) => obtenerTextoOperacion(login.cookieJar, c.idOperacion).catch(() => ({ contenido: '' }))),
+      aProcesar.map((c) => obtenerTextoProbandoAmbos(login.cookieJar, c.idOperacion).catch(() => ({ contenido: '' }))),
     );
 
     const token = await getAccessToken();
