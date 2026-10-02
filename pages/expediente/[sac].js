@@ -1245,13 +1245,20 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             <button onClick={agregarPlazo} className="button button-warning button-sm">
               + Plazo
             </button>
-            <button 
-              onClick={() => setMostrarModalCompartir(true)} 
+            <button
+              onClick={() => setMostrarModalCompartir(true)}
               className="button button-primary button-sm"
             >
               Compartir
             </button>
-            
+            <button
+              onClick={() => window.open(`/api/exportar-pdf?numeroSAC=${encodeURIComponent(sac)}&email=${encodeURIComponent(sessionEmail)}`, '_blank')}
+              className="button button-secondary button-sm"
+              title="Descargar un PDF con la carátula y el historial completo de actuaciones"
+            >
+              📄 Exportar PDF
+            </button>
+
             {/* Dropdown para Herramientas IA */}
             <div style={{ position: 'relative' }}>
               <button 
