@@ -517,6 +517,16 @@ export default function SACSync() {
                           (no se pudo traer el texto completo, se muestra un resumen)
                         </div>
                       )}
+                      {c.notificacionCruda && (
+                        <details style={{ marginTop: '6px', fontSize: '0.72rem' }}>
+                          <summary style={{ cursor: 'pointer', color: '#2563eb' }}>
+                            Ver datos de notificación (formato a confirmar)
+                          </summary>
+                          <pre style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f7fafc', padding: '6px', borderRadius: '4px' }}>
+                            {JSON.stringify(c.notificacionCruda, null, 2)}
+                          </pre>
+                        </details>
+                      )}
                     </div>
                   </label>
                 ))}

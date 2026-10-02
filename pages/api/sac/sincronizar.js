@@ -10,6 +10,7 @@ import {
   obtenerExpedientesConNovedades,
   obtenerOperaciones,
   obtenerTextoDeOperacion,
+  obtenerMasDatosOperacion,
   limpiarHtmlOperacion,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
@@ -107,6 +108,24 @@ export default async function handler(req, res) {
       textoPorIdOperacion.set(op.idOperacion, limpiarHtmlOperacion(textos[i].contenido));
     });
 
+    // Probamos traer también "más datos" (a quién y cuándo se notificó),
+    // para los mismos candidatos, sin sumar llamadas extra a las ya
+    // previstas. Si el SAC lo rechaza (como vimos antes, posible límite de
+    // pedidos seguidos) simplemente no mostramos ese dato para esa fila,
+    // sin romper nada más.
+    const idExpedientePorNumero = new Map(coincidencias.map((e) => [String(e.numeroExpediente).trim(), e.idExpediente]));
+    const masDatos = await Promise.all(
+      aBuscar.map(({ numeroSAC, op }) =>
+        obtenerMasDatosOperacion(login.cookieJar, idExpedientePorNumero.get(numeroSAC), op.idOperacion, op.esEscrito).catch(
+          () => ({ datos: null, diagnostico: { status: 'error' } }),
+        ),
+      ),
+    );
+    const masDatosPorIdOperacion = new Map();
+    aBuscar.forEach(({ op }, i) => {
+      masDatosPorIdOperacion.set(op.idOperacion, masDatos[i]);
+    });
+
     // Armamos la lista de candidatos (sin escribir nada todavía).
     const candidatos = [];
     const resultados = [];
@@ -127,6 +146,8 @@ export default async function handler(req, res) {
           contenido = detalles.length > 0 ? detalles.join('\n') : '(sin detalle disponible)';
         }
 
+        const masDatosOp = masDatosPorIdOperacion.get(op.idOperacion);
+
         candidatos.push({
           clave: `${numeroSAC}::${op.idOperacion}`,
           numeroSAC,
@@ -136,6 +157,9 @@ export default async function handler(req, res) {
           tipoOperacion: op.tipoOperacion || 'Movimiento SAC',
           contenido,
           tieneTextoReal: !!textoReal,
+          // Temporal: mandamos el dato crudo de notificación (si vino) para
+          // poder ver su formato real antes de mostrarlo formateado.
+          notificacionCruda: masDatosOp?.datos || null,
         });
       }
 
