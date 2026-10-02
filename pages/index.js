@@ -601,7 +601,7 @@ export default function Home({
       })()}
 
       {/* Movimientos SAC + Cédulas SAC - últimos 3 días, en dos columnas, solo expedientes en LexHub */}
-      <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: movimientosSAC.length > 0 && cedulasSAC.length > 0 ? '1fr 1fr' : '1fr', gap: '24px' }}>
+      <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
       <div>
         <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
           Movimientos SAC{movimientosSAC.length > 0 ? ` (${movimientosSAC.length})` : ''}
