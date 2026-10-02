@@ -615,6 +615,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         console.error('Error en IA:', errorMsg);
         setMensaje('Error en IA: ' + errorMsg);
       }
+      setCargandoIA(false);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('📌 Cancelado');
@@ -670,6 +671,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         console.error('Error en IA:', errorMsg);
         setMensaje('Error en IA: ' + errorMsg);
       }
+      setCargandoIA(false);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('📌 Cancelado');
@@ -726,6 +728,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         console.error('Error en IA:', errorMsg);
         setMensaje('Error en IA: ' + errorMsg);
       }
+      setCargandoIA(false);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('📌 Cancelado');
