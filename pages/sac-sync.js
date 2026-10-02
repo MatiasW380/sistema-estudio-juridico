@@ -101,6 +101,52 @@ export default function SACSync() {
   };
 
   const [resultadoSync, setResultadoSync] = useState(null);
+  const [seleccionados, setSeleccionados] = useState({}); // clave -> boolean
+  const [resultadoConfirmar, setResultadoConfirmar] = useState(null);
+
+  const toggleSeleccionado = (clave) => {
+    setSeleccionados((prev) => ({ ...prev, [clave]: !prev[clave] }));
+  };
+
+  const handleConfirmarSeleccionados = async () => {
+    const elegidos = (resultadoSync?.candidatos || []).filter((c) => seleccionados[c.clave]);
+    if (elegidos.length === 0) {
+      setMensaje('❌ No tildaste ningún movimiento para agregar');
+      return;
+    }
+    setCargando(true);
+    setMensaje(`➕ Agregando ${elegidos.length} movimiento(s) a LexHub...`);
+    setResultadoConfirmar(null);
+
+    try {
+      const response = await fetch('/api/sac/confirmar-movimientos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seleccionados: elegidos })
+      });
+      const texto = await response.text();
+      let data;
+      try {
+        data = JSON.parse(texto);
+      } catch {
+        throw new Error(`Respuesta no válida (status ${response.status}): ${texto.slice(0, 200)}`);
+      }
+      setResultadoConfirmar(data);
+      setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
+      if (data.success) {
+        // Sacamos de la lista los que ya se agregaron, para no confirmarlos dos veces.
+        setResultadoSync((prev) =>
+          prev
+            ? { ...prev, candidatos: prev.candidatos.filter((c) => !seleccionados[c.clave]) }
+            : prev
+        );
+      }
+    } catch (error) {
+      setMensaje(`❌ Error: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
+  };
   const [resultadoReparar, setResultadoReparar] = useState(null);
 
   const handleReparar = async () => {
@@ -163,6 +209,14 @@ export default function SACSync() {
       console.log('[SAC sincronizar] respuesta completa:', data);
       setResultadoSync(data);
       setMensaje(data.success ? `✅ ${data.mensaje}` : `❌ ${data.mensaje || data.error}`);
+
+      // Por defecto dejamos todos los movimientos nuevos tildados: la
+      // persona destilda los que no quiere agregar.
+      if (data.success && data.candidatos) {
+        const inicial = {};
+        data.candidatos.forEach((c) => { inicial[c.clave] = true; });
+        setSeleccionados(inicial);
+      }
     } catch (error) {
       setMensaje(`❌ Error: ${error.message}`);
     } finally {
@@ -363,7 +417,7 @@ export default function SACSync() {
               marginLeft: '10px'
             }}
           >
-            {cargando ? '⏳ Sincronizando...' : '🔄 Sincronizar movimientos con LexHub'}
+            {cargando ? '⏳ Revisando...' : '🔄 Revisar movimientos nuevos'}
           </button>
 
           <button
@@ -413,6 +467,75 @@ export default function SACSync() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {resultadoSync && resultadoSync.candidatos && resultadoSync.candidatos.length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <p>
+                <strong>Movimientos nuevos — elegí cuáles agregar a LexHub:</strong>
+              </p>
+              <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                {resultadoSync.candidatos.map((c) => (
+                  <label
+                    key={c.clave}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      padding: '12px',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      backgroundColor: seleccionados[c.clave] ? '#f0fff4' : '#fff'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!seleccionados[c.clave]}
+                      onChange={() => toggleSeleccionado(c.clave)}
+                      style={{ marginTop: '4px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+                        Exp. {c.numeroSAC} — {c.tipoOperacion} ({c.fecha})
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#718096', marginBottom: '4px' }}>
+                        {c.caratula}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
+                        {c.contenido.length > 300 ? c.contenido.slice(0, 300) + '...' : c.contenido}
+                      </div>
+                      {!c.tieneTextoReal && (
+                        <div style={{ fontSize: '0.75rem', color: '#b7791f', marginTop: '4px' }}>
+                          (no se pudo traer el texto completo, se muestra un resumen)
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <button
+                onClick={handleConfirmarSeleccionados}
+                disabled={cargando}
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: '#fff',
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: cargando ? 'not-allowed' : 'pointer',
+                  marginTop: '15px'
+                }}
+              >
+                {cargando ? '⏳ Agregando...' : `✅ Agregar seleccionados a LexHub (${Object.values(seleccionados).filter(Boolean).length})`}
+              </button>
+
+              {resultadoConfirmar && (
+                <p style={{ marginTop: '10px' }}>
+                  <strong>Resultado:</strong> {resultadoConfirmar.mensaje}
+                </p>
+              )}
             </div>
           )}
 

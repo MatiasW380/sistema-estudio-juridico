@@ -1,13 +1,9 @@
 // pages/api/sac/sincronizar.js
-// Compara los expedientes del SAC con los que ya existen en LexHub
-// (por Número de expediente = Numero_SAC, que es único) y agrega en la
-// hoja "Actuaciones" solo los movimientos que todavía no estaban.
-//
-// Optimizado para no pasarse del límite de tiempo de las funciones de
-// Vercel: lee la hoja "Actuaciones" UNA sola vez, pide los movimientos de
-// todos los expedientes en paralelo, y hace UNA sola escritura final con
-// todas las filas nuevas (en vez de una llamada a Sheets por cada
-// movimiento, que es lo que hacía que esto tardara demasiado).
+// PREVISUALIZACIÓN: compara los expedientes del SAC con los que ya existen
+// en LexHub (por Número de expediente = Numero_SAC) y devuelve los
+// movimientos nuevos para que la persona elija cuáles agregar. NO escribe
+// nada en Sheets — eso lo hace /api/sac/confirmar-movimientos con lo que
+// el usuario seleccione.
 
 import {
   loginSAC,
@@ -17,16 +13,9 @@ import {
   limpiarHtmlOperacion,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
-import { readSheet, appendToSheet } from '../../../lib/googleSheets';
+import { readSheet } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 60 };
-
-// Cada movimiento se guarda con un marcador [SAC:idOperacion] al inicio del
-// contenido. Así sabemos, en la próxima sincronización, cuáles ya están
-// cargados sin necesitar una columna nueva en la hoja.
-function marcarContenido(idOperacion, texto) {
-  return `[SAC:${idOperacion}] ${texto}`;
-}
 
 function extraerIdOperacion(contenido) {
   const m = /^\[SAC:([^\]]+)\]/.exec(contenido || '');
@@ -75,15 +64,10 @@ export default async function handler(req, res) {
     const headersAct = filasActuaciones[0] || [];
     const idxNumeroSAC = headersAct.indexOf('Numero_SAC');
     const idxContenido = headersAct.indexOf('Contenido');
-    const idxID = headersAct.indexOf('ID');
 
-    let maxId = 0;
     const idsExistentesPorExpediente = new Map(); // numeroSAC -> Set(idOperacion)
     for (let i = 1; i < filasActuaciones.length; i++) {
       const fila = filasActuaciones[i];
-      const idNum = parseInt(fila[idxID], 10);
-      if (!Number.isNaN(idNum) && idNum > maxId) maxId = idNum;
-
       const numeroSAC = String(fila[idxNumeroSAC] || '').trim();
       const idOp = extraerIdOperacion(fila[idxContenido]);
       if (numeroSAC && idOp) {
@@ -101,8 +85,6 @@ export default async function handler(req, res) {
       coincidencias.map((exp) => obtenerOperaciones(login.cookieJar, exp.idExpediente)),
     );
 
-    // Armamos, por cada expediente, la lista de movimientos realmente
-    // nuevos (los que no están todavía en Actuaciones).
     const porExpediente = coincidencias.map((exp, i) => {
       const numeroSAC = String(exp.numeroExpediente).trim();
       const operaciones = operacionesPorExpediente[i].operaciones;
@@ -111,9 +93,9 @@ export default async function handler(req, res) {
       return { exp, numeroSAC, operaciones, nuevas };
     });
 
-    // Traemos el TEXTO REAL de todos los movimientos nuevos (de todos los
-    // expedientes), en paralelo, con un límite prudente para no saturar al
-    // SAC ni pasarnos del tiempo máximo de la función.
+    // Traemos el TEXTO REAL de todos los movimientos nuevos, en paralelo,
+    // con un límite prudente para no saturar al SAC ni pasarnos del tiempo
+    // máximo de la función.
     const LIMITE_TEXTOS_PARALELOS = 25;
     const todasLasNuevas = porExpediente.flatMap((p) => p.nuevas.map((op) => ({ numeroSAC: p.numeroSAC, op })));
     const aBuscar = todasLasNuevas.slice(0, LIMITE_TEXTOS_PARALELOS);
@@ -127,43 +109,36 @@ export default async function handler(req, res) {
       textoPorIdOperacion.set(op.idOperacion, limpiarHtmlOperacion(textos[i].contenido));
     });
 
-    const filasNuevas = [];
+    // Armamos la lista de candidatos (sin escribir nada todavía).
+    const candidatos = [];
     const resultados = [];
-    let siguienteId = maxId + 1;
 
     for (const { exp, numeroSAC, operaciones, nuevas } of porExpediente) {
       for (const op of nuevas) {
         const textoReal = textoPorIdOperacion.get(op.idOperacion);
-        let cuerpo;
+        let contenido;
         if (textoReal) {
-          cuerpo = textoReal;
+          contenido = textoReal;
         } else {
-          // No se pudo traer el texto (superó el límite en paralelo, o el
-          // SAC no devolvió nada): guardamos al menos estos datos.
           const detalles = [];
           if (op.estado) detalles.push(`Estado: ${op.estado}`);
           if (op.ubicacion) detalles.push(`Ubicación: ${op.ubicacion}`);
           if (op.presentadoPor) detalles.push(`Presentado por: ${op.presentadoPor}`);
           if (op.firmada) detalles.push('Firmada');
           if (op.adjunto) detalles.push('Tiene documento adjunto');
-          cuerpo = detalles.length > 0 ? detalles.join('\n') : '(sin detalle disponible)';
+          contenido = detalles.length > 0 ? detalles.join('\n') : '(sin detalle disponible)';
         }
-        const contenido = marcarContenido(op.idOperacion, cuerpo);
-        filasNuevas.push([
-          String(siguienteId++),
+
+        candidatos.push({
+          clave: `${numeroSAC}::${op.idOperacion}`,
           numeroSAC,
-          op.fecha || '',
-          op.tipoOperacion || 'Movimiento SAC',
-          'SAC',
+          caratula: locales.get(numeroSAC).caratula || exp.caratula,
+          idOperacion: op.idOperacion,
+          fecha: op.fecha || '',
+          tipoOperacion: op.tipoOperacion || 'Movimiento SAC',
           contenido,
-          'NO', // presentado
-          'NO', // enviado
-          'NO', // tienePDF
-          '', // idPDFDrive
-          'NO', // esBorrador
-          'Sync SAC', // creadoPor
-          '', // compartidoCon
-        ]);
+          tieneTextoReal: !!textoReal,
+        });
       }
 
       resultados.push({
@@ -174,16 +149,13 @@ export default async function handler(req, res) {
       });
     }
 
-    if (filasNuevas.length > 0) {
-      await appendToSheet('Actuaciones', filasNuevas);
-    }
-
     return res.status(200).json({
       success: true,
-      mensaje: `Se revisaron ${coincidencias.length} expediente(s) que coinciden con LexHub. Se agregaron ${filasNuevas.length} movimiento(s) nuevo(s).`,
+      mensaje: `Se revisaron ${coincidencias.length} expediente(s) que coinciden con LexHub. Hay ${candidatos.length} movimiento(s) nuevo(s) para revisar.`,
       totalExpedientesSAC: expedientesSAC.length,
       totalCoincidencias: coincidencias.length,
       resultados,
+      candidatos,
       diagnosticoListaSAC: diagExp,
     });
   } catch (error) {
