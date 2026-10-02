@@ -18,6 +18,28 @@ export default function SACSync() {
   const [sincronizando, setSincronizando] = useState(false);
   const [resultadoSync, setResultadoSync] = useState(null);
   const [errorSync, setErrorSync] = useState('');
+  const [probandoCedulas, setProbandoCedulas] = useState(false);
+  const [diagnosticoCedulas, setDiagnosticoCedulas] = useState(null);
+
+  const handleProbarCedulas = async () => {
+    const cuerpo = cuerpoCredenciales();
+    if (!cuerpo) return;
+    setProbandoCedulas(true);
+    setDiagnosticoCedulas(null);
+    try {
+      const response = await fetch('/api/sac/test-cedulas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cuerpo)
+      });
+      const data = await response.json();
+      setDiagnosticoCedulas(data.diagnostico || data);
+    } catch (error) {
+      setDiagnosticoCedulas({ error: error.message });
+    } finally {
+      setProbandoCedulas(false);
+    }
+  };
 
   // Leer el usuario logueado (cookie "user") para poder conectar
   // automáticamente con las credenciales del SAC que ya tenga guardadas.
@@ -315,6 +337,40 @@ export default function SACSync() {
           </pre>
         </details>
       )}
+
+      {/* Prueba aislada: formato de ObtenerCedulas (en construcción) */}
+      <div style={{ marginTop: '20px' }}>
+        <button
+          onClick={handleProbarCedulas}
+          disabled={probandoCedulas}
+          style={{
+            fontSize: '0.78rem',
+            color: 'var(--color-text-tertiary)',
+            background: 'none',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: 'var(--radius-md)',
+            padding: '6px 10px',
+            cursor: probandoCedulas ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {probandoCedulas ? 'Probando...' : '🔍 Probar formato de cédulas (diagnóstico)'}
+        </button>
+        {diagnosticoCedulas && (
+          <pre style={{
+            whiteSpace: 'pre-wrap',
+            backgroundColor: 'var(--color-bg-primary)',
+            padding: '10px',
+            borderRadius: 'var(--radius-md)',
+            marginTop: '8px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-tertiary)',
+          }}>
+            {JSON.stringify(diagnosticoCedulas, null, 2)}
+          </pre>
+        )}
+      </div>
     </div>
   );
 }
