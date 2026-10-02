@@ -15,6 +15,7 @@ import {
   obtenerOperaciones,
   obtenerTextoOperacion,
   limpiarHtmlOperacion,
+  resolverCredencialesSAC,
 } from '../../../lib/sac';
 import { readSheet, appendToSheet } from '../../../lib/googleSheets';
 
@@ -37,9 +38,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { usuario, contraseña } = req.body || {};
-  if (!usuario || !contraseña) {
-    return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos' });
+  const { usuario, contraseña, error: errorCred } = await resolverCredencialesSAC(req.body);
+  if (errorCred) {
+    return res.status(200).json({ success: false, mensaje: errorCred });
   }
 
   try {

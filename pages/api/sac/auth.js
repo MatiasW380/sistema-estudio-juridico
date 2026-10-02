@@ -3,7 +3,13 @@
 // prueba de movimientos del primer expediente. La lógica real vive en
 // lib/sac.js (compartida con /api/sac/sincronizar).
 
-import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerTextoOperacion } from '../../../lib/sac';
+import {
+  loginSAC,
+  obtenerExpedientesConNovedades,
+  obtenerOperaciones,
+  obtenerTextoOperacion,
+  resolverCredencialesSAC,
+} from '../../../lib/sac';
 
 export const config = { maxDuration: 60 };
 
@@ -12,9 +18,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { usuario, contraseña } = req.body || {};
-  if (!usuario || !contraseña) {
-    return res.status(400).json({ success: false, error: 'Usuario y contraseña requeridos' });
+  const { usuario, contraseña, error: errorCred } = await resolverCredencialesSAC(req.body);
+  if (errorCred) {
+    return res.status(200).json({ success: false, mensaje: errorCred });
   }
 
   try {

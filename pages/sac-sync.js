@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
 export default function SACSync() {
@@ -12,6 +12,38 @@ export default function SACSync() {
   const [mensaje, setMensaje] = useState('');
   const [expedientes, setExpedientes] = useState([]);
   const [diagnostico, setDiagnostico] = useState(null);
+  const [emailUsuario, setEmailUsuario] = useState('');
+  const [autoIntentado, setAutoIntentado] = useState(false);
+
+  // Leer el usuario logueado (cookie "user") para poder conectar
+  // automáticamente con las credenciales del SAC que ya tenga guardadas.
+  useEffect(() => {
+    try {
+      const cookies = document.cookie.split(';').reduce((acc, c) => {
+        const [k, ...rest] = c.trim().split('=');
+        acc[k] = rest.join('=');
+        return acc;
+      }, {});
+      if (cookies.user) {
+        const u = JSON.parse(decodeURIComponent(cookies.user));
+        if (u?.email) setEmailUsuario(u.email);
+      }
+    } catch (e) {
+      // sin cookie de sesión, no pasa nada: queda el login manual
+    }
+  }, []);
+
+  // Al entrar a la página, si tenemos el email del usuario logueado,
+  // probamos conectar solos con las credenciales guardadas (USUARIO_SAC /
+  // CLAVE_SAC). Si no las tiene cargadas, el mensaje lo va a decir y puede
+  // usar los campos manuales de abajo.
+  useEffect(() => {
+    if (emailUsuario && !autoIntentado) {
+      setAutoIntentado(true);
+      handleConectarSAC({ auto: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailUsuario]);
 
   // Paso 2: Seleccionar expediente
   const [expedienteSeleccionado, setExpedienteSeleccionado] = useState(null);
@@ -24,20 +56,30 @@ export default function SACSync() {
   const [domicilioCliente, setDomicilioCliente] = useState('');
 
   // Conectar con SAC y obtener expedientes
-  const handleConectarSAC = async () => {
-    if (!usuario || !contraseña) {
-      setMensaje('❌ Usuario y contraseña requeridos');
+  // Devuelve el cuerpo a mandar al servidor: usuario/contraseña tipeados a
+  // mano si existen, o el email del usuario logueado (para que el servidor
+  // use las credenciales guardadas). null si no hay ninguna de las dos.
+  const cuerpoCredenciales = () => {
+    if (usuario && contraseña) return { usuario, contraseña };
+    if (emailUsuario) return { email: emailUsuario };
+    return null;
+  };
+
+  const handleConectarSAC = async (opts = {}) => {
+    const cuerpo = cuerpoCredenciales();
+    if (!cuerpo) {
+      if (!opts.auto) setMensaje('❌ Usuario y contraseña requeridos');
       return;
     }
 
     setCargando(true);
-    setMensaje('🔐 Conectando con SAC...');
+    setMensaje(opts.auto ? '🔐 Conectando con tus credenciales guardadas del SAC...' : '🔐 Conectando con SAC...');
 
     try {
       const response = await fetch('/api/sac/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, contraseña })
+        body: JSON.stringify(cuerpo)
       });
 
       const data = await response.json();
@@ -62,7 +104,8 @@ export default function SACSync() {
   const [resultadoReparar, setResultadoReparar] = useState(null);
 
   const handleReparar = async () => {
-    if (!usuario || !contraseña) {
+    const cuerpo = cuerpoCredenciales();
+    if (!cuerpo) {
       setMensaje('❌ Usuario y contraseña requeridos');
       return;
     }
@@ -74,7 +117,7 @@ export default function SACSync() {
       const response = await fetch('/api/sac/reparar-contenido', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, contraseña })
+        body: JSON.stringify(cuerpo)
       });
       const texto = await response.text();
       let data;
@@ -93,7 +136,8 @@ export default function SACSync() {
   };
 
   const handleSincronizar = async () => {
-    if (!usuario || !contraseña) {
+    const cuerpo = cuerpoCredenciales();
+    if (!cuerpo) {
       setMensaje('❌ Usuario y contraseña requeridos');
       return;
     }
@@ -105,7 +149,7 @@ export default function SACSync() {
       const response = await fetch('/api/sac/sincronizar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, contraseña })
+        body: JSON.stringify(cuerpo)
       });
       const texto = await response.text();
       let data;
@@ -230,7 +274,14 @@ export default function SACSync() {
       {paso === 1 && (
         <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px' }}>
           <h2>Paso 1: Conectar con SAC</h2>
-          <p>Ingresa tus credenciales del Poder Judicial de Córdoba</p>
+          {emailUsuario ? (
+            <p style={{ color: '#2f855a' }}>
+              Probando conectar automáticamente con tus credenciales guardadas ({emailUsuario}). Si no tenés
+              USUARIO_SAC / CLAVE_SAC cargados en tu perfil, completá los campos de abajo manualmente.
+            </p>
+          ) : (
+            <p>Ingresa tus credenciales del Poder Judicial de Córdoba</p>
+          )}
 
           <div style={{ marginBottom: '15px' }}>
             <label>
