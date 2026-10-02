@@ -169,6 +169,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const [resultadoIA, setResultadoIA] = useState('');
   const [editandoIA, setEditandoIA] = useState(false);
   const [cargandoIA, setCargandoIA] = useState(false);
+  const [mensajeIA, setMensajeIA] = useState(''); // aviso de éxito/error de IA, visible siempre (no depende de qué pestaña esté abierta)
   const abortControllerRef = useRef(null);
   const [editorIA, setEditorIA] = useState('');
   const [sentencias, setSentencias] = useState([]);
@@ -529,7 +530,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const ejecutarIA = async (accion) => {
     console.log('🔍 ejecutarIA llamado con accion:', accion);
     setCargandoIA(true);
-    setMensaje('');
+    setMensajeIA('');
     setResultadoIA('');
     setEditandoIA(false);
     setAccionIA(accion);
@@ -543,7 +544,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         );
 
         if (sentenciasEncontradas.length === 0) {
-          setMensaje('⚠️ No hay sentencias o resoluciones en este expediente.');
+          setMensajeIA('⚠️ No hay sentencias o resoluciones en este expediente.');
           setCargandoIA(false);
           return;
         }
@@ -566,7 +567,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         const escritosConTexto = actuaciones.filter(a => (a.Contenido || '').trim().length > 50);
 
         if (escritosConTexto.length === 0) {
-          setMensaje('⚠️ No hay escritos con texto en este expediente.');
+          setMensajeIA('⚠️ No hay escritos con texto en este expediente.');
           setCargandoIA(false);
           return;
         }
@@ -594,7 +595,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         signal: abortControllerRef.current.signal,
       });
 
-      const data = await response.json();
+      const textoResp = await response.text();
+      let data;
+      try {
+        data = JSON.parse(textoResp);
+      } catch {
+        throw new Error(`El servidor no devolvió JSON (status ${response.status}): ${textoResp.slice(0, 300)}`);
+      }
       console.log('📥 Respuesta data:', data);
 
       if (data.success) {
@@ -602,7 +609,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setEditorIA(data.resultado);
         setEditandoIA(true);
         setMostrarIA(true);
-        setMensaje(`${accion} completado correctamente`);
+        setMensajeIA(`${accion} completado correctamente`);
       } else {
         let errorMsg = data.error || 'Error desconocido';
         
@@ -613,25 +620,25 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         }
         
         console.error('Error en IA:', errorMsg);
-        setMensaje('Error en IA: ' + errorMsg);
+        setMensajeIA('Error en IA: ' + errorMsg);
       }
       setCargandoIA(false);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('📌 Cancelado');
-        setMensaje('');
+        setMensajeIA('');
         setCargandoIA(false);
         return;
       }
       console.error('Error en ejecutarIA:', error);
-      setMensaje('Error: ' + error.message);
+      setMensajeIA('Error: ' + error.message);
       setCargandoIA(false);
     }
   };
 
   const ejecutarAnalisisSentencia = async (textoSentencia) => {
     setCargandoIA(true);
-    setMensaje('');
+    setMensajeIA('');
 
     try {
       const body = {
@@ -651,7 +658,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         signal: abortControllerRef.current.signal,
       });
 
-      const data = await response.json();
+      const textoResp = await response.text();
+      let data;
+      try {
+        data = JSON.parse(textoResp);
+      } catch {
+        throw new Error(`El servidor no devolvió JSON (status ${response.status}): ${textoResp.slice(0, 300)}`);
+      }
       console.log('📥 Respuesta data:', data);
 
       if (data.success) {
@@ -660,7 +673,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setEditandoIA(true);
         setMostrarIA(true);
         setGuardarAnalisis(true);
-        setMensaje('Análisis de sentencia completado');
+        setMensajeIA('Análisis de sentencia completado');
       } else {
         let errorMsg = data.error || 'Error desconocido';
         
@@ -669,25 +682,25 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         }
         
         console.error('Error en IA:', errorMsg);
-        setMensaje('Error en IA: ' + errorMsg);
+        setMensajeIA('Error en IA: ' + errorMsg);
       }
       setCargandoIA(false);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('📌 Cancelado');
-        setMensaje('');
+        setMensajeIA('');
         setCargandoIA(false);
         return;
       }
       console.error('Error en ejecutarAnalisisSentencia:', error);
-      setMensaje('Error: ' + error.message);
+      setMensajeIA('Error: ' + error.message);
       setCargandoIA(false);
     }
   };
 
   const ejecutarAnalisisContraparte = async (textoEscrito) => {
     setCargandoIA(true);
-    setMensaje('');
+    setMensajeIA('');
 
     try {
       const body = {
@@ -708,7 +721,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         signal: abortControllerRef.current.signal,
       });
 
-      const data = await response.json();
+      const textoResp = await response.text();
+      let data;
+      try {
+        data = JSON.parse(textoResp);
+      } catch {
+        throw new Error(`El servidor no devolvió JSON (status ${response.status}): ${textoResp.slice(0, 300)}`);
+      }
       console.log('📥 Respuesta data:', data);
 
       if (data.success) {
@@ -717,7 +736,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         setEditandoIA(true);
         setMostrarIA(true);
         setGuardarAnalisis(true);
-        setMensaje('Análisis del escrito de la contraparte completado');
+        setMensajeIA('Análisis del escrito de la contraparte completado');
       } else {
         let errorMsg = data.error || 'Error desconocido';
 
@@ -726,18 +745,18 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         }
 
         console.error('Error en IA:', errorMsg);
-        setMensaje('Error en IA: ' + errorMsg);
+        setMensajeIA('Error en IA: ' + errorMsg);
       }
       setCargandoIA(false);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('📌 Cancelado');
-        setMensaje('');
+        setMensajeIA('');
         setCargandoIA(false);
         return;
       }
       console.error('Error en ejecutarAnalisisContraparte:', error);
-      setMensaje('Error: ' + error.message);
+      setMensajeIA('Error: ' + error.message);
       setCargandoIA(false);
     }
   };
@@ -2226,6 +2245,31 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {mensajeIA && (
+        <div
+          onClick={() => setMensajeIA('')}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1300,
+            maxWidth: '600px',
+            width: '90%',
+            padding: '14px 18px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+            cursor: 'pointer',
+            backgroundColor: mensajeIA.toLowerCase().includes('error') ? '#fed7d7' : '#c6f6d5',
+            color: mensajeIA.toLowerCase().includes('error') ? '#9b2c2c' : '#22543d',
+            fontSize: '0.9rem',
+            fontWeight: 500,
+          }}
+        >
+          {mensajeIA} <span style={{ opacity: 0.6, fontWeight: 400 }}>(click para cerrar)</span>
         </div>
       )}
 
