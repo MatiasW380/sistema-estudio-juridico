@@ -1901,9 +1901,16 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f7fafc'}
                 >
                   <strong>{sent.Tipo}</strong> - {formatearFechaArgentina(sent.Fecha)}
-                  <div style={{ fontSize: '0.85rem', color: '#4a5568', marginTop: '4px' }}>
-                    {sent.Contenido?.substring(0, 100)}...
-                  </div>
+                  {(() => {
+                    const limpio = limpiarMarcadorSAC(sent.Contenido);
+                    const m = /presentado por:\s*([^\n]+)/i.exec(limpio);
+                    const presentadoPor = m ? m[1].replace(/^presentado por:\s*/i, '').trim() : null;
+                    return presentadoPor ? (
+                      <div style={{ fontSize: '0.85rem', color: '#4a5568', marginTop: '4px' }}>
+                        Presentado por: {presentadoPor}
+                      </div>
+                    ) : null;
+                  })()}
                 </button>
               ))}
             </div>
