@@ -9,6 +9,7 @@ import {
   obtenerOperaciones,
   obtenerTextoOperacion,
   obtenerTextoEscrito,
+  obtenerMasDatosOperacion,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
 
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
     let diagnosticoOperaciones = null;
     let diagnosticoTexto = null;
     let diagnosticoTextoEscrito = null;
+    let diagnosticoMasDatos = null;
     if (expedientes.length > 0 && expedientes[0].idExpediente) {
       const { operaciones, diagnostico } = await obtenerOperaciones(login.cookieJar, expedientes[0].idExpediente);
       diagnosticoOperaciones = {
@@ -74,6 +76,20 @@ export default async function handler(req, res) {
           ...diagEscrito,
         };
       }
+
+      if (operaciones.length > 0 && operaciones[0].idOperacion) {
+        const { diagnostico: diagMas } = await obtenerMasDatosOperacion(
+          login.cookieJar,
+          expedientes[0].idExpediente,
+          operaciones[0].idOperacion,
+          operaciones[0].esEscrito,
+        );
+        diagnosticoMasDatos = {
+          idOperacionProbado: operaciones[0].idOperacion,
+          endpoint: 'obtenerMasDatosOperacion',
+          ...diagMas,
+        };
+      }
     }
 
     return res.status(200).json({
@@ -84,6 +100,7 @@ export default async function handler(req, res) {
       diagnosticoOperaciones,
       diagnosticoTexto,
       diagnosticoTextoEscrito,
+      diagnosticoMasDatos,
       mensaje: `Login exitoso. Se obtuvieron ${expedientes.length} expediente(s) con novedades recientes.`,
       expedientes,
     });

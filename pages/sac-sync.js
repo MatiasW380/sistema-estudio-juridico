@@ -88,6 +88,7 @@ export default function SACSync() {
       if (data.success) {
         setExpedientes(data.expedientes || []);
         setDiagnostico(
+          data.diagnosticoMasDatos ||
           data.diagnosticoTextoEscrito ||
           data.diagnosticoTexto ||
           data.diagnosticoOperaciones ||
