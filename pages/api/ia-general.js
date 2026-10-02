@@ -6,6 +6,8 @@ import { getLeyes, getJurisprudencia, getModelos } from '../../lib/googleSheets'
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
 
+export const config = { maxDuration: 60 };
+
 export default async function handler(req, res) {
   console.log('🚀 ====== API /api/ia-general INICIADA ======');
 
