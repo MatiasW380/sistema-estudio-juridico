@@ -544,9 +544,22 @@ export default function SACSync() {
                                   </ul>
                                 </div>
                               )}
-                              {(cedulas.length > 0 || comunicaciones.length > 0) && (
+                              {cedulas.length > 0 && (
+                                <div style={{ marginBottom: comunicaciones.length ? '8px' : 0 }}>
+                                  <strong>Notificado a:</strong>
+                                  <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
+                                    {cedulas.map((ced, i) => (
+                                      <li key={ced.idCedulaDestinatario || i}>
+                                        {ced.nombre} ({ced.rol}) — {ced.fecha}
+                                        {ced.otrosDestinatarios ? ` · también: ${ced.otrosDestinatarios}` : ''}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {comunicaciones.length > 0 && (
                                 <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                                  {JSON.stringify({ cedulas, comunicaciones }, null, 2)}
+                                  {JSON.stringify(comunicaciones, null, 2)}
                                 </pre>
                               )}
                             </div>
