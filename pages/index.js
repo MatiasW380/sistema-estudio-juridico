@@ -500,10 +500,6 @@ export default function Home({
         </div>
       )}
 
-      <div style={{ marginBottom: '32px' }}>
-        <h1>Dashboard</h1>
-      </div>
-
       {/* Próximos Plazos - Columnas por Tipo (solo las que tienen datos) */}
       {(() => {
         const hoyPlazos = new Date();
@@ -525,7 +521,7 @@ export default function Home({
         return (
       <div style={{ marginTop: '24px' }}>
         <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Próximos Plazos{tareas_state.length > 0 ? ` (${tareas_state.length})` : ''}
+          Próximos Plazos
         </h2>
 
         {tareas_state.length === 0 ? (
