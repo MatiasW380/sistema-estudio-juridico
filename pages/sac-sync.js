@@ -529,11 +529,27 @@ export default function SACSync() {
                         return (
                           <details style={{ marginTop: '6px', fontSize: '0.75rem' }}>
                             <summary style={{ cursor: 'pointer', color: '#2563eb' }}>
-                              📨 Notificaciones: {cedulas.length} cédula(s), {comunicaciones.length} comunicación(es), {adjuntos.length} adjunto(s)
+                              📨 {cedulas.length} cédula(s), {comunicaciones.length} comunicación(es), {adjuntos.length} adjunto(s)
                             </summary>
-                            <pre style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f7fafc', padding: '6px', borderRadius: '4px' }}>
-                              {JSON.stringify({ cedulas, comunicaciones, adjuntos }, null, 2)}
-                            </pre>
+                            <div style={{ backgroundColor: '#f7fafc', padding: '6px', borderRadius: '4px', marginTop: '4px' }}>
+                              {adjuntos.length > 0 && (
+                                <div style={{ marginBottom: cedulas.length || comunicaciones.length ? '8px' : 0 }}>
+                                  <strong>Documentos:</strong>
+                                  <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
+                                    {adjuntos.map((a, i) => (
+                                      <li key={a.idAdjunto || i}>
+                                        {a.fileName} ({a.fecha})
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {(cedulas.length > 0 || comunicaciones.length > 0) && (
+                                <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  {JSON.stringify({ cedulas, comunicaciones }, null, 2)}
+                                </pre>
+                              )}
+                            </div>
                           </details>
                         );
                       })()}
