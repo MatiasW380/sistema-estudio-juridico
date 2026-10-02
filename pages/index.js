@@ -199,6 +199,42 @@ export default function Home({
 
   const colorMovimientoSAC = { rojo: '#dc2626', amarillo: '#d97706', verde: '#16a34a' };
 
+  // Agregar plazo manual a partir de una cédula (sin cálculo automático de
+  // días hábiles: el usuario indica la fecha de vencimiento).
+  const [plazoAbiertoKey, setPlazoAbiertoKey] = useState(null);
+  const [fechaPlazo, setFechaPlazo] = useState('');
+  const [guardandoPlazo, setGuardandoPlazo] = useState(false);
+  const [mensajePlazo, setMensajePlazo] = useState('');
+
+  const handleGuardarPlazo = async (c) => {
+    if (!fechaPlazo) return;
+    setGuardandoPlazo(true);
+    setMensajePlazo('');
+    try {
+      const response = await fetch('/api/sac/agregar-plazo-cedula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numeroSAC: c.numeroSAC,
+          descripcion: `${c.tipoOperacion} (cédula del ${c.fecha})`,
+          fechaVencimiento: fechaPlazo,
+          creadoPor: usuarioEmail,
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMensajePlazo('✅ Plazo agregado a la Agenda');
+        setTimeout(() => { setPlazoAbiertoKey(null); setFechaPlazo(''); setMensajePlazo(''); }, 1500);
+      } else {
+        setMensajePlazo('❌ ' + (data.error || 'No se pudo guardar'));
+      }
+    } catch (error) {
+      setMensajePlazo('❌ Error: ' + error.message);
+    } finally {
+      setGuardandoPlazo(false);
+    }
+  };
+
   const formatMoney = (value) => {
     const n = parseFloat(value || 0);
     return `$${Number.isNaN(n) ? '0.00' : n.toFixed(2)}`;
@@ -668,9 +704,11 @@ export default function Home({
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {cedulasSAC.map((c, i) => (
+            {cedulasSAC.map((c, i) => {
+              const key = `${c.numeroSAC}-${c.fecha}-${i}`;
+              return (
+              <div key={key}>
               <div
-                key={`${c.numeroSAC}-${c.fecha}-${i}`}
                 onClick={() => router.push(`/expediente/${encodeURIComponent(c.numeroSAC)}`)}
                 style={{
                   border: '1px solid #e2e8f0',
@@ -695,11 +733,75 @@ export default function Home({
                   <span style={{ color: '#64748b' }}> — {c.caratula}</span>
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.tipoOperacion} · {c.fecha}</div>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMensajePlazo('');
+                    setFechaPlazo('');
+                    setPlazoAbiertoKey(plazoAbiertoKey === key ? null : key);
+                  }}
+                  style={{
+                    fontSize: '0.7rem',
+                    color: '#2563eb',
+                    background: 'none',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '6px',
+                    padding: '3px 8px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  + Plazo
+                </button>
                 <span style={{ backgroundColor: colorMovimientoSAC[c.color], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {c.dias === 0 ? 'HOY' : c.dias === 1 ? '1 día' : `${c.dias} días`}
                 </span>
               </div>
-            ))}
+
+              {plazoAbiertoKey === key && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    border: '1px solid #bfdbfe',
+                    borderTop: 'none',
+                    borderRadius: '0 0 4px 4px',
+                    padding: '8px 10px',
+                    backgroundColor: '#eff6ff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '0.78rem',
+                  }}
+                >
+                  <span style={{ color: '#1e40af' }}>Vencimiento:</span>
+                  <input
+                    type="date"
+                    value={fechaPlazo}
+                    onChange={(e) => setFechaPlazo(e.target.value)}
+                    style={{ padding: '4px 6px', border: '1px solid #bfdbfe', borderRadius: '4px', fontSize: '0.78rem' }}
+                  />
+                  <button
+                    onClick={() => handleGuardarPlazo(c)}
+                    disabled={!fechaPlazo || guardandoPlazo}
+                    style={{
+                      backgroundColor: 'var(--color-cobalt)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 10px',
+                      fontSize: '0.78rem',
+                      cursor: !fechaPlazo || guardandoPlazo ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {guardandoPlazo ? 'Guardando...' : 'Guardar'}
+                  </button>
+                  {mensajePlazo && <span style={{ fontSize: '0.75rem' }}>{mensajePlazo}</span>}
+                </div>
+              )}
+              </div>
+              );
+            })}
           </div>
         )}
       </div>
