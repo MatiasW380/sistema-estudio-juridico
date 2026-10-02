@@ -1869,9 +1869,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             borderRadius: '12px',
             maxWidth: '600px',
             width: '90%',
+            maxHeight: '85vh',
+            overflowY: 'auto',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }} onClick={(e) => e.stopPropagation()}>
-            <h2>{accionIA === 'analizar-contraparte' ? 'Seleccionar escrito' : 'Seleccionar Sentencia'}</h2>
+            <h2 style={{ color: '#1a202c' }}>{accionIA === 'analizar-contraparte' ? 'Seleccionar escrito' : 'Seleccionar Sentencia'}</h2>
             <p style={{ color: '#4a5568', marginBottom: '15px' }}>
               {accionIA === 'analizar-contraparte'
                 ? 'Elegí cuál escrito de este expediente querés analizar:'
@@ -1890,11 +1892,17 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                     }
                   }}
                   style={{
+                    display: 'block',
+                    width: '100%',
+                    height: 'auto',
                     backgroundColor: '#f7fafc',
+                    color: '#1a202c',
                     padding: '12px',
                     border: '1px solid #e2e8f0',
                     borderRadius: '8px',
                     textAlign: 'left',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
                     cursor: 'pointer'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
