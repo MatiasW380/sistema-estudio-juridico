@@ -143,6 +143,41 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
 `;
         break;
 
+      case 'analizar-contraparte':
+        prompt = `
+Eres un asistente legal experto de la Ciudad de Córdoba en Argentina. Vas a analizar un escrito presentado por LA CONTRAPARTE (demanda, contestación de demanda, expresión de agravios, u otro escrito judicial) en un expediente donde representás a ${nombreCliente || 'nuestro cliente'}.
+
+CLIENTE AL QUE REPRESENTAMOS: ${nombreCliente || 'Nuestro cliente'}
+
+CONTEXTO DEL EXPEDIENTE:
+${contexto.actuaciones || 'No hay actuaciones registradas.'}
+
+CONSULTAS DEL CLIENTE Y ESTRATEGIA PREVIA:
+${contexto.consultas || 'No hay consultas registradas.'}
+
+LEYES APLICABLES:
+${contexto.leyes || 'No hay leyes cargadas.'}
+
+JURISPRUDENCIA Y DOCTRINA APLICABLE (USALA PARA FUNDAR LA RESPUESTA):
+${contexto.jurisprudencia || 'No hay jurisprudencia cargada.'}
+
+ESCRITO DE LA CONTRAPARTE A ANALIZAR:
+${texto || 'No se proporcionó el texto del escrito'}
+
+INSTRUCCIONES:
+Analizá el escrito de la contraparte DESDE LA PERSPECTIVA DE ${nombreCliente || 'NUESTRO CLIENTE'} y generá un informe que incluya:
+
+1. **Argumentos de la contraparte:** Listá, uno por uno, los argumentos y pretensiones que plantea el escrito.
+2. **Puntos débiles detectados:** Para cada argumento, señalá contradicciones, falta de prueba, errores de derecho o planteos poco sólidos que puedan atacarse.
+3. **Hechos controvertidos:** Qué hechos de la contraparte conviene negar, desconocer o reconocer con matices.
+4. **Fundamentos para la respuesta:** Argumentos y jurisprudencia disponibles en la biblioteca para rebatir cada punto (citá literalmente las fuentes, entre comillas).
+5. **Estrategia de contestación sugerida:** Cómo estructurar la respuesta (contestación de demanda, expresión de agravios, etc.), qué admitir, qué negar, qué prueba ofrecer.
+6. **Riesgos a tener en cuenta:** Puntos donde la posición de ${nombreCliente || 'nuestro cliente'} es más débil y cómo mitigarlos.
+
+El tono debe ser técnico y formal, como el de un abogado experimentado de Córdoba. No uses asteriscos **, realiza un texto profesional y esteticamente cuidado, con titulos y subtitulos. Si debes hacer citas textuales van entre comillas y con indicacion de la fuente. Las citas deben ser textuales de la biblioteca, no se modifican ni se imaginan.
+`;
+        break;
+
       default:
         console.log('❌ Acción no válida:', accion);
         return res.status(400).json({ error: 'Acción no válida' });

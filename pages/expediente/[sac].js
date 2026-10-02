@@ -559,6 +559,24 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         return;
       }
 
+      if (accion === 'analizar-contraparte') {
+        // No filtramos por Tipo: el SAC no etiqueta de forma confiable
+        // quién presentó cada escrito, así que dejamos que el abogado
+        // elija cuál analizar entre los que tienen texto real.
+        const escritosConTexto = actuaciones.filter(a => (a.Contenido || '').trim().length > 50);
+
+        if (escritosConTexto.length === 0) {
+          setMensaje('⚠️ No hay escritos con texto en este expediente.');
+          setCargandoIA(false);
+          return;
+        }
+
+        setSentencias(escritosConTexto);
+        setMostrarSeleccionSentencia(true);
+        setCargandoIA(false);
+        return;
+      }
+
       const body = {
         accion,
         numeroSAC: sac,
@@ -660,6 +678,62 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
         return;
       }
       console.error('Error en ejecutarAnalisisSentencia:', error);
+      setMensaje('Error: ' + error.message);
+      setCargandoIA(false);
+    }
+  };
+
+  const ejecutarAnalisisContraparte = async (textoEscrito) => {
+    setCargandoIA(true);
+    setMensaje('');
+
+    try {
+      const body = {
+        accion: 'analizar-contraparte',
+        numeroSAC: sac,
+        texto: textoEscrito,
+        usuario: sessionEmail,
+        nombreCliente: cliente?.Nombre_Cliente || '',
+      };
+
+      console.log('📤 Enviando a /api/ia (análisis de escrito de la contraparte)...');
+
+      abortControllerRef.current = new AbortController();
+      const response = await fetch('/api/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: abortControllerRef.current.signal,
+      });
+
+      const data = await response.json();
+      console.log('📥 Respuesta data:', data);
+
+      if (data.success) {
+        setResultadoIA(data.resultado);
+        setEditorIA(data.resultado);
+        setEditandoIA(true);
+        setMostrarIA(true);
+        setGuardarAnalisis(true);
+        setMensaje('Análisis del escrito de la contraparte completado');
+      } else {
+        let errorMsg = data.error || 'Error desconocido';
+
+        if (response.status === 429) {
+          errorMsg = '⚠️ Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.';
+        }
+
+        console.error('Error en IA:', errorMsg);
+        setMensaje('Error en IA: ' + errorMsg);
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('📌 Cancelado');
+        setMensaje('');
+        setCargandoIA(false);
+        return;
+      }
+      console.error('Error en ejecutarAnalisisContraparte:', error);
       setMensaje('Error: ' + error.message);
       setCargandoIA(false);
     }
@@ -1227,6 +1301,30 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   </button>
                   <button
                     onClick={() => {
+                      ejecutarIA('analizar-contraparte');
+                      setMostrarMenuIA(false);
+                    }}
+                    disabled={cargandoIA}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      color: '#2d3748',
+                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      borderBottom: '1px solid #e2e8f0',
+                      fontWeight: '500'
+                    }}
+                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    {cargandoIA ? '⏳ Analizar escrito contraparte' : 'Analizar escrito contraparte'}
+                  </button>
+                  <button
+                    onClick={() => {
                       ejecutarIA('estrategia');
                       setMostrarMenuIA(false);
                     }}
@@ -1773,9 +1871,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             width: '90%',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }} onClick={(e) => e.stopPropagation()}>
-            <h2>Seleccionar Sentencia</h2>
+            <h2>{accionIA === 'analizar-contraparte' ? 'Seleccionar escrito' : 'Seleccionar Sentencia'}</h2>
             <p style={{ color: '#4a5568', marginBottom: '15px' }}>
-              Hay múltiples sentencias en este expediente. Seleccioná cuál querés analizar:
+              {accionIA === 'analizar-contraparte'
+                ? 'Elegí cuál escrito de este expediente querés analizar:'
+                : 'Hay múltiples sentencias en este expediente. Seleccioná cuál querés analizar:'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {sentencias.map((sent, idx) => (
@@ -1783,7 +1883,11 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   key={idx}
                   onClick={() => {
                     setMostrarSeleccionSentencia(false);
-                    ejecutarAnalisisSentencia(sent.Contenido);
+                    if (accionIA === 'analizar-contraparte') {
+                      ejecutarAnalisisContraparte(sent.Contenido);
+                    } else {
+                      ejecutarAnalisisSentencia(sent.Contenido);
+                    }
                   }}
                   style={{
                     backgroundColor: '#f7fafc',
@@ -1843,6 +1947,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
               <h2>
                 {accionIA === 'resumir' && 'Resumen del Expediente'}
                 {accionIA === 'analizar-sentencia' && 'Análisis de Sentencia'}
+                {accionIA === 'analizar-contraparte' && '⚖️ Análisis de Escrito de la Contraparte'}
                 {accionIA === 'estrategia' && '💡 Estrategia Sugerida'}
               </h2>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -1884,6 +1989,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#a0aec0' }}>
                   {accionIA === 'resumir' && '💡 Podés editar el resumen antes de guardarlo.'}
                   {accionIA === 'analizar-sentencia' && '💡 Podés editar el análisis antes de guardarlo como actuación.'}
+                  {accionIA === 'analizar-contraparte' && '💡 Podés editar el análisis antes de guardarlo como actuación.'}
                   {accionIA === 'estrategia' && '💡 Podés editar la estrategia antes de guardarla.'}
                 </div>
               </>
