@@ -517,16 +517,26 @@ export default function SACSync() {
                           (no se pudo traer el texto completo, se muestra un resumen)
                         </div>
                       )}
-                      {c.notificacionCruda && (
-                        <details style={{ marginTop: '6px', fontSize: '0.72rem' }}>
-                          <summary style={{ cursor: 'pointer', color: '#2563eb' }}>
-                            Ver datos de notificación (formato a confirmar)
-                          </summary>
-                          <pre style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f7fafc', padding: '6px', borderRadius: '4px' }}>
-                            {JSON.stringify(c.notificacionCruda, null, 2)}
-                          </pre>
-                        </details>
-                      )}
+                      {(() => {
+                        const det = c.notificacionCruda?.detalleOperacion;
+                        if (!det) return null;
+                        const cedulas = det.listadoCedulas || [];
+                        const comunicaciones = det.listadoComunicaciones || [];
+                        const adjuntos = det.listadoAdjuntos || [];
+                        if (cedulas.length === 0 && comunicaciones.length === 0 && adjuntos.length === 0) {
+                          return null; // sin notificaciones para este movimiento
+                        }
+                        return (
+                          <details style={{ marginTop: '6px', fontSize: '0.75rem' }}>
+                            <summary style={{ cursor: 'pointer', color: '#2563eb' }}>
+                              📨 Notificaciones: {cedulas.length} cédula(s), {comunicaciones.length} comunicación(es), {adjuntos.length} adjunto(s)
+                            </summary>
+                            <pre style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f7fafc', padding: '6px', borderRadius: '4px' }}>
+                              {JSON.stringify({ cedulas, comunicaciones, adjuntos }, null, 2)}
+                            </pre>
+                          </details>
+                        );
+                      })()}
                     </div>
                   </label>
                 ))}
