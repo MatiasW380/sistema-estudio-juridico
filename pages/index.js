@@ -520,10 +520,6 @@ export default function Home({
 
         return (
       <div style={{ marginTop: '24px' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Próximos Plazos
-        </h2>
-
         {tareas_state.length === 0 ? (
           <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0' }}>
             No hay plazos en los próximos 5 días.
