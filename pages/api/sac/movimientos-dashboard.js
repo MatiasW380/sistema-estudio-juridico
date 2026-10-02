@@ -4,7 +4,7 @@
 // nada — es de solo lectura, pensado para consultarse cada vez que se
 // entra al dashboard.
 
-import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones, resolverCredencialesSAC } from '../../../lib/sac';
+import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerCedulas, resolverCredencialesSAC } from '../../../lib/sac';
 import { readSheet } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 45 };
@@ -21,6 +21,15 @@ function parsearFechaSAC(fechaStr) {
   return d;
 }
 
+function diasYColor(fecha, hoy) {
+  const f = parsearFechaSAC(fecha);
+  if (!f) return null;
+  const dias = Math.round((hoy - f) / 86400000);
+  if (dias < 0 || dias > 3) return null; // más de 3 días: no interesa en el dashboard
+  const color = dias <= 1 ? 'rojo' : dias === 2 ? 'amarillo' : 'verde';
+  return { dias, color };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -28,17 +37,18 @@ export default async function handler(req, res) {
 
   const { usuario, contraseña, error: errorCred } = await resolverCredencialesSAC(req.body);
   if (errorCred) {
-    return res.status(200).json({ success: false, mensaje: errorCred, movimientos: [] });
+    return res.status(200).json({ success: false, mensaje: errorCred, movimientos: [], cedulas: [] });
   }
 
   try {
     const login = await loginSAC(usuario, contraseña);
     if (!login.exito) {
-      return res.status(200).json({ success: false, mensaje: 'No se pudo conectar al SAC', movimientos: [] });
+      return res.status(200).json({ success: false, mensaje: 'No se pudo conectar al SAC', movimientos: [], cedulas: [] });
     }
 
-    const [{ expedientes: expedientesSAC }, filasClientes] = await Promise.all([
+    const [{ expedientes: expedientesSAC }, { cedulas: cedulasSAC }, filasClientes] = await Promise.all([
       obtenerExpedientesConNovedades(login.cookieJar),
+      obtenerCedulas(login.cookieJar, 50),
       readSheet('Clientes_y_Expedientes'),
     ]);
 
@@ -76,25 +86,43 @@ export default async function handler(req, res) {
       }
       if (!fechaMasReciente) return;
 
-      const dias = Math.round((hoy - fechaMasReciente) / 86400000);
-      if (dias < 0 || dias > 3) return; // más de 3 días: no nos interesa acá
-
-      const color = dias <= 1 ? 'rojo' : dias === 2 ? 'amarillo' : 'verde';
+      const r = diasYColor(masReciente.fecha, hoy);
+      if (!r) return;
 
       movimientos.push({
         numeroSAC,
         caratula: locales.get(numeroSAC) || exp.caratula,
         tipoOperacion: masReciente.tipoOperacion || 'Movimiento',
         fecha: masReciente.fecha,
-        dias,
-        color,
+        dias: r.dias,
+        color: r.color,
       });
     });
 
     movimientos.sort((a, b) => a.dias - b.dias);
 
-    return res.status(200).json({ success: true, movimientos });
+    // Cédulas: ya vienen como lista plana (no hace falta pedir por
+    // expediente), solo filtramos por las que ya existen en LexHub.
+    const cedulas = [];
+    (cedulasSAC || []).forEach((ced) => {
+      const numeroSAC = String(ced.numeroExpediente || '').trim();
+      if (!numeroSAC || !locales.has(numeroSAC)) return;
+      const r = diasYColor(ced.fecha, hoy);
+      if (!r) return;
+
+      cedulas.push({
+        numeroSAC,
+        caratula: locales.get(numeroSAC) || ced.caratula,
+        tipoOperacion: ced.tipoOperacion || 'Cédula',
+        fecha: ced.fecha,
+        dias: r.dias,
+        color: r.color,
+      });
+    });
+    cedulas.sort((a, b) => a.dias - b.dias);
+
+    return res.status(200).json({ success: true, movimientos, cedulas });
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message, movimientos: [] });
+    return res.status(500).json({ success: false, error: error.message, movimientos: [], cedulas: [] });
   }
 }

@@ -157,6 +157,7 @@ export default function Home({
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const [movimientosSAC, setMovimientosSAC] = useState([]);
+  const [cedulasSAC, setCedulasSAC] = useState([]);
   const [cargandoSAC, setCargandoSAC] = useState(true);
   const [errorSAC, setErrorSAC] = useState('');
   const router = useRouter();
@@ -187,6 +188,7 @@ export default function Home({
       .then((data) => {
         if (data.success) {
           setMovimientosSAC(data.movimientos || []);
+          setCedulasSAC(data.cedulas || []);
         } else {
           setErrorSAC(data.mensaje || 'No se pudo consultar el SAC');
         }
@@ -640,6 +642,62 @@ export default function Home({
                 </div>
                 <span style={{ backgroundColor: colorMovimientoSAC[m.color], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {m.dias === 0 ? 'HOY' : m.dias === 1 ? '1 día' : `${m.dias} días`}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Cédulas SAC - últimos 3 días, solo expedientes en LexHub */}
+      <div style={{ marginTop: '24px' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
+          Cédulas SAC
+        </h2>
+
+        {cargandoSAC ? (
+          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+            Consultando el SAC...
+          </div>
+        ) : errorSAC ? (
+          <div style={{ backgroundColor: '#fff7ed', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#9a3412', border: '1px solid #fed7aa', fontSize: '0.85rem' }}>
+            {errorSAC}
+          </div>
+        ) : cedulasSAC.length === 0 ? (
+          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+            Sin cédulas recibidas en los últimos 3 días.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {cedulasSAC.map((c, i) => (
+              <div
+                key={`${c.numeroSAC}-${c.fecha}-${i}`}
+                onClick={() => router.push(`/expediente/${encodeURIComponent(c.numeroSAC)}`)}
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderLeft: `3px solid ${colorMovimientoSAC[c.color]}`,
+                  borderRadius: '4px',
+                  padding: '8px 10px',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+              >
+                <div style={{ overflow: 'hidden' }}>
+                  <strong style={{ color: '#0f172a' }}>{c.numeroSAC}</strong>
+                  <span style={{ color: '#64748b' }}> — {c.caratula}</span>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.tipoOperacion} · {c.fecha}</div>
+                </div>
+                <span style={{ backgroundColor: colorMovimientoSAC[c.color], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {c.dias === 0 ? 'HOY' : c.dias === 1 ? '1 día' : `${c.dias} días`}
                 </span>
               </div>
             ))}
