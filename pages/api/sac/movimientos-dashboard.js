@@ -41,16 +41,38 @@ export default async function handler(req, res) {
   }
 
   try {
-    const login = await loginSAC(usuario, contraseña);
-    if (!login.exito) {
-      return res.status(200).json({ success: false, mensaje: 'No se pudo conectar al SAC', movimientos: [], cedulas: [] });
+    // Si el SAC no devuelve JSON válido (sesión caída / límite), se reintenta
+    // una vez con un login nuevo antes de rendirse, en vez de mostrar "sin datos".
+    let expedientesSAC = [];
+    let cedulasSAC = [];
+    let filasClientes = [];
+    let diag = null;
+    let cookieJarFinal = null;
+    for (let intento = 1; intento <= 2; intento += 1) {
+      const login = await loginSAC(usuario, contraseña);
+      if (!login.exito) {
+        return res.status(200).json({ success: false, mensaje: 'No se pudo conectar al SAC', movimientos: [], cedulas: [] });
+      }
+      const [rExp, rCed, filas] = await Promise.all([
+        obtenerExpedientesConNovedades(login.cookieJar, 200),
+        obtenerCedulas(login.cookieJar, 100),
+        readSheet('Clientes_y_Expedientes'),
+      ]);
+      expedientesSAC = rExp.expedientes;
+      cedulasSAC = rCed.cedulas;
+      filasClientes = filas;
+      diag = { expedientes: rExp.diagnostico, cedulas: { status: rCed.diagnostico.status, esJSON: rCed.diagnostico.esJSON } };
+      cookieJarFinal = login.cookieJar;
+      if (diag.expedientes.esJSON && diag.cedulas.esJSON) break;
+      if (intento === 2) {
+        return res.status(200).json({
+          success: false,
+          mensaje: `El SAC no devolvió datos válidos (expedientes: ${diag.expedientes.status}, cédulas: ${diag.cedulas.status}). Probá de nuevo en un momento.`,
+          movimientos: [],
+          cedulas: [],
+        });
+      }
     }
-
-    const [{ expedientes: expedientesSAC }, { cedulas: cedulasSAC }, filasClientes] = await Promise.all([
-      obtenerExpedientesConNovedades(login.cookieJar),
-      obtenerCedulas(login.cookieJar, 50),
-      readSheet('Clientes_y_Expedientes'),
-    ]);
 
     if (!filasClientes || filasClientes.length < 2) {
       return res.status(200).json({
@@ -70,7 +92,7 @@ export default async function handler(req, res) {
     const coincidencias = expedientesSAC.filter((e) => locales.has(String(e.numeroExpediente).trim()));
 
     const operacionesPorExpediente = await Promise.all(
-      coincidencias.map((exp) => obtenerOperaciones(login.cookieJar, exp.idExpediente).catch(() => ({ operaciones: [] }))),
+      coincidencias.map((exp) => obtenerOperaciones(cookieJarFinal, exp.idExpediente).catch(() => ({ operaciones: [] }))),
     );
 
     const hoy = new Date();
