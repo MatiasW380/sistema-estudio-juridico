@@ -152,16 +152,9 @@ export default async function handler(req, res) {
     });
     cedulas.sort((a, b) => a.dias - b.dias);
 
-    const fechasCed = (cedulasSAC || []).slice(0, 3).map((c) => c.fecha).join(', ');
-    const fechasOps = operacionesPorExpediente.map((o) => (o.operaciones || []).length);
-    const detalleExp = coincidencias.map((exp, i) => {
-      const ops = operacionesPorExpediente[i].operaciones || [];
-      const fechas = ops.map((o) => o.fecha).filter(Boolean);
-      return `${exp.numeroExpediente}→${fechas.slice(0, 2).join('|') || 'sin fechas'}`;
-    }).join(' ; ');
-    const detalleCed = (cedulasSAC || []).map((c) => `${c.numeroExpediente}@${c.fecha}${locales.has(String(c.numeroExpediente || '').trim()) ? '✓' : '✗'}`).join(' ; ');
-    const diagnosticoTexto = `[${detalleExp}] [CED ${detalleCed}] `+`SAC: ${expedientesSAC.length} exp. con novedades, ${coincidencias.length} en LexHub (de ${locales.size}); ${(cedulasSAC || []).length} cédulas (fechas: ${fechasCed || '-'}); operaciones por exp.: [${fechasOps.join(',')}]; hoy servidor: ${hoy.toISOString().slice(0, 10)}`;
-    return res.status(200).json({ success: true, movimientos, cedulas, diagnosticoTexto });
+    // Expedientes con novedades en el SAC que todavía no están cargados en LexHub
+    const noCargados = expedientesSAC.filter((e) => !locales.has(String(e.numeroExpediente).trim())).length;
+    return res.status(200).json({ success: true, movimientos, cedulas, noCargados });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message, movimientos: [], cedulas: [] });
   }

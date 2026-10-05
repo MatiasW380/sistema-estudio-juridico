@@ -160,7 +160,7 @@ export default function Home({
   const [cedulasSAC, setCedulasSAC] = useState([]);
   const [cargandoSAC, setCargandoSAC] = useState(true);
   const [errorSAC, setErrorSAC] = useState('');
-  const [diagSAC, setDiagSAC] = useState('');
+  const [noCargadosSAC, setNoCargadosSAC] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -190,7 +190,7 @@ export default function Home({
         if (data.success) {
           setMovimientosSAC(data.movimientos || []);
           setCedulasSAC(data.cedulas || []);
-          setDiagSAC(data.diagnosticoTexto || '');
+          setNoCargadosSAC(data.noCargados || 0);
         } else {
           setErrorSAC(data.mensaje || 'No se pudo consultar el SAC');
         }
@@ -630,6 +630,12 @@ export default function Home({
         );
       })()}
 
+      {!cargandoSAC && !errorSAC && noCargadosSAC > 0 && (
+        <div style={{ marginTop: '24px', marginBottom: '-12px', fontSize: '0.8rem', color: '#64748b' }}>
+          ℹ️ {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.
+        </div>
+      )}
+
       {/* Movimientos SAC + Cédulas SAC - últimos 3 días, en dos columnas, solo expedientes en LexHub */}
       <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
       <div>
@@ -648,7 +654,6 @@ export default function Home({
         ) : movimientosSAC.length === 0 ? (
           <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
             Sin movimientos en los últimos 3 días.
-            {diagSAC && <div style={{ marginTop: '8px', fontSize: '0.7rem', color: '#94a3b8' }}>{diagSAC}</div>}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
