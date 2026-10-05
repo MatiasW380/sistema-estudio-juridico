@@ -633,13 +633,17 @@ export default function Home({
       })()}
 
       {!cargandoSAC && !errorSAC && (noCargadosSAC > 0 || cedulasNoCargadasSAC > 0) && (
-        <div style={{ marginTop: '24px', marginBottom: '-12px', fontSize: '0.8rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {noCargadosSAC > 0 && (
-            <div>ℹ️ {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.</div>
-          )}
-          {cedulasNoCargadasSAC > 0 && (
-            <div>ℹ️ {cedulasNoCargadasSAC} {cedulasNoCargadasSAC === 1 ? 'cédula de los últimos 3 días es de un expediente que no está cargado' : 'cédulas de los últimos 3 días son de expedientes que no están cargados'} en LexHub.</div>
-          )}
+        <div style={{ marginTop: '24px', marginBottom: '-12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', fontSize: '0.8rem', color: '#64748b' }}>
+          <div>
+            {noCargadosSAC > 0 && (
+              <>ℹ️ {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.</>
+            )}
+          </div>
+          <div>
+            {cedulasNoCargadasSAC > 0 && (
+              <>ℹ️ {cedulasNoCargadasSAC} {cedulasNoCargadasSAC === 1 ? 'cédula de los últimos 3 días es de un expediente que no está cargado' : 'cédulas de los últimos 3 días son de expedientes que no están cargados'} en LexHub.</>
+            )}
+          </div>
         </div>
       )}
 
