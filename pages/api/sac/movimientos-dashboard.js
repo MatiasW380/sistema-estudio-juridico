@@ -52,6 +52,15 @@ export default async function handler(req, res) {
       readSheet('Clientes_y_Expedientes'),
     ]);
 
+    if (!filasClientes || filasClientes.length < 2) {
+      return res.status(200).json({
+        success: false,
+        mensaje: 'No se pudo leer la hoja de expedientes de Google Sheets (error temporal). Recargá en un minuto.',
+        movimientos: [],
+        cedulas: [],
+      });
+    }
+
     const locales = new Map(); // numeroSAC -> caratula
     for (let i = 1; i < filasClientes.length; i++) {
       const numeroSAC = filasClientes[i][5];
