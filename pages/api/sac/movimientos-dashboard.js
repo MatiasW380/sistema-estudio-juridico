@@ -152,7 +152,10 @@ export default async function handler(req, res) {
     });
     cedulas.sort((a, b) => a.dias - b.dias);
 
-    return res.status(200).json({ success: true, movimientos, cedulas });
+    const fechasCed = (cedulasSAC || []).slice(0, 3).map((c) => c.fecha).join(', ');
+    const fechasOps = operacionesPorExpediente.map((o) => (o.operaciones || []).length);
+    const diagnosticoTexto = `SAC: ${expedientesSAC.length} exp. con novedades, ${coincidencias.length} en LexHub (de ${locales.size}); ${(cedulasSAC || []).length} cédulas (fechas: ${fechasCed || '-'}); operaciones por exp.: [${fechasOps.join(',')}]; hoy servidor: ${hoy.toISOString().slice(0, 10)}`;
+    return res.status(200).json({ success: true, movimientos, cedulas, diagnosticoTexto });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message, movimientos: [], cedulas: [] });
   }
