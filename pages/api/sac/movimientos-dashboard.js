@@ -154,7 +154,13 @@ export default async function handler(req, res) {
 
     // Expedientes con novedades en el SAC que todavía no están cargados en LexHub
     const noCargados = expedientesSAC.filter((e) => !locales.has(String(e.numeroExpediente).trim())).length;
-    return res.status(200).json({ success: true, movimientos, cedulas, noCargados });
+    // Cédulas de los últimos 3 días de expedientes que no están en LexHub
+    const cedulasNoCargadas = (cedulasSAC || []).filter((ced) => {
+      const numeroSAC = String(ced.numeroExpediente || '').trim();
+      return numeroSAC && !locales.has(numeroSAC) && diasYColor(ced.fecha, hoy);
+    }).length;
+
+    return res.status(200).json({ success: true, movimientos, cedulas, noCargados, cedulasNoCargadas });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message, movimientos: [], cedulas: [] });
   }

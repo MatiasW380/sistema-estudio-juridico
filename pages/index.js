@@ -161,6 +161,7 @@ export default function Home({
   const [cargandoSAC, setCargandoSAC] = useState(true);
   const [errorSAC, setErrorSAC] = useState('');
   const [noCargadosSAC, setNoCargadosSAC] = useState(0);
+  const [cedulasNoCargadasSAC, setCedulasNoCargadasSAC] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -191,6 +192,7 @@ export default function Home({
           setMovimientosSAC(data.movimientos || []);
           setCedulasSAC(data.cedulas || []);
           setNoCargadosSAC(data.noCargados || 0);
+          setCedulasNoCargadasSAC(data.cedulasNoCargadas || 0);
         } else {
           setErrorSAC(data.mensaje || 'No se pudo consultar el SAC');
         }
@@ -630,9 +632,14 @@ export default function Home({
         );
       })()}
 
-      {!cargandoSAC && !errorSAC && noCargadosSAC > 0 && (
-        <div style={{ marginTop: '24px', marginBottom: '-12px', fontSize: '0.8rem', color: '#64748b' }}>
-          ℹ️ {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.
+      {!cargandoSAC && !errorSAC && (noCargadosSAC > 0 || cedulasNoCargadasSAC > 0) && (
+        <div style={{ marginTop: '24px', marginBottom: '-12px', fontSize: '0.8rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {noCargadosSAC > 0 && (
+            <div>ℹ️ {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.</div>
+          )}
+          {cedulasNoCargadasSAC > 0 && (
+            <div>ℹ️ {cedulasNoCargadasSAC} {cedulasNoCargadasSAC === 1 ? 'cédula de los últimos 3 días es de un expediente que no está cargado' : 'cédulas de los últimos 3 días son de expedientes que no están cargados'} en LexHub.</div>
+          )}
         </div>
       )}
 
