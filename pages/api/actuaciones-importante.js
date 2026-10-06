@@ -56,11 +56,34 @@ export default async function handler(req, res) {
     if (colIdx === -1) {
       colIdx = headers.length;
       const rangoHeader = `Actuaciones!${letraColumna(colIdx)}1`;
-      const crear = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/${encodeURIComponent(rangoHeader)}?valueInputOption=RAW`,
-        { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [['Importante']] }) },
-      );
-      if (!crear.ok) return res.status(500).json({ error: 'No se pudo crear la columna "Importante"' });
+      const escribirHeader = () =>
+        fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/${encodeURIComponent(rangoHeader)}?valueInputOption=RAW`,
+          { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [['Importante']] }) },
+        );
+
+      let crear = await escribirHeader();
+      if (!crear.ok) {
+        // Lo más probable: la hoja no tiene una columna libre a la derecha.
+        // Se agrega una columna a la grilla y se reintenta.
+        const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}?fields=sheets.properties`, { headers: auth });
+        const meta = metaRes.ok ? await metaRes.json() : null;
+        const hoja = meta?.sheets?.find((h) => h.properties?.title === 'Actuaciones');
+        if (hoja) {
+          await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}:batchUpdate`, {
+            method: 'POST',
+            headers: { ...auth, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requests: [{ appendDimension: { sheetId: hoja.properties.sheetId, dimension: 'COLUMNS', length: 1 } }] }),
+          });
+          crear = await escribirHeader();
+        }
+      }
+      if (!crear.ok) {
+        const detalle = (await crear.text()).slice(0, 300);
+        return res.status(500).json({
+          error: `No se pudo crear la columna "Importante" (Google respondió ${crear.status}). Podés crearla a mano en la hoja Actuaciones, en la primera celda vacía del encabezado. Detalle: ${detalle}`,
+        });
+      }
     }
 
     const rango = `Actuaciones!${letraColumna(colIdx)}${filaIdx + 1}`;
