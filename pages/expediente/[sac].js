@@ -163,6 +163,7 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   const router = useRouter();
 
   // Estados para IA
+  const [soloImportantes, setSoloImportantes] = useState(false);
   const [mostrarMenuIA, setMostrarMenuIA] = useState(false);
   const [mostrarIA, setMostrarIA] = useState(false);
   const [accionIA, setAccionIA] = useState('');
@@ -440,6 +441,27 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // Los movimientos importados del SAC guardan un marcador interno
   // [SAC:idOperacion] al inicio del Contenido para no duplicarlos en
   // futuras sincronizaciones. No tiene por qué verse en pantalla.
+  // Marca/desmarca una actuación como importante (actualiza al instante y
+  // revierte si falla el guardado).
+  const toggleImportante = async (act) => {
+    const nuevo = act.Importante === 'SI' ? '' : 'SI';
+    const aplicar = (valor) =>
+      setActuaciones((prev) => prev.map((a) => (a.ID === act.ID && a.Numero_SAC === act.Numero_SAC ? { ...a, Importante: valor } : a)));
+    aplicar(nuevo);
+    try {
+      const response = await fetch('/api/actuaciones-importante', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: act.ID, numeroSAC: sac, importante: nuevo === 'SI' }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'No se pudo guardar');
+    } catch (error) {
+      aplicar(act.Importante || '');
+      setMensajeIA('❌ No se pudo marcar como importante: ' + error.message);
+    }
+  };
+
   const limpiarMarcadorSAC = (contenido) => (contenido || '').replace(/^\[SAC:[^\]]+\]\s*/, '');
 
   const getResumen = (contenido, maxChars = 200) => {
@@ -1500,12 +1522,35 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             )}
 
             {/* Feed de actuaciones */}
-            <h2>Historial de Actuaciones ({actuaciones.length})</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <h2 style={{ margin: 0 }}>Historial de Actuaciones ({soloImportantes ? `${actuaciones.filter((a) => a.Importante === 'SI').length} de ${actuaciones.length}` : actuaciones.length})</h2>
+              <button
+                onClick={() => setSoloImportantes(!soloImportantes)}
+                style={{
+                  height: 'auto',
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid #f59e0b',
+                  backgroundColor: soloImportantes ? '#f59e0b' : '#ffffff',
+                  color: soloImportantes ? '#ffffff' : '#b45309',
+                }}
+              >
+                {soloImportantes ? '★ Viendo solo importantes' : '☆ Ver solo importantes'}
+              </button>
+            </div>
+            {soloImportantes && actuaciones.filter((a) => a.Importante === 'SI').length === 0 && (
+              <p style={{ color: '#4a5568' }}>Todavía no marcaste ninguna actuación como importante. Usá el botón ☆ en cada una.</p>
+            )}
             {actuaciones.length === 0 ? (
               <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
             ) : (
               <div>
                 {actuaciones.map((act, index) => {
+                  if (soloImportantes && act.Importante !== 'SI') return null;
                   const resumen = getResumen(act.Contenido, 200);
                   const estaExpandido = expandidos[index] || false;
                   const tieneMas = limpiarMarcadorSAC(act.Contenido).length > 200;
@@ -1665,6 +1710,24 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                               </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleImportante(act); }}
+                                title={act.Importante === 'SI' ? 'Quitar de importantes' : 'Marcar como importante'}
+                                style={{
+                                  height: 'auto',
+                                  padding: '4px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  border: '1px solid #f59e0b',
+                                  backgroundColor: act.Importante === 'SI' ? '#f59e0b' : '#ffffff',
+                                  color: act.Importante === 'SI' ? '#ffffff' : '#b45309',
+                                }}
+                              >
+                                {act.Importante === 'SI' ? '★ Importante' : '☆ Importante'}
+                              </button>
                               {puedeEditarAct && (
                                 <>
                                   <button
