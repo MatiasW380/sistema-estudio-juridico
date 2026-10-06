@@ -3,7 +3,8 @@
 // Parámetros (GET): numeroSAC, email, soloImportantes=1 (opcional).
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { getClientes, getActuaciones } from '../../lib/googleSheets';
+import { getClientes, getActuaciones, getPerfilUsuario } from '../../lib/googleSheets';
+import { clasificarActuacion } from '../../lib/actuaciones';
 
 export const config = { maxDuration: 30 };
 
@@ -103,6 +104,13 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Expediente no encontrado' });
     }
 
+    let nombreUsuario = '';
+    try {
+      nombreUsuario = (await getPerfilUsuario(email))?.nombre || '';
+    } catch {
+      // sin nombre: no se distinguen las propias
+    }
+
     // Cronológico (la más antigua primero)
     let actuaciones = (await getActuaciones(numeroSAC)).slice().reverse();
     if (soloImportantes) {
@@ -169,8 +177,9 @@ export default async function handler(req, res) {
         const anchoFecha = fuente.widthOfTextAtSize(fecha, 12);
         page.drawText(fecha, { x: PAGE_WIDTH - MARGIN - anchoFecha, y: PAGE_HEIGHT - 56, size: 12, font: fuente, color: BLANCO });
         let yy = PAGE_HEIGHT - 78 - 24;
-        if (act.Origen && !continuacion) {
-          page.drawText(limpiar(`Origen: ${act.Origen}`), { x: MARGIN, y: yy, size: 9, font: fuente, color: GRIS });
+        if (!continuacion) {
+          const { etiqueta } = clasificarActuacion(act, nombreUsuario);
+          page.drawText(limpiar(`Presentado por: ${etiqueta}`), { x: MARGIN, y: yy, size: 9, font: fuente, color: GRIS });
           yy -= 22;
         }
         return yy;

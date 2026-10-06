@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { getActuaciones, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
+import { getActuaciones, getClientes, getPerfilUsuario, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
+import { clasificarActuacion, CATEGORIAS } from '../../lib/actuaciones';
 import EditorTexto from '../../components/EditorTexto';
 
 // Helper para obtener la fecha de hoy en formato YYYY-MM-DD (para inputs type=date) sin desfase UTC
@@ -77,9 +78,18 @@ export async function getServerSideProps(context) {
 
     const actuaciones = await getActuaciones(sac);
 
+    let nombreUsuario = '';
+    try {
+      const perfil = await getPerfilUsuario(userData.email);
+      nombreUsuario = perfil?.nombre || '';
+    } catch {
+      // sin nombre: las actuaciones propias del SAC no se podrán distinguir
+    }
+
     return {
       props: {
         sac,
+        nombreUsuario,
         expediente,
         cliente: {
           ID_Cliente: cliente.ID_Cliente,
@@ -151,7 +161,7 @@ const PlazoCard = ({ plazo, onClick, vencido, completado }) => {
   );
 };
 
-export default function ExpedientePage({ sac, expediente, cliente, actuaciones: actuacionesIniciales }) {
+export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente, actuaciones: actuacionesIniciales }) {
   const [actuaciones, setActuaciones] = useState(actuacionesIniciales || []);
   const [activeTab, setActiveTab] = useState('actuaciones');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -1600,6 +1610,13 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                 {soloImportantes ? '★ Viendo solo importantes' : '☆ Ver solo importantes'}
               </button>
             </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', fontSize: '0.75rem' }}>
+              {['yo', 'juzgado', 'contraparte', 'asesoria'].map((k) => (
+                <span key={k} style={{ backgroundColor: CATEGORIAS[k].fondo, border: `1px solid ${CATEGORIAS[k].borde}`, color: CATEGORIAS[k].texto, padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                  {CATEGORIAS[k].nombre}
+                </span>
+              ))}
+            </div>
             {soloImportantes && actuaciones.filter((a) => a.Importante === 'SI').length === 0 && (
               <p style={{ color: '#4a5568' }}>Todavía no marcaste ninguna actuación como importante. Usá el botón ☆ en cada una.</p>
             )}
@@ -1618,29 +1635,31 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                   const puedeEditarAct = esApertura || (esBorrador && esCreador);
                   const estaEditando = editando === index;
                   const tienePDF = act.Tiene_PDF === 'SI' && act.ID_PDF_Drive;
+                  const clasif = clasificarActuacion(act, nombreUsuario);
+                  const paleta = CATEGORIAS[clasif.categoria];
 
                   return (
                     <div
                       key={index}
                       style={{
-                        border: '1px solid #e2e8f0',
                         borderRadius: '8px',
                         padding: '15px',
                         marginBottom: '10px',
-                        backgroundColor: esBorrador ? '#fefcbf' : '#f7fafc',
-                        borderLeft: `4px solid ${getTipoColor(act.Tipo)}`,
+                        backgroundColor: esBorrador ? '#fefcbf' : paleta.fondo,
+                        border: `1px solid ${paleta.borde}`,
+                        borderLeft: `4px solid ${paleta.borde}`,
                         cursor: estaEditando ? 'default' : 'pointer',
                         transition: 'all 0.2s'
                       }}
                       onClick={() => !estaEditando && toggleExpandir(index)}
                       onMouseEnter={(e) => {
                         if (!estaEditando) {
-                          e.currentTarget.style.backgroundColor = esBorrador ? '#fde68a' : '#edf2f7';
+                          e.currentTarget.style.backgroundColor = esBorrador ? '#fde68a' : paleta.hover;
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!estaEditando) {
-                          e.currentTarget.style.backgroundColor = esBorrador ? '#fefcbf' : '#f7fafc';
+                          e.currentTarget.style.backgroundColor = esBorrador ? '#fefcbf' : paleta.fondo;
                         }
                       }}
                     >
@@ -1702,18 +1721,20 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                              <strong style={{ color: getTipoColor(act.Tipo) }}>
+                              <strong style={{ color: '#1a202c' }}>
                                 {act.Tipo || 'Actuación'}
                               </strong>
                               <span style={{ 
                                 marginLeft: '10px', 
-                                backgroundColor: getOrigenColor(act.Origen), 
-                                color: 'white', 
+                                backgroundColor: 'rgba(255,255,255,0.65)', 
+                                color: paleta.texto, 
+                                border: `1px solid ${paleta.borde}`,
                                 padding: '2px 10px', 
                                 borderRadius: '12px', 
-                                fontSize: '0.8rem' 
+                                fontSize: '0.8rem',
+                                fontWeight: 600
                               }}>
-                                {act.Origen || 'Sin origen'}
+                                {clasif.etiqueta}
                               </span>
                               {act.Presentado === 'SI' && (
                                 <span style={{ 
