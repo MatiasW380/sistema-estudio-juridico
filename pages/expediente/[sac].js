@@ -164,6 +164,8 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
 
   // Estados para IA
   const [soloImportantes, setSoloImportantes] = useState(false);
+  const [mostrarMenuPDF, setMostrarMenuPDF] = useState(false);
+  const [generandoPDF, setGenerandoPDF] = useState(false);
   const [mostrarMenuIA, setMostrarMenuIA] = useState(false);
   const [mostrarIA, setMostrarIA] = useState(false);
   const [accionIA, setAccionIA] = useState('');
@@ -441,6 +443,33 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
   // Los movimientos importados del SAC guardan un marcador interno
   // [SAC:idOperacion] al inicio del Contenido para no duplicarlos en
   // futuras sincronizaciones. No tiene por qué verse en pantalla.
+  // Descarga el PDF del expediente (completo o solo con las importantes)
+  const exportarPDF = async (soloImp) => {
+    setMostrarMenuPDF(false);
+    setGenerandoPDF(true);
+    try {
+      const url = `/api/exportar-pdf?numeroSAC=${encodeURIComponent(sac)}&email=${encodeURIComponent(sessionEmail)}${soloImp ? '&soloImportantes=1' : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        let detalle = '';
+        try { detalle = (await response.json()).error; } catch { /* sin detalle */ }
+        throw new Error(detalle || `error ${response.status}`);
+      }
+      const blob = await response.blob();
+      const enlace = document.createElement('a');
+      enlace.href = URL.createObjectURL(blob);
+      enlace.download = `expediente_${sac}${soloImp ? '_importantes' : ''}.pdf`;
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      setTimeout(() => URL.revokeObjectURL(enlace.href), 5000);
+    } catch (error) {
+      setMensajeIA('❌ No se pudo generar el PDF: ' + error.message);
+    } finally {
+      setGenerandoPDF(false);
+    }
+  };
+
   // Marca/desmarca una actuación como importante (actualiza al instante y
   // revierte si falla el guardado).
   const toggleImportante = async (act) => {
@@ -1273,13 +1302,42 @@ export default function ExpedientePage({ sac, expediente, cliente, actuaciones: 
             >
               Compartir
             </button>
-            <button
-              onClick={() => window.open(`/api/exportar-pdf?numeroSAC=${encodeURIComponent(sac)}&email=${encodeURIComponent(sessionEmail)}`, '_blank')}
-              className="button button-secondary button-sm"
-              title="Descargar un PDF con la carátula y el historial completo de actuaciones"
-            >
-              📄 Exportar PDF
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setMostrarMenuPDF(!mostrarMenuPDF)}
+                disabled={generandoPDF}
+                className="button button-secondary button-sm"
+                title="Descargar un PDF con carátula y una actuación por hoja"
+              >
+                {generandoPDF ? '⏳ Generando...' : '📄 PDF ▼'}
+              </button>
+              {mostrarMenuPDF && (
+                <div style={{
+                  position: 'absolute', top: '36px', right: '0', backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  zIndex: 100, minWidth: '210px'
+                }}>
+                  {[
+                    { label: 'Expediente completo', valor: false },
+                    { label: '★ Solo importantes', valor: true },
+                  ].map((op, idx) => (
+                    <button
+                      key={op.label}
+                      onClick={() => exportarPDF(op.valor)}
+                      style={{
+                        display: 'block', width: '100%', height: 'auto', padding: '8px 12px', textAlign: 'left',
+                        border: 'none', backgroundColor: 'transparent', color: '#2d3748', cursor: 'pointer',
+                        fontSize: '14px', fontWeight: '500', borderBottom: idx === 0 ? '1px solid #e2e8f0' : 'none'
+                      }}
+                      onMouseEnter={(e) => (e.target.style.backgroundColor = '#f8fafc')}
+                      onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Dropdown para Herramientas IA */}
             <div style={{ position: 'relative' }}>

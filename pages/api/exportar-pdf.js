@@ -1,52 +1,78 @@
 // pages/api/exportar-pdf.js
-// Genera un PDF con la carátula, datos del cliente y el historial completo de
-// actuaciones de un expediente. Pensado para enviarle un resumen al cliente o
-// armar el legajo físico.
+// Genera un PDF del expediente: carátula + una actuación por hoja.
+// Parámetros (GET): numeroSAC, email, soloImportantes=1 (opcional).
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { getClientes, getActuaciones } from '../../lib/googleSheets';
 
 export const config = { maxDuration: 30 };
 
-// --- Helpers de maquetado -------------------------------------------------
-
-const PAGE_WIDTH = 595.28; // A4 en puntos
+const PAGE_WIDTH = 595.28; // A4
 const PAGE_HEIGHT = 841.89;
-const MARGIN = 50;
+const MARGIN = 56;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const FOOTER_SPACE = 40;
+
+const AZUL = rgb(0.12, 0.25, 0.68);
+const AZUL_OSCURO = rgb(0.08, 0.16, 0.45);
+const TEXTO = rgb(0.1, 0.12, 0.16);
+const GRIS = rgb(0.4, 0.45, 0.5);
+const GRIS_CLARO = rgb(0.85, 0.87, 0.9);
+const BLANCO = rgb(1, 1, 1);
 
 function limpiarMarcadorSAC(contenido) {
   return (contenido || '').replace(/^\[SAC:[^\]]+\]\s*/, '');
 }
 
-// Separa un texto en líneas que entran en el ancho disponible, respetando
-// saltos de línea ya existentes.
-function envolverTexto(texto, font, size, maxWidth) {
-  const lineasFinales = [];
-  const parrafos = String(texto || '').split(/\r?\n/);
+// Helvetica estándar solo soporta un juego limitado de caracteres; cualquier
+// otro (emojis, símbolos raros) haría fallar el PDF, así que se reemplaza.
+function crearSanitizador(font) {
+  const soportados = new Set(font.getCharacterSet());
+  return (texto) => {
+    let out = '';
+    for (const ch of String(texto || '').replace(/\t/g, '    ').replace(/\r/g, '')) {
+      if (ch === '\n') out += ch;
+      else if (soportados.has(ch.codePointAt(0))) out += ch;
+      else if (ch === ' ') out += ' ';
+      else out += '?';
+    }
+    return out;
+  };
+}
 
-  for (const parrafo of parrafos) {
+function envolverTexto(texto, font, size, maxWidth) {
+  const lineas = [];
+  for (const parrafo of String(texto || '').split('\n')) {
     if (parrafo.trim() === '') {
-      lineasFinales.push('');
+      lineas.push('');
       continue;
     }
-    const palabras = parrafo.split(/\s+/).filter(Boolean);
-    let lineaActual = '';
-
-    for (const palabra of palabras) {
-      const candidata = lineaActual ? `${lineaActual} ${palabra}` : palabra;
-      const ancho = font.widthOfTextAtSize(candidata, size);
-      if (ancho > maxWidth && lineaActual) {
-        lineasFinales.push(lineaActual);
-        lineaActual = palabra;
-      } else {
-        lineaActual = candidata;
+    let actual = '';
+    for (const palabra of parrafo.split(/ +/).filter(Boolean)) {
+      let candidata = actual ? `${actual} ${palabra}` : palabra;
+      if (font.widthOfTextAtSize(candidata, size) <= maxWidth) {
+        actual = candidata;
+        continue;
       }
+      if (actual) lineas.push(actual);
+      // palabra más larga que la línea: se corta
+      let resto = palabra;
+      while (font.widthOfTextAtSize(resto, size) > maxWidth) {
+        let corte = resto.length - 1;
+        while (corte > 1 && font.widthOfTextAtSize(resto.slice(0, corte), size) > maxWidth) corte -= 1;
+        lineas.push(resto.slice(0, corte));
+        resto = resto.slice(corte);
+      }
+      actual = resto;
     }
-    if (lineaActual) lineasFinales.push(lineaActual);
+    if (actual) lineas.push(actual);
   }
+  return lineas;
+}
 
-  return lineasFinales;
+function centrado(page, texto, y, font, size, color) {
+  const ancho = font.widthOfTextAtSize(texto, size);
+  page.drawText(texto, { x: (PAGE_WIDTH - ancho) / 2, y, size, font, color });
 }
 
 export default async function handler(req, res) {
@@ -56,16 +82,15 @@ export default async function handler(req, res) {
 
   try {
     const { numeroSAC, email } = req.query;
+    const soloImportantes = req.query.soloImportantes === '1';
 
     if (!numeroSAC || !email) {
       return res.status(400).json({ error: 'numeroSAC y email son obligatorios' });
     }
 
-    // 1. Ubicar el cliente/expediente (igual que getServerSideProps de la ficha)
     const clientes = await getClientes(email);
     let expediente = null;
     let cliente = null;
-
     for (const c of clientes) {
       const exp = c.expedientes?.find((e) => e.Numero_SAC === numeroSAC);
       if (exp) {
@@ -74,113 +99,114 @@ export default async function handler(req, res) {
         break;
       }
     }
-
     if (!expediente || !cliente) {
       return res.status(404).json({ error: 'Expediente no encontrado' });
     }
 
-    // 2. Actuaciones en orden cronológico (más antigua primero)
-    const actuaciones = (await getActuaciones(numeroSAC)).slice().reverse();
+    // Cronológico (la más antigua primero)
+    let actuaciones = (await getActuaciones(numeroSAC)).slice().reverse();
+    if (soloImportantes) {
+      actuaciones = actuaciones.filter((a) => a.Importante === 'SI');
+      if (actuaciones.length === 0) {
+        return res.status(404).json({ error: 'No hay actuaciones marcadas como importantes en este expediente' });
+      }
+    }
 
-    // 3. Armar el PDF
     const pdfDoc = await PDFDocument.create();
     const fuente = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fuenteNegrita = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const negrita = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const limpiar = crearSanitizador(fuente);
 
-    let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    let y = PAGE_HEIGHT - MARGIN;
+    // ---------------- CARÁTULA ----------------
+    const portada = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    portada.drawRectangle({ x: 0, y: PAGE_HEIGHT - 190, width: PAGE_WIDTH, height: 190, color: AZUL });
+    centrado(portada, 'LEXHUB', PAGE_HEIGHT - 70, negrita, 14, rgb(0.8, 0.86, 1));
+    centrado(portada, 'EXPEDIENTE', PAGE_HEIGHT - 120, negrita, 30, BLANCO);
+    centrado(portada, limpiar(`N° ${numeroSAC}`), PAGE_HEIGHT - 158, fuente, 18, BLANCO);
 
-    const colorTexto = rgb(0.1, 0.12, 0.16);
-    const colorGris = rgb(0.4, 0.45, 0.5);
-    const colorAzul = rgb(0.12, 0.25, 0.68);
-
-    function nuevaPagina() {
-      page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      y = PAGE_HEIGHT - MARGIN;
+    let y = PAGE_HEIGHT - 260;
+    const lineasCaratula = envolverTexto(limpiar(expediente.Caratula || 'Carátula no registrada'), negrita, 20, CONTENT_WIDTH - 20);
+    for (const l of lineasCaratula) {
+      centrado(portada, l, y, negrita, 20, AZUL_OSCURO);
+      y -= 28;
     }
+    y -= 20;
+    portada.drawLine({ start: { x: PAGE_WIDTH / 2 - 60, y }, end: { x: PAGE_WIDTH / 2 + 60, y }, thickness: 1.5, color: AZUL });
+    y -= 40;
 
-    function asegurarEspacio(alturaNecesaria) {
-      if (y - alturaNecesaria < MARGIN) {
-        nuevaPagina();
+    const datos = [
+      ['Cliente', cliente.Nombre_Cliente],
+      ['Juzgado / Dependencia', expediente.Juzgado],
+      ['Fuero', expediente.Fuero],
+    ].filter(([, v]) => v);
+    for (const [etiqueta, valor] of datos) {
+      centrado(portada, etiqueta.toUpperCase(), y, negrita, 9, GRIS);
+      y -= 16;
+      for (const l of envolverTexto(limpiar(valor), fuente, 13, CONTENT_WIDTH - 40)) {
+        centrado(portada, l, y, fuente, 13, TEXTO);
+        y -= 18;
       }
-    }
-
-    function escribirLinea(texto, { size = 10, font = fuente, color = colorTexto, gap = 4 } = {}) {
-      asegurarEspacio(size + gap);
-      page.drawText(texto, { x: MARGIN, y, size, font, color });
-      y -= size + gap;
-    }
-
-    function escribirParrafo(texto, { size = 10, font = fuente, color = colorTexto, lineGap = 4, paragraphGap = 8 } = {}) {
-      const lineas = envolverTexto(texto, font, size, CONTENT_WIDTH);
-      for (const linea of lineas) {
-        asegurarEspacio(size + lineGap);
-        if (linea) {
-          page.drawText(linea, { x: MARGIN, y, size, font, color });
-        }
-        y -= size + lineGap;
-      }
-      y -= paragraphGap - lineGap;
-    }
-
-    function lineaSeparadora() {
-      asegurarEspacio(12);
-      page.drawLine({
-        start: { x: MARGIN, y },
-        end: { x: PAGE_WIDTH - MARGIN, y },
-        thickness: 0.5,
-        color: rgb(0.85, 0.87, 0.9),
-      });
       y -= 14;
     }
 
-    // --- Encabezado ---
-    escribirLinea(`Expediente ${numeroSAC}`, { size: 18, font: fuenteNegrita, color: colorAzul, gap: 10 });
-    escribirParrafo(expediente.Caratula || 'Carátula no registrada', { size: 12, font: fuenteNegrita, paragraphGap: 10 });
+    const fechaGen = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Argentina/Cordoba' });
+    centrado(portada, soloImportantes ? 'RESUMEN DE ACTUACIONES IMPORTANTES' : 'HISTORIAL COMPLETO DE ACTUACIONES', 150, negrita, 11, AZUL);
+    centrado(portada, `${actuaciones.length} ${actuaciones.length === 1 ? 'actuación' : 'actuaciones'}  ·  Generado el ${fechaGen}`, 130, fuente, 10, GRIS);
 
-    escribirLinea(`Cliente: ${cliente.Nombre_Cliente || '-'}`, { size: 10, color: colorGris });
-    if (expediente.Juzgado) {
-      escribirLinea(`Juzgado/Dependencia: ${expediente.Juzgado}`, { size: 10, color: colorGris });
-    }
-    if (expediente.Fuero) {
-      escribirLinea(`Fuero: ${expediente.Fuero}`, { size: 10, color: colorGris });
-    }
-    const fechaGeneracion = new Date().toLocaleDateString('es-AR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-    });
-    escribirLinea(`Documento generado el ${fechaGeneracion}`, { size: 9, color: colorGris, gap: 14 });
+    // ---------------- UNA ACTUACIÓN POR HOJA ----------------
+    const total = actuaciones.length;
+    actuaciones.forEach((act, i) => {
+      let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      let continuacion = false;
 
-    lineaSeparadora();
+      const dibujarEncabezado = () => {
+        page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 78, width: PAGE_WIDTH, height: 78, color: AZUL });
+        page.drawText(`ACTUACIÓN ${i + 1} DE ${total}${continuacion ? '  (continuación)' : ''}`, {
+          x: MARGIN, y: PAGE_HEIGHT - 32, size: 9, font: negrita, color: rgb(0.8, 0.86, 1),
+        });
+        page.drawText(limpiar(act.Tipo || 'Sin tipo'), { x: MARGIN, y: PAGE_HEIGHT - 56, size: 18, font: negrita, color: BLANCO });
+        const fecha = limpiar(act.Fecha || 'Sin fecha');
+        const anchoFecha = fuente.widthOfTextAtSize(fecha, 12);
+        page.drawText(fecha, { x: PAGE_WIDTH - MARGIN - anchoFecha, y: PAGE_HEIGHT - 56, size: 12, font: fuente, color: BLANCO });
+        let yy = PAGE_HEIGHT - 78 - 24;
+        if (act.Origen && !continuacion) {
+          page.drawText(limpiar(`Origen: ${act.Origen}`), { x: MARGIN, y: yy, size: 9, font: fuente, color: GRIS });
+          yy -= 22;
+        }
+        return yy;
+      };
 
-    escribirLinea(`Historial de Actuaciones (${actuaciones.length})`, { size: 13, font: fuenteNegrita, color: colorTexto, gap: 12 });
+      let yy = dibujarEncabezado();
+      const contenido = limpiar(limpiarMarcadorSAC(act.Contenido).trim()) || '(sin contenido)';
+      const size = 10.5;
+      const interlineado = 15;
 
-    if (actuaciones.length === 0) {
-      escribirParrafo('No hay actuaciones registradas para este expediente.', { size: 10, color: colorGris });
-    }
-
-    // --- Cada actuación ---
-    for (const act of actuaciones) {
-      asegurarEspacio(40);
-
-      const encabezadoActuacion = `${act.Fecha || 'Sin fecha'}  —  ${act.Tipo || 'Sin tipo'}`;
-      escribirLinea(encabezadoActuacion, { size: 10.5, font: fuenteNegrita, color: colorAzul, gap: 4 });
-
-      if (act.Origen) {
-        escribirLinea(`Origen: ${act.Origen}`, { size: 8.5, color: colorGris, gap: 6 });
+      for (const linea of envolverTexto(contenido, fuente, size, CONTENT_WIDTH)) {
+        if (yy < MARGIN + FOOTER_SPACE) {
+          page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+          continuacion = true;
+          yy = dibujarEncabezado();
+        }
+        if (linea) page.drawText(linea, { x: MARGIN, y: yy, size, font: fuente, color: TEXTO });
+        yy -= interlineado;
       }
+    });
 
-      const contenido = limpiarMarcadorSAC(act.Contenido) || '(sin contenido)';
-      escribirParrafo(contenido, { size: 9.5, lineGap: 3, paragraphGap: 14 });
+    // ---------------- PIE DE PÁGINA ----------------
+    const paginas = pdfDoc.getPages();
+    paginas.forEach((p, idx) => {
+      if (idx === 0) return; // la carátula va sin pie
+      p.drawLine({ start: { x: MARGIN, y: 42 }, end: { x: PAGE_WIDTH - MARGIN, y: 42 }, thickness: 0.5, color: GRIS_CLARO });
+      p.drawText(limpiar(`Expediente ${numeroSAC}`), { x: MARGIN, y: 28, size: 8, font: fuente, color: GRIS });
+      const num = `Página ${idx + 1} de ${paginas.length}`;
+      p.drawText(num, { x: PAGE_WIDTH - MARGIN - fuente.widthOfTextAtSize(num, 8), y: 28, size: 8, font: fuente, color: GRIS });
+    });
 
-      lineaSeparadora();
-    }
-
-    const pdfBytes = await pdfDoc.save();
-
-    const nombreArchivo = `expediente_${numeroSAC}.pdf`;
+    const bytes = await pdfDoc.save();
+    const sufijo = soloImportantes ? '_importantes' : '';
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
-    res.send(Buffer.from(pdfBytes));
+    res.setHeader('Content-Disposition', `attachment; filename="expediente_${numeroSAC}${sufijo}.pdf"`);
+    res.send(Buffer.from(bytes));
   } catch (error) {
     console.error('❌ Error en /api/exportar-pdf:', error);
     return res.status(500).json({ error: error.message || 'Error interno' });
