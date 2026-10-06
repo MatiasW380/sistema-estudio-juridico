@@ -55,8 +55,8 @@ export default async function handler(req, res) {
 
     // Actuaciones: primero las marcadas como importantes, luego las más
     // recientes, hasta llenar el presupuesto; se entregan en orden cronológico.
-    const PRESUPUESTO_ACTUACIONES = 120000;
-    const MAX_POR_ACTUACION = 6000;
+    const PRESUPUESTO_ACTUACIONES = 60000;
+    const MAX_POR_ACTUACION = 5000;
     const porPrioridad = actuaciones
       .map((a, i) => ({ a, i }))
       .sort((x, y) => (y.a.Importante === 'SI') - (x.a.Importante === 'SI') || x.i - y.i); // getActuaciones ya viene de más nueva a más vieja
@@ -73,10 +73,10 @@ export default async function handler(req, res) {
 
     const contexto = {
       actuaciones: (omitidas > 0 ? `(Nota: se omitieron ${omitidas} actuaciones antiguas o menos relevantes por límite de tamaño.)\n` : '') + elegidas.map((e) => e.linea).join('\n'),
-      consultas: recortar(consultas.map(c => `[${c.Fecha}] ${c.Abogado_Atendio}: ${c.Notas_Consulta}`).join('\n'), 20000),
-      modelos: recortar(modelos.map(m => `Modelo: ${m.Nombre} (${m.Fuero})\n${m.Contenido}`).join('\n\n'), 30000),
-      leyes: recortar(leyes.map(l => `Ley ${l.Numero} (${l.Jurisdiccion}): ${l.Texto}`).join('\n'), 50000),
-      jurisprudencia: recortar(jurisprudencia.map(j => `[${j.Tema} - ${j.Subtema}] ${j.Juzgado}: ${j.Cita}`).join('\n'), 50000),
+      consultas: recortar(consultas.map(c => `[${c.Fecha}] ${c.Abogado_Atendio}: ${c.Notas_Consulta}`).join('\n'), 10000),
+      modelos: recortar(modelos.map(m => `Modelo: ${m.Nombre} (${m.Fuero})\n${m.Contenido}`).join('\n\n'), 10000),
+      leyes: recortar(leyes.map(l => `Ley ${l.Numero} (${l.Jurisdiccion}): ${l.Texto}`).join('\n'), 25000),
+      jurisprudencia: recortar(jurisprudencia.map(j => `[${j.Tema} - ${j.Subtema}] ${j.Juzgado}: ${j.Cita}`).join('\n'), 25000),
     };
 
     // 3. Construir prompt según la acción
