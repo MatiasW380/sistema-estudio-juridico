@@ -1,6 +1,7 @@
 // pages/api/ia.js
 // API para generar resúmenes, análisis de sentencias y estrategias con Gemini
 
+import { llamarGemini } from '../../lib/gemini';
 import { getActuaciones, getConsultas, getModelos, getLeyes, getJurisprudencia } from '../../lib/googleSheets';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -47,12 +48,35 @@ export default async function handler(req, res) {
     console.log('  Jurisprudencia:', jurisprudencia.length);
 
     // 2. Construir el contexto
+    // Se limita el tamaño de cada bloque: con la sincronización del SAC un
+    // expediente puede acumular cientos de actuaciones largas, y enviar todo
+    // junto supera el límite de tokens por minuto de Gemini (error 429).
+    const recortar = (texto, max) => (texto && texto.length > max ? texto.slice(0, max) + '…[recortado]' : texto || '');
+
+    // Actuaciones: primero las marcadas como importantes, luego las más
+    // recientes, hasta llenar el presupuesto; se entregan en orden cronológico.
+    const PRESUPUESTO_ACTUACIONES = 120000;
+    const MAX_POR_ACTUACION = 6000;
+    const porPrioridad = actuaciones
+      .map((a, i) => ({ a, i }))
+      .sort((x, y) => (y.a.Importante === 'SI') - (x.a.Importante === 'SI') || x.i - y.i); // getActuaciones ya viene de más nueva a más vieja
+    const elegidas = [];
+    let usados = 0;
+    for (const { a, i } of porPrioridad) {
+      const linea = `[${a.Fecha}] ${a.Tipo} - ${a.Origen}: ${recortar(a.Contenido, MAX_POR_ACTUACION)}`;
+      if (usados + linea.length > PRESUPUESTO_ACTUACIONES) continue;
+      usados += linea.length;
+      elegidas.push({ i, linea });
+    }
+    elegidas.sort((x, y) => y.i - x.i); // cronológico: más antigua primero
+    const omitidas = actuaciones.length - elegidas.length;
+
     const contexto = {
-      actuaciones: actuaciones.map(a => `[${a.Fecha}] ${a.Tipo} - ${a.Origen}: ${a.Contenido}`).join('\n'),
-      consultas: consultas.map(c => `[${c.Fecha}] ${c.Abogado_Atendio}: ${c.Notas_Consulta}`).join('\n'),
-      modelos: modelos.map(m => `Modelo: ${m.Nombre} (${m.Fuero})\n${m.Contenido}`).join('\n\n'),
-      leyes: leyes.map(l => `Ley ${l.Numero} (${l.Jurisdiccion}): ${l.Texto}`).join('\n'),
-      jurisprudencia: jurisprudencia.map(j => `[${j.Tema} - ${j.Subtema}] ${j.Juzgado}: ${j.Cita}`).join('\n'),
+      actuaciones: (omitidas > 0 ? `(Nota: se omitieron ${omitidas} actuaciones antiguas o menos relevantes por límite de tamaño.)\n` : '') + elegidas.map((e) => e.linea).join('\n'),
+      consultas: recortar(consultas.map(c => `[${c.Fecha}] ${c.Abogado_Atendio}: ${c.Notas_Consulta}`).join('\n'), 20000),
+      modelos: recortar(modelos.map(m => `Modelo: ${m.Nombre} (${m.Fuero})\n${m.Contenido}`).join('\n\n'), 30000),
+      leyes: recortar(leyes.map(l => `Ley ${l.Numero} (${l.Jurisdiccion}): ${l.Texto}`).join('\n'), 50000),
+      jurisprudencia: recortar(jurisprudencia.map(j => `[${j.Tema} - ${j.Subtema}] ${j.Juzgado}: ${j.Cita}`).join('\n'), 50000),
     };
 
     // 3. Construir prompt según la acción
@@ -195,36 +219,11 @@ El tono debe ser técnico y formal, como el de un abogado experimentado de Córd
     console.log('📤 Enviando prompt a Gemini...');
     console.log('📤 Longitud del prompt:', prompt.length);
 
-    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 16384,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error en Gemini:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return res.status(429).json({ 
-          error: 'Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.' 
-        });
-      }
-      
-      return res.status(response.status).json({ 
-        error: `Error en Gemini: ${response.status}`,
-        details: errorText 
-      });
+    const gemini = await llamarGemini(prompt, GEMINI_API_KEY);
+    if (!gemini.ok) {
+      return res.status(gemini.status || 500).json({ error: gemini.error });
     }
-
-    const data = await response.json();
-    const resultado = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar respuesta.';
+    const resultado = gemini.texto;
 
     console.log('✅ Gemini respondió exitosamente. Longitud:', resultado.length);
 

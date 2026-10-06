@@ -1,6 +1,7 @@
 // pages/api/ia-general.js
 // API para consultas generales de IA usando la biblioteca del sistema
 
+import { llamarGemini } from '../../lib/gemini';
 import { getLeyes, getJurisprudencia, getModelos } from '../../lib/googleSheets';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -84,36 +85,11 @@ RESPUESTA (basada exclusivamente en la biblioteca del sistema):
     console.log('📤 Enviando consulta a Gemini...');
     console.log('📤 Longitud del prompt:', prompt.length);
 
-    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 16384,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error en Gemini:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return res.status(429).json({ 
-          error: 'Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.' 
-        });
-      }
-      
-      return res.status(response.status).json({ 
-        error: `Error en Gemini: ${response.status}`,
-        details: errorText 
-      });
+    const gemini = await llamarGemini(prompt, GEMINI_API_KEY);
+    if (!gemini.ok) {
+      return res.status(gemini.status || 500).json({ error: gemini.error });
     }
-
-    const data = await response.json();
-    const resultado = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar respuesta.';
+    const resultado = gemini.texto;
 
     console.log('✅ Gemini respondió exitosamente. Longitud:', resultado.length);
 
