@@ -14,12 +14,32 @@ import {
   limpiarHtmlOperacion,
   resolverCredencialesSAC,
 } from '../../../lib/sac';
-import { readSheet, appendToSheet } from '../../../lib/googleSheets';
+import { readSheet, appendToSheet, actualizarCeldas } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 60 };
 
 function marcarContenido(idOperacion, texto) {
   return `[SAC:${idOperacion}] ${texto}`;
+}
+
+// Los escritos (presentados por una parte) guardan "Presentado por: NOMBRE"
+// al comienzo del texto; sirve para saber de quién es cada uno. Los decretos,
+// autos y demás emitidos por el juzgado no llevan esa línea.
+function lineaPresentante(op) {
+  if (!op?.esEscrito) return '';
+  const nombre = String(op.presentadoPor || '').replace(/^\s*presentado por:\s*/i, '').trim();
+  return nombre ? `Presentado por: ${nombre}\n` : '';
+}
+
+function letraColumna(indice) {
+  let n = indice + 1;
+  let letras = '';
+  while (n > 0) {
+    const resto = (n - 1) % 26;
+    letras = String.fromCharCode(65 + resto) + letras;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letras;
 }
 
 function extraerIdOperacion(contenido) {
@@ -158,7 +178,7 @@ export default async function handler(req, res) {
         }
 
         const notificacion = formatearNotificacion(masDatosPorIdOperacion.get(op.idOperacion));
-        const contenido = marcarContenido(op.idOperacion, textoReal + notificacion);
+        const contenido = marcarContenido(op.idOperacion, lineaPresentante(op) + textoReal + notificacion);
 
         filasNuevas.push([
           String(siguienteId++),
@@ -186,11 +206,34 @@ export default async function handler(req, res) {
       }
     }
 
+    // 6) Completar "Presentado por" en escritos que ya estaban cargados sin esa línea.
+    const opPorId = new Map();
+    porExpediente.forEach((p) => p.operaciones.forEach((op) => opPorId.set(op.idOperacion, op)));
+    const actualizaciones = [];
+    for (let i = 1; i < filasActuaciones.length; i++) {
+      const contenidoActual = filasActuaciones[i][idxContenido] || '';
+      const idOp = extraerIdOperacion(contenidoActual);
+      const op = idOp ? opPorId.get(idOp) : null;
+      if (!op) continue;
+      const linea = lineaPresentante(op);
+      if (!linea) continue;
+      const resto = contenidoActual.replace(/^\[SAC:[^\]]+\]\s*/, '');
+      if (/^\s*presentado por:/i.test(resto)) continue;
+      actualizaciones.push({
+        rango: `Actuaciones!${letraColumna(idxContenido)}${i + 1}`,
+        valor: marcarContenido(idOp, linea + resto),
+      });
+    }
+    const presentantesCompletados = (await actualizarCeldas(actualizaciones)) ? actualizaciones.length : 0;
+
     if (filasNuevas.length > 0) {
       await appendToSheet('Actuaciones', filasNuevas);
     }
 
     const partesMensaje = [`Se agregaron ${filasNuevas.length} movimiento(s) nuevo(s) a LexHub.`];
+    if (presentantesCompletados > 0) {
+      partesMensaje.push(`Se completó quién presentó en ${presentantesCompletados} escrito(s) ya cargados.`);
+    }
     if (omitidosSinTexto.total > 0) {
       partesMensaje.push(`${omitidosSinTexto.total} se omitieron por no tener texto (operaciones administrativas).`);
     }
