@@ -174,6 +174,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
 
   // Estados para IA
   const [soloImportantes, setSoloImportantes] = useState(false);
+  const [masViejasPrimero, setMasViejasPrimero] = useState(false);
   const [mostrarMenuPDF, setMostrarMenuPDF] = useState(false);
   const [sincronizandoSAC, setSincronizandoSAC] = useState(false);
   const [generandoPDF, setGenerandoPDF] = useState(false);
@@ -1651,6 +1652,24 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
               <h2 style={{ margin: 0 }}>Historial de Actuaciones ({soloImportantes ? `${actuaciones.filter((a) => a.Importante === 'SI').length} de ${actuaciones.length}` : actuaciones.length})</h2>
               <button
+                onClick={() => setMasViejasPrimero(!masViejasPrimero)}
+                title="Cambiar el orden del historial"
+                style={{
+                  height: 'auto',
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid #94a3b8',
+                  backgroundColor: '#ffffff',
+                  color: '#334155',
+                }}
+              >
+                {masViejasPrimero ? '↑ Más antiguas primero' : '↓ Más recientes primero'}
+              </button>
+              <button
                 onClick={() => setSoloImportantes(!soloImportantes)}
                 style={{
                   height: 'auto',
@@ -1668,13 +1687,6 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                 {soloImportantes ? '★ Viendo solo importantes' : '☆ Ver solo importantes'}
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', fontSize: '0.75rem' }}>
-              {['yo', 'juzgado', 'contraparte', 'asesoria', 'perito', 'oficio'].map((k) => (
-                <span key={k} style={{ backgroundColor: CATEGORIAS[k].fondo, border: `1px solid ${CATEGORIAS[k].borde}`, color: CATEGORIAS[k].texto, padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>
-                  {CATEGORIAS[k].nombre}
-                </span>
-              ))}
-            </div>
             {soloImportantes && actuaciones.filter((a) => a.Importante === 'SI').length === 0 && (
               <p style={{ color: '#4a5568' }}>Todavía no marcaste ninguna actuación como importante. Usá el botón ☆ en cada una.</p>
             )}
@@ -1682,7 +1694,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
               <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
             ) : (
               <div>
-                {actuaciones.map((act, index) => {
+                {(masViejasPrimero ? [...actuaciones].map((act, index) => ({ act, index })).reverse() : actuaciones.map((act, index) => ({ act, index }))).map(({ act, index }) => {
                   if (soloImportantes && act.Importante !== 'SI') return null;
                   const resumen = getResumen(act.Contenido, 200);
                   const estaExpandido = expandidos[index] || false;
