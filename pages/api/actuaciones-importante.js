@@ -24,6 +24,18 @@ export default async function handler(req, res) {
   }
 
   const { id, numeroSAC, importante } = req.body || {};
+  // Campo a escribir: por defecto "Importante" (SI / vacío); también "Categoria_Manual"
+  // (yo / juzgado / contraparte / asesoria / vacío = automático).
+  const CAMPOS = ['Importante', 'Categoria_Manual'];
+  const campo = req.body?.campo || 'Importante';
+  if (!CAMPOS.includes(campo)) return res.status(400).json({ error: 'Campo no permitido' });
+  const CATEGORIAS_OK = ['', 'yo', 'juzgado', 'contraparte', 'asesoria'];
+  let valor;
+  if (campo === 'Importante') valor = importante ? 'SI' : '';
+  else {
+    valor = String(req.body?.valor || '');
+    if (!CATEGORIAS_OK.includes(valor)) return res.status(400).json({ error: 'Valor no permitido' });
+  }
   if (!id || !numeroSAC) {
     return res.status(400).json({ error: 'id y numeroSAC son obligatorios' });
   }
@@ -52,14 +64,14 @@ export default async function handler(req, res) {
     }
     if (filaIdx === -1) return res.status(404).json({ error: 'Actuación no encontrada' });
 
-    let colIdx = headers.indexOf('Importante');
+    let colIdx = headers.indexOf(campo);
     if (colIdx === -1) {
       colIdx = headers.length;
       const rangoHeader = `Actuaciones!${letraColumna(colIdx)}1`;
       const escribirHeader = () =>
         fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/${encodeURIComponent(rangoHeader)}?valueInputOption=RAW`,
-          { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [['Importante']] }) },
+          { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [[campo]] }) },
         );
 
       let crear = await escribirHeader();
@@ -81,7 +93,7 @@ export default async function handler(req, res) {
       if (!crear.ok) {
         const detalle = (await crear.text()).slice(0, 300);
         return res.status(500).json({
-          error: `No se pudo crear la columna "Importante" (Google respondió ${crear.status}). Podés crearla a mano en la hoja Actuaciones, en la primera celda vacía del encabezado. Detalle: ${detalle}`,
+          error: `No se pudo crear la columna "${campo}" (Google respondió ${crear.status}). Podés crearla a mano en la hoja Actuaciones, en la primera celda vacía del encabezado. Detalle: ${detalle}`,
         });
       }
     }
@@ -89,7 +101,7 @@ export default async function handler(req, res) {
     const rango = `Actuaciones!${letraColumna(colIdx)}${filaIdx + 1}`;
     const guardar = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/${encodeURIComponent(rango)}?valueInputOption=RAW`,
-      { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [[importante ? 'SI' : '']] }) },
+      { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [[valor]] }) },
     );
     if (!guardar.ok) return res.status(500).json({ error: 'No se pudo guardar el cambio' });
 

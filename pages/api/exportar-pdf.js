@@ -5,6 +5,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { getClientes, getActuaciones, getPerfilUsuario } from '../../lib/googleSheets';
 import { clasificarActuacion } from '../../lib/actuaciones';
+import { formatearFechaArgentina } from '../../lib/googleSheets';
 
 export const config = { maxDuration: 30 };
 
@@ -169,21 +170,16 @@ export default async function handler(req, res) {
       let continuacion = false;
 
       const dibujarEncabezado = () => {
-        page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 44, width: PAGE_WIDTH, height: 44, color: FONDO_TENUE });
+        const alto = 56;
+        page.drawRectangle({ x: 0, y: PAGE_HEIGHT - alto, width: PAGE_WIDTH, height: alto, color: FONDO_TENUE });
         page.drawText(`ACTUACIÓN ${i + 1} DE ${total}${continuacion ? '  (continuación)' : ''}`, {
-          x: MARGIN, y: PAGE_HEIGHT - 17, size: 7.5, font: negrita, color: GRIS,
+          x: MARGIN, y: PAGE_HEIGHT - 15, size: 7.5, font: negrita, color: GRIS,
         });
-        page.drawText(limpiar(act.Tipo || 'Sin tipo'), { x: MARGIN, y: PAGE_HEIGHT - 35, size: 13, font: negrita, color: TEXTO });
-        const fecha = limpiar(act.Fecha || 'Sin fecha');
-        const anchoFecha = fuente.widthOfTextAtSize(fecha, 10);
-        page.drawText(fecha, { x: PAGE_WIDTH - MARGIN - anchoFecha, y: PAGE_HEIGHT - 35, size: 10, font: fuente, color: TEXTO });
-        let yy = PAGE_HEIGHT - 44 - 22;
-        if (!continuacion) {
-          const { etiqueta } = clasificarActuacion(act, nombreUsuario);
-          page.drawText(limpiar(`Presentado por: ${etiqueta}`), { x: MARGIN, y: yy, size: 9, font: fuente, color: GRIS });
-          yy -= 22;
-        }
-        return yy;
+        const fecha = limpiar(formatearFechaArgentina(act.Fecha) || 'Sin fecha');
+        page.drawText(limpiar(act.Tipo || 'Sin tipo'), { x: MARGIN, y: PAGE_HEIGHT - 32, size: 13, font: negrita, color: TEXTO });
+        const { etiqueta } = clasificarActuacion(act, nombreUsuario);
+        page.drawText(limpiar(`Presentado por: ${etiqueta}   el: ${fecha}`), { x: MARGIN, y: PAGE_HEIGHT - 47, size: 9, font: fuente, color: GRIS });
+        return PAGE_HEIGHT - alto - 22;
       };
 
       let yy = dibujarEncabezado();

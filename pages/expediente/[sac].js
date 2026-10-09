@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { getActuaciones, getClientes, getPerfilUsuario, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
-import { clasificarActuacion, CATEGORIAS } from '../../lib/actuaciones';
+import { clasificarActuacion, CATEGORIAS, OPCIONES_PRESENTANTE } from '../../lib/actuaciones';
 import EditorTexto from '../../components/EditorTexto';
 
 // Helper para obtener la fecha de hoy en formato YYYY-MM-DD (para inputs type=date) sin desfase UTC
@@ -528,6 +528,26 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
     } catch (error) {
       aplicar(act.Importante || '');
       setMensajeIA('❌ No se pudo marcar como importante: ' + error.message);
+    }
+  };
+
+  // Corrige a mano quién presentó la actuación (solo cambia lo que muestra LexHub).
+  const cambiarPresentante = async (act, valor) => {
+    const anterior = act.Categoria_Manual || '';
+    const aplicar = (v) =>
+      setActuaciones((prev) => prev.map((a) => (a.ID === act.ID && a.Numero_SAC === act.Numero_SAC ? { ...a, Categoria_Manual: v } : a)));
+    aplicar(valor);
+    try {
+      const response = await fetch('/api/actuaciones-importante', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: act.ID, numeroSAC: sac, campo: 'Categoria_Manual', valor }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'No se pudo guardar');
+    } catch (error) {
+      aplicar(anterior);
+      setMensajeIA('❌ No se pudo cambiar quién presentó: ' + error.message);
     }
   };
 
@@ -1827,6 +1847,17 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                               </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <select
+                                value={act.Categoria_Manual || ''}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => { e.stopPropagation(); cambiarPresentante(act, e.target.value); }}
+                                title="Corregir quién presentó esta actuación (solo cambia lo que muestra LexHub)"
+                                style={{ height: 'auto', width: 'auto', padding: '3px 4px', fontSize: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', cursor: 'pointer' }}
+                              >
+                                {OPCIONES_PRESENTANTE.map((o) => (
+                                  <option key={o.valor} value={o.valor}>{o.valor ? `Presentó: ${o.etiqueta}` : 'Presentó: auto'}</option>
+                                ))}
+                              </select>
                               <button
                                 onClick={(e) => { e.stopPropagation(); toggleImportante(act); }}
                                 title={act.Importante === 'SI' ? 'Quitar de importantes' : 'Marcar como importante'}
