@@ -1669,7 +1669,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
               </button>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', fontSize: '0.75rem' }}>
-              {['yo', 'juzgado', 'contraparte', 'asesoria'].map((k) => (
+              {['yo', 'juzgado', 'contraparte', 'asesoria', 'perito', 'oficio'].map((k) => (
                 <span key={k} style={{ backgroundColor: CATEGORIAS[k].fondo, border: `1px solid ${CATEGORIAS[k].borde}`, color: CATEGORIAS[k].texto, padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>
                   {CATEGORIAS[k].nombre}
                 </span>

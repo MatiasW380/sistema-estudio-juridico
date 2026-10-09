@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   const CAMPOS = ['Importante', 'Categoria_Manual'];
   const campo = req.body?.campo || 'Importante';
   if (!CAMPOS.includes(campo)) return res.status(400).json({ error: 'Campo no permitido' });
-  const CATEGORIAS_OK = ['', 'yo', 'juzgado', 'contraparte', 'asesoria'];
+  const CATEGORIAS_OK = ['', 'yo', 'juzgado', 'contraparte', 'asesoria', 'perito', 'oficio'];
   let valor;
   if (campo === 'Importante') valor = importante ? 'SI' : '';
   else {
