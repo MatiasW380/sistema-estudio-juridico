@@ -6,6 +6,7 @@
 import {
   loginSAC,
   obtenerExpedientesConNovedades,
+  buscarExpedientePorNumero,
   obtenerOperaciones,
   obtenerTextoDeOperacion,
   obtenerMasDatosOperacion,
@@ -55,15 +56,26 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: false, mensaje: 'No se pudo iniciar sesión en el SAC.', diagnostico: login.diagnostico });
     }
 
-    // El SAC identifica cada expediente con un id interno; la única forma
-    // confirmada de obtenerlo es la lista de expedientes con novedades.
-    const { expedientes } = await obtenerExpedientesConNovedades(login.cookieJar, 500);
-    const exp = expedientes.find((e) => String(e.numeroExpediente).trim() === numeroSAC);
+    // Se busca por número en "Mis expedientes" (inequívoco); si no responde
+    // como se espera, se prueba con la lista de novedades.
+    let exp = null;
+    let diagBusqueda = null;
+    try {
+      const r = await buscarExpedientePorNumero(login.cookieJar, numeroSAC);
+      exp = r.expediente;
+      diagBusqueda = r.diagnostico;
+    } catch (e) {
+      diagBusqueda = { error: e.message };
+    }
+    if (!exp) {
+      const { expedientes } = await obtenerExpedientesConNovedades(login.cookieJar, 500);
+      exp = expedientes.find((e) => String(e.numeroExpediente).trim() === numeroSAC) || null;
+    }
     if (!exp) {
       return res.status(200).json({
         success: false,
         noEncontrado: true,
-        mensaje: `El SAC no incluye el expediente ${numeroSAC} en "Mis novedades" (${expedientes.length} expedientes), y por ahora esa es la única lista que LexHub sabe consultar.`,
+        mensaje: `El SAC no devolvió el expediente ${numeroSAC} en "Mis expedientes". Detalle técnico: ${JSON.stringify(diagBusqueda).slice(0, 600)}`,
       });
     }
 
