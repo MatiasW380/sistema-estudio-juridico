@@ -175,6 +175,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
   // Estados para IA
   const [soloImportantes, setSoloImportantes] = useState(false);
   const [mostrarMenuPDF, setMostrarMenuPDF] = useState(false);
+  const [sincronizandoSAC, setSincronizandoSAC] = useState(false);
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const [mostrarMenuIA, setMostrarMenuIA] = useState(false);
   const [mostrarIA, setMostrarIA] = useState(false);
@@ -453,6 +454,35 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
   // Los movimientos importados del SAC guardan un marcador interno
   // [SAC:idOperacion] al inicio del Contenido para no duplicarlos en
   // futuras sincronizaciones. No tiene por qué verse en pantalla.
+  // Fuerza la sincronización de ESTE expediente con el SAC (por número de SAC)
+  const sincronizarConSAC = async () => {
+    setSincronizandoSAC(true);
+    try {
+      const response = await fetch('/api/sac/sincronizar-expediente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sessionEmail, numeroSAC: sac }),
+      });
+      const texto = await response.text();
+      let data;
+      try {
+        data = JSON.parse(texto);
+      } catch {
+        throw new Error(`el servidor no respondió a tiempo (status ${response.status})`);
+      }
+      setMensajeIA((data.success ? '✅ ' : '⚠️ ') + (data.mensaje || 'Listo'));
+      if (data.success && data.agregados > 0) {
+        const recarga = await fetch(`/api/actuaciones?numeroSAC=${sac}`);
+        const recargaData = await recarga.json();
+        if (recargaData.actuaciones) setActuaciones(recargaData.actuaciones);
+      }
+    } catch (error) {
+      setMensajeIA('❌ No se pudo sincronizar con el SAC: ' + error.message);
+    } finally {
+      setSincronizandoSAC(false);
+    }
+  };
+
   // Descarga el PDF del expediente (completo o solo con las importantes)
   const exportarPDF = async (soloImp) => {
     setMostrarMenuPDF(false);
@@ -1311,6 +1341,14 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
               className="button button-primary button-sm"
             >
               Compartir
+            </button>
+            <button
+              onClick={sincronizarConSAC}
+              disabled={sincronizandoSAC}
+              className="button button-info button-sm"
+              title="Busca en el SAC los movimientos de este expediente (por su número) y agrega los que falten"
+            >
+              {sincronizandoSAC ? '⏳ Sincronizando...' : '🔄 Sincronizar con SAC'}
             </button>
             <div style={{ position: 'relative' }}>
               <button

@@ -15,47 +15,9 @@ import {
   resolverCredencialesSAC,
 } from '../../../lib/sac';
 import { readSheet, appendToSheet, actualizarCeldas } from '../../../lib/googleSheets';
+import { marcarContenido, lineaPresentante, letraColumna, extraerIdOperacion, formatearNotificacion, fechaSACaTiempo } from '../../../lib/sacSync';
 
 export const config = { maxDuration: 60 };
-
-function marcarContenido(idOperacion, texto) {
-  return `[SAC:${idOperacion}] ${texto}`;
-}
-
-// Los escritos (presentados por una parte) guardan "Presentado por: NOMBRE"
-// al comienzo del texto; sirve para saber de quién es cada uno. Los decretos,
-// autos y demás emitidos por el juzgado no llevan esa línea.
-function lineaPresentante(op) {
-  if (!op?.esEscrito) return '';
-  const nombre = String(op.presentadoPor || '').replace(/^\s*presentado por:\s*/i, '').trim();
-  return nombre ? `Presentado por: ${nombre}\n` : '';
-}
-
-function letraColumna(indice) {
-  let n = indice + 1;
-  let letras = '';
-  while (n > 0) {
-    const resto = (n - 1) % 26;
-    letras = String.fromCharCode(65 + resto) + letras;
-    n = Math.floor((n - 1) / 26);
-  }
-  return letras;
-}
-
-function extraerIdOperacion(contenido) {
-  const m = /^\[SAC:([^\]]+)\]/.exec(contenido || '');
-  return m ? m[1] : null;
-}
-
-function formatearNotificacion(masDatos) {
-  const cedulas = masDatos?.datos?.detalleOperacion?.listadoCedulas || [];
-  if (cedulas.length === 0) return '';
-  const lineas = cedulas.map((c) => {
-    const otros = c.otrosDestinatarios ? ` · también: ${c.otrosDestinatarios}` : '';
-    return `${c.nombre || ''} (${c.rol || ''}) — ${c.fecha || ''}${otros}`;
-  });
-  return `\n\nNotificado a:\n${lineas.join('\n')}`;
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -133,7 +95,11 @@ export default async function handler(req, res) {
     // 4) Texto real y datos de notificación de cada movimiento nuevo, en
     //    paralelo, con un límite prudente.
     const LIMITE_PARALELO = 30;
-    const todasLasNuevas = porExpediente.flatMap((p) => p.nuevas.map((op) => ({ numeroSAC: p.numeroSAC, op })));
+    // Más recientes primero: así, si hay más movimientos de los que entran en
+    // una corrida, lo último que pasó nunca queda relegado por lo viejo.
+    const todasLasNuevas = porExpediente
+      .flatMap((p) => p.nuevas.map((op) => ({ numeroSAC: p.numeroSAC, op })))
+      .sort((x, y) => fechaSACaTiempo(y.op.fecha) - fechaSACaTiempo(x.op.fecha));
     const aBuscar = todasLasNuevas.slice(0, LIMITE_PARALELO);
     const idExpedientePorNumero = new Map(coincidencias.map((e) => [String(e.numeroExpediente).trim(), e.idExpediente]));
 
