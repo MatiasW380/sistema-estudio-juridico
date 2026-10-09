@@ -14,11 +14,12 @@ const MARGIN = 56;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const FOOTER_SPACE = 40;
 
-const AZUL = rgb(0.12, 0.25, 0.68);
-const AZUL_OSCURO = rgb(0.08, 0.16, 0.45);
+const AZUL = rgb(0.35, 0.35, 0.35); // gris medio (antes azul)
+const AZUL_OSCURO = rgb(0.12, 0.12, 0.12);
 const TEXTO = rgb(0.1, 0.12, 0.16);
 const GRIS = rgb(0.4, 0.45, 0.5);
-const GRIS_CLARO = rgb(0.85, 0.87, 0.9);
+const GRIS_CLARO = rgb(0.85, 0.85, 0.85);
+const FONDO_TENUE = rgb(0.94, 0.94, 0.94);
 const BLANCO = rgb(1, 1, 1);
 
 function limpiarMarcadorSAC(contenido) {
@@ -127,12 +128,12 @@ export default async function handler(req, res) {
 
     // ---------------- CARÁTULA ----------------
     const portada = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    portada.drawRectangle({ x: 0, y: PAGE_HEIGHT - 190, width: PAGE_WIDTH, height: 190, color: AZUL });
-    centrado(portada, 'LEXHUB', PAGE_HEIGHT - 70, negrita, 14, rgb(0.8, 0.86, 1));
-    centrado(portada, 'EXPEDIENTE', PAGE_HEIGHT - 120, negrita, 30, BLANCO);
-    centrado(portada, limpiar(`N° ${numeroSAC}`), PAGE_HEIGHT - 158, fuente, 18, BLANCO);
+    portada.drawRectangle({ x: 0, y: PAGE_HEIGHT - 110, width: PAGE_WIDTH, height: 110, color: FONDO_TENUE });
+    centrado(portada, 'LEXHUB', PAGE_HEIGHT - 36, negrita, 10, GRIS);
+    centrado(portada, 'EXPEDIENTE', PAGE_HEIGHT - 66, negrita, 22, TEXTO);
+    centrado(portada, limpiar(`N° ${numeroSAC}`), PAGE_HEIGHT - 92, fuente, 14, TEXTO);
 
-    let y = PAGE_HEIGHT - 260;
+    let y = PAGE_HEIGHT - 190;
     const lineasCaratula = envolverTexto(limpiar(expediente.Caratula || 'Carátula no registrada'), negrita, 20, CONTENT_WIDTH - 20);
     for (const l of lineasCaratula) {
       centrado(portada, l, y, negrita, 20, AZUL_OSCURO);
@@ -168,15 +169,15 @@ export default async function handler(req, res) {
       let continuacion = false;
 
       const dibujarEncabezado = () => {
-        page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 78, width: PAGE_WIDTH, height: 78, color: AZUL });
+        page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 44, width: PAGE_WIDTH, height: 44, color: FONDO_TENUE });
         page.drawText(`ACTUACIÓN ${i + 1} DE ${total}${continuacion ? '  (continuación)' : ''}`, {
-          x: MARGIN, y: PAGE_HEIGHT - 32, size: 9, font: negrita, color: rgb(0.8, 0.86, 1),
+          x: MARGIN, y: PAGE_HEIGHT - 17, size: 7.5, font: negrita, color: GRIS,
         });
-        page.drawText(limpiar(act.Tipo || 'Sin tipo'), { x: MARGIN, y: PAGE_HEIGHT - 56, size: 18, font: negrita, color: BLANCO });
+        page.drawText(limpiar(act.Tipo || 'Sin tipo'), { x: MARGIN, y: PAGE_HEIGHT - 35, size: 13, font: negrita, color: TEXTO });
         const fecha = limpiar(act.Fecha || 'Sin fecha');
-        const anchoFecha = fuente.widthOfTextAtSize(fecha, 12);
-        page.drawText(fecha, { x: PAGE_WIDTH - MARGIN - anchoFecha, y: PAGE_HEIGHT - 56, size: 12, font: fuente, color: BLANCO });
-        let yy = PAGE_HEIGHT - 78 - 24;
+        const anchoFecha = fuente.widthOfTextAtSize(fecha, 10);
+        page.drawText(fecha, { x: PAGE_WIDTH - MARGIN - anchoFecha, y: PAGE_HEIGHT - 35, size: 10, font: fuente, color: TEXTO });
+        let yy = PAGE_HEIGHT - 44 - 22;
         if (!continuacion) {
           const { etiqueta } = clasificarActuacion(act, nombreUsuario);
           page.drawText(limpiar(`Presentado por: ${etiqueta}`), { x: MARGIN, y: yy, size: 9, font: fuente, color: GRIS });
