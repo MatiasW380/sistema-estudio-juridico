@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { accion, numeroSAC, texto, usuario, nombreCliente } = req.body;
+    const { accion, numeroSAC, texto, usuario, nombreCliente, soloImportantes } = req.body;
 
     console.log('📥 Datos recibidos:');
     console.log('  accion:', accion);
@@ -32,13 +32,19 @@ export default async function handler(req, res) {
 
     // 1. Recopilar contexto del expediente
     console.log('📚 Recopilando contexto del expediente...');
-    const [actuaciones, consultas, modelos, leyes, jurisprudencia] = await Promise.all([
+    const [todasActuaciones, consultas, modelos, leyes, jurisprudencia] = await Promise.all([
       getActuaciones(numeroSAC),
       getConsultas(numeroSAC),
       getModelos(),
       getLeyes(),
       getJurisprudencia(),
     ]);
+
+    // Si el usuario está viendo solo lo importante, la IA recibe solo eso
+    // (si no hay ninguna marcada, se usan todas).
+    const importantes = todasActuaciones.filter((a) => a.Importante === 'SI');
+    const soloImp = !!soloImportantes && importantes.length > 0;
+    const actuaciones = soloImp ? importantes : todasActuaciones;
 
     console.log('📊 Contexto recopilado:');
     console.log('  Actuaciones:', actuaciones.length);
@@ -72,7 +78,7 @@ export default async function handler(req, res) {
     const omitidas = actuaciones.length - elegidas.length;
 
     const contexto = {
-      actuaciones: (omitidas > 0 ? `(Nota: se omitieron ${omitidas} actuaciones antiguas o menos relevantes por límite de tamaño.)\n` : '') + elegidas.map((e) => e.linea).join('\n'),
+      actuaciones: (soloImp ? `(Nota: se incluyen solo las ${actuaciones.length} actuaciones que el abogado marcó como importantes; el expediente tiene ${todasActuaciones.length} en total.)\n` : '') + (omitidas > 0 ? `(Nota: se omitieron ${omitidas} actuaciones antiguas o menos relevantes por límite de tamaño.)\n` : '') + elegidas.map((e) => e.linea).join('\n'),
       consultas: recortar(consultas.map(c => `[${c.Fecha}] ${c.Abogado_Atendio}: ${c.Notas_Consulta}`).join('\n'), 10000),
       modelos: recortar(modelos.map(m => `Modelo: ${m.Nombre} (${m.Fuero})\n${m.Contenido}`).join('\n\n'), 10000),
       leyes: recortar(leyes.map(l => `Ley ${l.Numero} (${l.Jurisdiccion}): ${l.Texto}`).join('\n'), 25000),

@@ -695,6 +695,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
         numeroSAC: sac,
         usuario: sessionEmail,
         nombreCliente: cliente?.Nombre_Cliente || '',
+        soloImportantes,
       };
 
       console.log('📤 Enviando a /api/ia:', { accion, numeroSAC: sac, nombreCliente: cliente?.Nombre_Cliente });
@@ -758,6 +759,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
         numeroSAC: sac,
         texto: textoSentencia,
         usuario: sessionEmail,
+        soloImportantes,
       };
 
       console.log('📤 Enviando a /api/ia (análisis de sentencia)...');
@@ -821,6 +823,7 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
         texto: textoEscrito,
         usuario: sessionEmail,
         nombreCliente: cliente?.Nombre_Cliente || '',
+        soloImportantes,
       };
 
       console.log('📤 Enviando a /api/ia (análisis de escrito de la contraparte)...');
