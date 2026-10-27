@@ -62,7 +62,7 @@ export default function SACSync() {
   }, []);
 
   const cuerpoCredenciales = () => {
-    if (usuario && contraseña) return { usuario, contraseña };
+    if (usuario && contraseña) return { usuario, contraseña, email: emailUsuario || undefined };
     if (emailUsuario) return { email: emailUsuario };
     return null;
   };
