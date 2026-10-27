@@ -20,6 +20,53 @@ export default function HeaderGlobal({ userData, onLogout }) {
     setMounted(true);
   }, []);
 
+  // Estado de la sesión del SAC (se consulta cada 4 minutos mientras la
+  // pestaña está visible; la consulta además mantiene la sesión en uso).
+  const [estadoSAC, setEstadoSAC] = useState(null); // null | 'activa' | 'vencida' | 'sin'
+  const [detalleSAC, setDetalleSAC] = useState('');
+  const email = userData?.email;
+  useEffect(() => {
+    if (!email) return undefined;
+    let cancelado = false;
+    const leer = (k) => { try { return window.localStorage.getItem(k); } catch { return null; } };
+    const escribir = (k, v) => { try { if (v === null) window.localStorage.removeItem(k); else window.localStorage.setItem(k, v); } catch { /* sin storage */ } };
+
+    const verificar = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      try {
+        const r = await fetch('/api/sac/estado-sesion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const d = await r.json();
+        if (cancelado) return;
+        const ahora = Date.now();
+        if (!d.tieneSesion) { setEstadoSAC('sin'); setDetalleSAC('No hay una sesión del SAC guardada'); return; }
+        if (d.activa === true) {
+          if (!leer('sac_desde')) escribir('sac_desde', String(ahora));
+          escribir('sac_ultimo_ok', String(ahora));
+          setEstadoSAC('activa');
+          setDetalleSAC('Sesión del SAC activa (se verifica cada 4 minutos)');
+        } else if (d.activa === false) {
+          const desde = Number(leer('sac_desde'));
+          const ultimo = Number(leer('sac_ultimo_ok'));
+          const duro = desde && ultimo ? Math.max(0, Math.round((ultimo - desde) / 60000)) : null;
+          escribir('sac_desde', null);
+          setEstadoSAC('vencida');
+          setDetalleSAC(`La sesión del SAC venció${duro !== null ? ` (se vio activa durante unos ${duro} min)` : ''}. Pegá una cookie nueva en la pantalla SAC.`);
+        }
+      } catch {
+        // sin conexión: se mantiene el último estado
+      }
+    };
+    verificar();
+    const t = setInterval(verificar, 4 * 60 * 1000);
+    const alVolver = () => { if (document.visibilityState === 'visible') verificar(); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => { cancelado = true; clearInterval(t); document.removeEventListener('visibilitychange', alVolver); };
+  }, [email]);
+
   if (typeof window !== 'undefined' && (router.pathname === '/login' || router.pathname === '/registro')) {
     return null;
   }
@@ -102,6 +149,33 @@ export default function HeaderGlobal({ userData, onLogout }) {
           minWidth: 'fit-content',
         }}
       >
+        {estadoSAC && (
+          <Link href="/sac-sync">
+            <a
+              title={detalleSAC}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: '#cbd5e1',
+                fontSize: '0.72rem',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  backgroundColor: estadoSAC === 'activa' ? '#22c55e' : estadoSAC === 'vencida' ? '#ef4444' : '#94a3b8',
+                }}
+              />
+              SAC
+            </a>
+          </Link>
+        )}
         {userData?.email && (
           <span
             style={{
