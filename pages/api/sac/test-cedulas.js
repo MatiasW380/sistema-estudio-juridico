@@ -3,7 +3,7 @@
 // la lógica para no arriesgar los otros pedidos (ver nota sobre el 401 en
 // obtenerMasDatosOperacion cuando se encadenan muchos pedidos seguidos).
 
-import { loginSAC, obtenerCedulas, resolverCredencialesSAC } from '../../../lib/sac';
+import { iniciarSesionSAC, obtenerCedulas, resolverCredencialesSAC } from '../../../lib/sac';
 
 export const config = { maxDuration: 30 };
 
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const login = await loginSAC(usuario, contraseña);
+    const login = await iniciarSesionSAC(req.body, usuario, contraseña);
     if (!login.exito) {
       return res.status(200).json({ success: false, mensaje: 'No se pudo conectar al SAC', diagnostico: login.diagnostico });
     }

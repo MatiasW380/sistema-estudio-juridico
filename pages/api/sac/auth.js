@@ -4,7 +4,7 @@
 // lib/sac.js (compartida con /api/sac/sincronizar).
 
 import {
-  loginSAC,
+  iniciarSesionSAC,
   obtenerExpedientesConNovedades,
   obtenerOperaciones,
   obtenerTextoOperacion,
@@ -26,13 +26,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const login = await loginSAC(usuario, contraseña);
+    const login = await iniciarSesionSAC(req.body, usuario, contraseña);
 
     if (!login.exito) {
       return res.status(200).json({
         success: false,
         conectado: false,
-        mensaje: login.diagnostico?.pidioCaptcha
+        mensaje: login.diagnostico?.sesionPegadaVencida
+          ? 'La sesión del SAC que pegaste venció. Entrá de nuevo al SAC en tu navegador y pegá la cookie nueva.'
+          : /captcha/i.test(login.diagnostico?.mensajeSAC || '') || login.diagnostico?.pidioCaptcha
+          ? 'El SAC exige el captcha en el login y desde el servidor no se puede resolver. Entrá al SAC en tu navegador y pegá abajo tu sesión (cookie .PROMETEO).'
+          : login.diagnostico?.pidioCaptcha
           ? 'El SAC pidió el captcha (Cloudflare Turnstile) y no se pudo iniciar sesión desde el servidor.'
           : `El SAC no abrió la sesión. Revisá que usuario y contraseña sean correctos${
               login.diagnostico?.mensajeSAC ? ` (el SAC respondió: "${login.diagnostico.mensajeSAC}")` : ''

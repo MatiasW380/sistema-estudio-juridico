@@ -6,7 +6,7 @@
 // Si hay datos de notificación (cédulas), se incluyen en el contenido.
 
 import {
-  loginSAC,
+  iniciarSesionSAC,
   obtenerExpedientesConNovedades,
   obtenerOperaciones,
   obtenerTextoDeOperacion,
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const login = await loginSAC(usuario, contraseña);
+    const login = await iniciarSesionSAC(req.body, usuario, contraseña);
     if (!login.exito) {
       return res.status(200).json({
         success: false,

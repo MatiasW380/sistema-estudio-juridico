@@ -5,7 +5,7 @@
 // No agrega filas nuevas ni toca nada que no sea Origen = "SAC".
 
 import {
-  loginSAC,
+  iniciarSesionSAC,
   obtenerTextoProbandoAmbos,
   limpiarHtmlOperacion,
   resolverCredencialesSAC,
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const login = await loginSAC(usuario, contraseña);
+    const login = await iniciarSesionSAC(req.body, usuario, contraseña);
     if (!login.exito) {
       return res.status(200).json({
         success: false,

@@ -19,6 +19,8 @@ export default function SACSync() {
   const [resultadoSync, setResultadoSync] = useState(null);
   const [errorSync, setErrorSync] = useState('');
   const [probandoCedulas, setProbandoCedulas] = useState(false);
+  const [sesionPegada, setSesionPegada] = useState('');
+  const [guardandoSesion, setGuardandoSesion] = useState(false);
   const [diagnosticoCedulas, setDiagnosticoCedulas] = useState(null);
 
   const handleProbarCedulas = async () => {
@@ -106,6 +108,29 @@ export default function SACSync() {
       return;
     }
     verificarConexion(cuerpo);
+  };
+
+  // Guarda la sesión que el usuario abrió en su navegador (resolvió el captcha
+  // sin darse cuenta) y vuelve a verificar la conexión con ella.
+  const handleUsarSesion = async () => {
+    if (!emailUsuario) { setMensajeConexion('No encontré tu usuario de LexHub; volvé a iniciar sesión.'); return; }
+    if (!sesionPegada.trim()) { setMensajeConexion('Pegá primero la cookie .PROMETEO'); return; }
+    setGuardandoSesion(true);
+    try {
+      const response = await fetch('/api/sac/guardar-sesion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailUsuario, cookie: sesionPegada }),
+      });
+      const data = await response.json();
+      if (!data.success) { setMensajeConexion(data.mensaje || 'No se pudo guardar la sesión'); return; }
+      setSesionPegada('');
+      await verificarConexion({ email: emailUsuario });
+    } catch (error) {
+      setMensajeConexion(`Error: ${error.message}`);
+    } finally {
+      setGuardandoSesion(false);
+    }
   };
 
   const handleSincronizar = async () => {
@@ -245,6 +270,39 @@ export default function SACSync() {
             >
               Conectar
             </button>
+
+            <details style={{ marginTop: '18px' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+                ¿El SAC pide captcha? Usar la sesión de mi navegador
+              </summary>
+              <ol style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', margin: '10px 0', paddingLeft: '18px', lineHeight: 1.6 }}>
+                <li>Entrá al SAC en este navegador, como siempre.</li>
+                <li>Apretá F12 → pestaña Aplicación (Application) → Cookies → justiciacordoba.gob.ar.</li>
+                <li>Copiá el valor de la cookie <strong>.PROMETEO</strong> y pegalo acá.</li>
+              </ol>
+              <textarea
+                value={sesionPegada}
+                onChange={(e) => setSesionPegada(e.target.value)}
+                placeholder="Valor de la cookie .PROMETEO"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.78rem',
+                  fontFamily: 'monospace',
+                  marginBottom: '10px',
+                }}
+              />
+              <button
+                onClick={handleUsarSesion}
+                disabled={guardandoSesion}
+                style={{ ...botonPrimario('sm'), opacity: guardandoSesion ? 0.7 : 1 }}
+              >
+                {guardandoSesion ? 'Guardando…' : 'Usar esta sesión'}
+              </button>
+            </details>
           </div>
         )}
       </div>

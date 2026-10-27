@@ -4,7 +4,7 @@
 // nuevos más recientes primero, hasta agotar el tiempo disponible.
 
 import {
-  loginSAC,
+  iniciarSesionSAC,
   obtenerExpedientesConNovedades,
   buscarExpedientePorNumero,
   obtenerOperaciones,
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: false, mensaje: `El expediente ${numeroSAC} no está cargado en LexHub.` });
     }
 
-    const login = await loginSAC(usuario, contraseña);
+    const login = await iniciarSesionSAC(req.body, usuario, contraseña);
     if (!login.exito) {
       return res.status(200).json({ success: false, mensaje: 'No se pudo iniciar sesión en el SAC.', diagnostico: login.diagnostico });
     }

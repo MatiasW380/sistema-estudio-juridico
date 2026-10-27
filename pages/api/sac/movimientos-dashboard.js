@@ -4,7 +4,7 @@
 // nada — es de solo lectura, pensado para consultarse cada vez que se
 // entra al dashboard.
 
-import { loginSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerCedulas, resolverCredencialesSAC } from '../../../lib/sac';
+import { iniciarSesionSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerCedulas, resolverCredencialesSAC } from '../../../lib/sac';
 import { readSheet } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 45 };
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     let diag = null;
     let cookieJarFinal = null;
     for (let intento = 1; intento <= 2; intento += 1) {
-      const login = await loginSAC(usuario, contraseña);
+      const login = await iniciarSesionSAC(req.body, usuario, contraseña);
       if (!login.exito) {
         return res.status(200).json({ success: false, mensaje: 'No se pudo conectar al SAC', movimientos: [], cedulas: [] });
       }
