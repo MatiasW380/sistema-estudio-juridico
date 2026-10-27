@@ -32,8 +32,11 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: false,
         conectado: false,
-        mensaje:
-          'El SAC no entregó la cookie de sesión. Lo más probable es que haya pedido el captcha (Cloudflare Turnstile) esta vez.',
+        mensaje: login.diagnostico?.pidioCaptcha
+          ? 'El SAC pidió el captcha (Cloudflare Turnstile) y no se pudo iniciar sesión desde el servidor.'
+          : `El SAC no abrió la sesión. Revisá que usuario y contraseña sean correctos${
+              login.diagnostico?.mensajeSAC ? ` (el SAC respondió: "${login.diagnostico.mensajeSAC}")` : ''
+            }.`,
         diagnostico: login.diagnostico,
         expedientes: [],
       });
