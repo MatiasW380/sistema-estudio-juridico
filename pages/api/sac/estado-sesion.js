@@ -5,7 +5,7 @@
 // POST { email } -> { tieneSesion, activa }
 
 import { getSesionSAC } from '../../../lib/googleSheets';
-import { parsearSesionPegada, obtenerExpedientesConNovedades } from '../../../lib/sac';
+import { parsearSesionPegada, armarCookieJarDeSesion, obtenerExpedientesConNovedades } from '../../../lib/sac';
 
 export const config = { maxDuration: 20 };
 
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   try {
     const pegada = parsearSesionPegada(await getSesionSAC(email));
     if (!pegada) return res.status(200).json({ tieneSesion: false, activa: false });
-    const { diagnostico } = await obtenerExpedientesConNovedades(pegada, 1);
+    const { diagnostico } = await obtenerExpedientesConNovedades(await armarCookieJarDeSesion(pegada), 1);
     return res.status(200).json({ tieneSesion: true, activa: !!diagnostico.esJSON });
   } catch (error) {
     // Error de red o de Google: no se sabe, no se marca como vencida.
