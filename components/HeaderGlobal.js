@@ -31,18 +31,25 @@ export default function HeaderGlobal({ userData, onLogout }) {
     const leer = (k) => { try { return window.localStorage.getItem(k); } catch { return null; } };
     const escribir = (k, v) => { try { if (v === null) window.localStorage.removeItem(k); else window.localStorage.setItem(k, v); } catch { /* sin storage */ } };
 
+    let primera = true;
     const verificar = async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         const r = await fetch('/api/sac/estado-sesion', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, probarLogin: primera }),
         });
+        primera = false;
         const d = await r.json();
         if (cancelado) return;
         const ahora = Date.now();
-        if (!d.tieneSesion) { setEstadoSAC('sin'); setDetalleSAC('No hay una sesión del SAC guardada'); return; }
+        if (d.activa === true && d.modo === 'login') {
+          setEstadoSAC('activa');
+          setDetalleSAC('Conexión al SAC activa (entra con usuario y contraseña)');
+          return;
+        }
+        if (!d.tieneSesion && d.activa !== true) { setEstadoSAC('sin'); setDetalleSAC('No hay una sesión del SAC guardada'); return; }
         if (d.activa === true) {
           if (!leer('sac_desde')) escribir('sac_desde', String(ahora));
           escribir('sac_ultimo_ok', String(ahora));

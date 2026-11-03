@@ -4,7 +4,7 @@
 // nada — es de solo lectura, pensado para consultarse cada vez que se
 // entra al dashboard.
 
-import { iniciarSesionSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerCedulas, resolverCredencialesSAC } from '../../../lib/sac';
+import { iniciarSesionSAC, obtenerExpedientesConNovedades, obtenerOperaciones, obtenerCedulas, buscarExpedientePorNumero, resolverCredencialesSAC } from '../../../lib/sac';
 import { readSheet } from '../../../lib/googleSheets';
 
 export const config = { maxDuration: 45 };
@@ -89,11 +89,37 @@ export default async function handler(req, res) {
       if (numeroSAC) locales.set(String(numeroSAC).trim(), filasClientes[i][6] || '');
     }
 
-    const coincidencias = expedientesSAC.filter((e) => locales.has(String(e.numeroExpediente).trim()));
+    // Los movimientos NO dependen de la lista de "novedades" del SAC (que puede
+    // no incluir un expediente aunque tenga movimientos recientes): se consulta
+    // cada expediente de LexHub directamente. El id interno sale de la lista de
+    // novedades si está ahí y, si no, se busca por número en "Mis expedientes".
+    const idPorNumero = new Map();
+    expedientesSAC.forEach((e) => { if (e.idExpediente) idPorNumero.set(String(e.numeroExpediente).trim(), e); });
 
-    const operacionesPorExpediente = await Promise.all(
-      coincidencias.map((exp) => obtenerOperaciones(cookieJarFinal, exp.idExpediente).catch(() => ({ operaciones: [] }))),
+    const inicio = Date.now();
+    const PRESUPUESTO_MS = 32000;
+    const enTandas = async (items, tam, fn) => {
+      const out = [];
+      for (let i = 0; i < items.length; i += tam) {
+        if (Date.now() - inicio > PRESUPUESTO_MS) { out.push(...items.slice(i).map(() => null)); continue; }
+        out.push(...(await Promise.all(items.slice(i, i + tam).map(fn))));
+      }
+      return out;
+    };
+
+    const numerosLocales = [...locales.keys()];
+    const sinId = numerosLocales.filter((n) => !idPorNumero.has(n));
+    const buscados = await enTandas(sinId, 6, (n) => buscarExpedientePorNumero(cookieJarFinal, n).then((r) => r.expediente).catch(() => null));
+    sinId.forEach((n, i) => { if (buscados[i]?.idExpediente) idPorNumero.set(n, buscados[i]); });
+
+    const coincidencias = numerosLocales
+      .filter((n) => idPorNumero.has(n))
+      .map((n) => ({ ...idPorNumero.get(n), numeroExpediente: n }));
+
+    const operacionesPorExpediente = await enTandas(coincidencias, 6, (exp) =>
+      obtenerOperaciones(cookieJarFinal, exp.idExpediente).catch(() => ({ operaciones: [] })),
     );
+    const operacionesPorExpedienteOk = operacionesPorExpediente.map((o) => o || { operaciones: [] });
 
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -101,7 +127,7 @@ export default async function handler(req, res) {
     const movimientos = [];
     coincidencias.forEach((exp, i) => {
       const numeroSAC = String(exp.numeroExpediente).trim();
-      const operaciones = operacionesPorExpediente[i].operaciones || [];
+      const operaciones = operacionesPorExpedienteOk[i].operaciones || [];
       if (operaciones.length === 0) return;
 
       // La más reciente (el SAC las devuelve en algún orden; no lo
@@ -155,12 +181,18 @@ export default async function handler(req, res) {
     // Expedientes con novedades en el SAC que todavía no están cargados en LexHub
     const noCargados = expedientesSAC.filter((e) => !locales.has(String(e.numeroExpediente).trim())).length;
     // Cédulas de los últimos 3 días de expedientes que no están en LexHub
-    const cedulasNoCargadas = (cedulasSAC || []).filter((ced) => {
-      const numeroSAC = String(ced.numeroExpediente || '').trim();
-      return numeroSAC && !locales.has(numeroSAC) && diasYColor(ced.fecha, hoy);
-    }).length;
+    const listaCedulasNoCargadas = (cedulasSAC || [])
+      .filter((ced) => {
+        const numeroSAC = String(ced.numeroExpediente || '').trim();
+        return numeroSAC && !locales.has(numeroSAC) && diasYColor(ced.fecha, hoy);
+      })
+      .map((ced) => ({ numeroSAC: String(ced.numeroExpediente).trim(), caratula: ced.caratula || '', tipo: ced.tipoOperacion || '', fecha: ced.fecha || '' }));
+    const cedulasNoCargadas = listaCedulasNoCargadas.length;
 
-    return res.status(200).json({ success: true, movimientos, cedulas, noCargados, cedulasNoCargadas });
+    return res.status(200).json({
+      success: true, movimientos, cedulas, noCargados, cedulasNoCargadas, listaCedulasNoCargadas,
+      detalle: { expedientesEnLexHub: numerosLocales.length, consultadosEnSAC: coincidencias.length, novedadesEnSAC: expedientesSAC.length },
+    });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message, movimientos: [], cedulas: [] });
   }

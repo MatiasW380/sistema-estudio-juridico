@@ -162,6 +162,7 @@ export default function Home({
   const [errorSAC, setErrorSAC] = useState('');
   const [noCargadosSAC, setNoCargadosSAC] = useState(0);
   const [cedulasNoCargadasSAC, setCedulasNoCargadasSAC] = useState(0);
+  const [listaCedulasNoCargadas, setListaCedulasNoCargadas] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -193,6 +194,7 @@ export default function Home({
           setCedulasSAC(data.cedulas || []);
           setNoCargadosSAC(data.noCargados || 0);
           setCedulasNoCargadasSAC(data.cedulasNoCargadas || 0);
+          setListaCedulasNoCargadas(data.listaCedulasNoCargadas || []);
         } else {
           setErrorSAC(data.mensaje || 'No se pudo consultar el SAC');
         }
@@ -642,6 +644,16 @@ export default function Home({
           <div>
             {cedulasNoCargadasSAC > 0 && (
               <>ℹ️ {cedulasNoCargadasSAC} {cedulasNoCargadasSAC === 1 ? 'cédula de los últimos 3 días es de un expediente que no está cargado' : 'cédulas de los últimos 3 días son de expedientes que no están cargados'} en LexHub.</>
+            )}
+            {listaCedulasNoCargadas.length > 0 && (
+              <details style={{ marginTop: '4px' }}>
+                <summary style={{ cursor: 'pointer' }}>Ver cuáles</summary>
+                {listaCedulasNoCargadas.map((c, i) => (
+                  <div key={i} style={{ marginTop: '4px' }}>
+                    <strong>{c.numeroSAC}</strong> — {c.caratula} {c.tipo ? `· ${c.tipo}` : ''} {c.fecha ? `· ${c.fecha}` : ''}
+                  </div>
+                ))}
+              </details>
             )}
           </div>
         </div>
