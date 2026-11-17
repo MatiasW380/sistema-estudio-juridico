@@ -6,6 +6,10 @@ import { useRouter } from 'next/router';
 import { getActuaciones, getClientes, getPerfilUsuario, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
 import { clasificarActuacion, CATEGORIAS, OPCIONES_PRESENTANTE } from '../../lib/actuaciones';
 import EditorTexto from '../../components/EditorTexto';
+import {
+  ArrowLeft, ArrowDownUp, CalendarPlus, ChevronDown, FileDown, FileText, Paperclip, Pencil,
+  Plus, RefreshCw, Share2, Sparkles, Star, Trash2, X,
+} from 'lucide-react';
 
 // Helper para obtener la fecha de hoy en formato YYYY-MM-DD (para inputs type=date) sin desfase UTC
 const getFechaHoyISO = () => {
@@ -1222,316 +1226,145 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
   };
 
   return (
-    <div className="container">
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-          <div>
-            <h1 style={{ marginBottom: '4px' }}>Expediente {sac}</h1>
-            <div style={{ marginTop: '0', fontSize: '12px', color: '#64748b', lineHeight: '1.3' }}>
-              <p style={{ margin: '2px 0' }}>
-                <strong>Cliente:</strong> {cliente.Nombre_Cliente}
-              </p>
-              <p style={{ margin: '2px 0' }}>
-                <strong>Carátula:</strong> {expediente.Caratula || 'No registrada'}
-              </p>
-              <p style={{ margin: '2px 0' }}>
-                <strong>Juzgado:</strong> {expediente.Juzgado || 'No registrado'}
-              </p>
-              {expediente.Usuarios_Compartidos && (
-                <div style={{ 
-                  marginTop: '8px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '5px', 
-                  flexWrap: 'wrap',
-                  fontSize: '0.85rem'
-                }}>
-                  <span style={{ color: '#4a5568' }}>Compartido con:</span>
-                  {expediente.Usuarios_Compartidos.split(',').map((email, idx) => (
-                    <span 
-                      key={idx} 
-                      style={{ 
-                        backgroundColor: '#e2e8f0', 
-                        padding: '2px 10px', 
-                        borderRadius: '12px',
-                        color: '#2d3748'
-                      }}
-                    >
-                      {email.trim()}
-                    </span>
-                  ))}
-                </div>
-              )}
+    <div className="container exp-page">
+      <div className="exp-head">
+        <div className="exp-head-main">
+          <div className="exp-breadcrumb">
+            <button type="button" className="exp-breadcrumb-link" onClick={volver}>Expedientes</button>
+            <span className="exp-breadcrumb-sep">/</span>
+            <span>{sac}</span>
+          </div>
+          <h1 className="exp-title">Expediente {sac}</h1>
+          <p className="exp-caratula">{expediente.Caratula || 'Carátula no registrada'}</p>
+          <div className="exp-meta">
+            <span className="exp-meta-item"><span className="exp-meta-label">Cliente</span>{cliente.Nombre_Cliente}</span>
+            <span className="exp-meta-item"><span className="exp-meta-label">Juzgado</span>{expediente.Juzgado || 'No registrado'}</span>
+            {expediente.Fuero && (
+              <span className="exp-meta-item"><span className="exp-meta-label">Fuero</span>{expediente.Fuero}</span>
+            )}
+          </div>
+          {expediente.Usuarios_Compartidos && (
+            <div className="exp-shared">
+              <span className="exp-meta-label">Compartido con</span>
+              {expediente.Usuarios_Compartidos.split(',').map((email, idx) => (
+                <span key={idx} className="lx-chip">{email.trim()}</span>
+              ))}
             </div>
-          </div>
-          {/* Botones Eliminar y Volver - ARRIBA A LA DERECHA */}
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            <button
-              className="button button-danger button-sm"
-              onClick={eliminarExpediente}
-              disabled={cargando}
-            >
-              {cargando ? 'Eliminando...' : 'Eliminar'}
-            </button>
-            <button 
-              className="button button-secondary button-sm"
-              onClick={volver}
-            >
-              ← Volver
-            </button>
-          </div>
+          )}
+        </div>
+        <div className="exp-head-actions">
+          <button className="button button-secondary button-sm" onClick={volver}>
+            <ArrowLeft size={15} /> Volver
+          </button>
+          <button
+            className="button button-ghost button-sm lx-text-danger"
+            onClick={eliminarExpediente}
+            disabled={cargando}
+            title="Eliminar expediente"
+          >
+            <Trash2 size={15} /> {cargando ? 'Eliminando…' : 'Eliminar'}
+          </button>
         </div>
       </div>
 
-      {/* Pestañas */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
-        {/* PESTAÑAS */}
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={() => setActiveTab('actuaciones')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: activeTab === 'actuaciones' ? '#1e40af' : 'transparent',
-              color: activeTab === 'actuaciones' ? 'white' : '#64748b',
-              border: 'none',
-              borderRadius: '6px 6px 0 0',
-              cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '0.9rem',
-              transition: 'all 0.2s'
-            }}
-          >
-            Actuaciones ({actuaciones.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('plazos')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: activeTab === 'plazos' ? '#1e40af' : 'transparent',
-              color: activeTab === 'plazos' ? 'white' : '#64748b',
-              border: 'none',
-              borderRadius: '6px 6px 0 0',
-              cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '0.9rem',
-              transition: 'all 0.2s'
-            }}
-          >
-            Plazos
-          </button>
-          <button
-            onClick={() => setActiveTab('comentarios')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: activeTab === 'comentarios' ? '#1e40af' : 'transparent',
-              color: activeTab === 'comentarios' ? 'white' : '#64748b',
-              border: 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            💬 Comentarios
-            {comentarios.length > 0 && (
-              <span
-                style={{
-                  marginLeft: '8px',
-                  fontSize: '0.8rem',
-                  backgroundColor: activeTab === 'comentarios' ? 'rgba(255,255,255,0.3)' : '#3182ce',
-                  color: activeTab === 'comentarios' ? 'white' : 'white',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                {comentarios.length}
-              </span>
-            )}
-          </button>
+      {/* Pestañas + acciones */}
+      <div className="exp-tabbar">
+        <div className="lx-tabs" role="tablist">
+          {[
+            { id: 'actuaciones', label: 'Actuaciones', count: actuaciones.length },
+            { id: 'plazos', label: 'Plazos', count: null },
+            { id: 'comentarios', label: 'Comentarios', count: comentarios.length || null },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === t.id}
+              className={`lx-tab${activeTab === t.id ? ' is-active' : ''}`}
+              onClick={() => setActiveTab(t.id)}
+            >
+              {t.label}
+              {t.count !== null && <span className="lx-tab-count">{t.count}</span>}
+            </button>
+          ))}
         </div>
 
-        {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-            <button 
-              onClick={toggleFormulario} 
-              className={`button button-sm ${mostrarFormulario ? 'button-danger' : 'button-success'}`}
-            >
-              {mostrarFormulario ? 'Cerrar' : '+ Actuación'}
-            </button>
-            <button onClick={agregarPlazo} className="button button-warning button-sm">
-              + Plazo
-            </button>
-            <button
-              onClick={() => setMostrarModalCompartir(true)}
-              className="button button-primary button-sm"
-            >
-              Compartir
-            </button>
-            <button
-              onClick={sincronizarConSAC}
-              disabled={sincronizandoSAC}
-              className="button button-info button-sm"
-              title="Busca en el SAC los movimientos de este expediente (por su número) y agrega los que falten"
-            >
-              {sincronizandoSAC ? '⏳ Sincronizando...' : '🔄 Sincronizar con SAC'}
-            </button>
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setMostrarMenuPDF(!mostrarMenuPDF)}
-                disabled={generandoPDF}
-                className="button button-secondary button-sm"
-                title="Descargar un PDF con carátula y una actuación por hoja"
-              >
-                {generandoPDF ? '⏳ Generando...' : '📄 PDF ▼'}
-              </button>
-              {mostrarMenuPDF && (
-                <div style={{
-                  position: 'absolute', top: '36px', right: '0', backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  zIndex: 100, minWidth: '210px'
-                }}>
-                  {[
-                    { label: 'Expediente completo', valor: false },
-                    { label: '★ Solo importantes', valor: true },
-                  ].map((op, idx) => (
-                    <button
-                      key={op.label}
-                      onClick={() => exportarPDF(op.valor)}
-                      style={{
-                        display: 'block', width: '100%', height: 'auto', padding: '8px 12px', textAlign: 'left',
-                        border: 'none', backgroundColor: 'transparent', color: '#2d3748', cursor: 'pointer',
-                        fontSize: '14px', fontWeight: '500', borderBottom: idx === 0 ? '1px solid #e2e8f0' : 'none'
-                      }}
-                      onMouseEnter={(e) => (e.target.style.backgroundColor = '#f8fafc')}
-                      onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
-                    >
-                      {op.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="exp-toolbar">
+          <button
+            onClick={toggleFormulario}
+            className={`button button-sm ${mostrarFormulario ? 'button-secondary' : ''}`}
+          >
+            {mostrarFormulario ? <><X size={15} /> Cerrar</> : <><Plus size={15} /> Actuación</>}
+          </button>
+          <button onClick={agregarPlazo} className="button button-secondary button-sm">
+            <CalendarPlus size={15} /> Plazo
+          </button>
+          <button onClick={() => setMostrarModalCompartir(true)} className="button button-secondary button-sm">
+            <Share2 size={15} /> Compartir
+          </button>
+          <button
+            onClick={sincronizarConSAC}
+            disabled={sincronizandoSAC}
+            className="button button-secondary button-sm"
+            title="Busca en el SAC los movimientos de este expediente (por su número) y agrega los que falten"
+          >
+            <RefreshCw size={15} className={sincronizandoSAC ? 'lx-spin' : ''} />
+            {sincronizandoSAC ? 'Sincronizando…' : 'Sincronizar SAC'}
+          </button>
 
-            {/* Dropdown para Herramientas IA */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setMostrarMenuIA(!mostrarMenuIA)}
-                className="button button-info button-sm"
-                style={{ marginRight: '0' }}
-              >
-                {cargandoIA ? 'IA...' : 'IA ▼'}
-              </button>
-              {mostrarMenuIA && (
-                <div style={{
-                  position: 'absolute',
-                  top: '36px',
-                  right: '0',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  zIndex: 100,
-                  minWidth: '140px'
-                }}>
-                  <button
-                    onClick={() => {
-                      ejecutarIA('resumir');
-                      setMostrarMenuIA(false);
-                    }}
-                    disabled={cargandoIA}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      color: '#2d3748',
-                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      borderBottom: '1px solid #e2e8f0',
-                      fontWeight: '500'
-                    }}
-                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                  >
-                    {cargandoIA ? '⏳ Resumir' : 'Resumir'}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setMostrarMenuPDF(!mostrarMenuPDF); setMostrarMenuIA(false); }}
+              disabled={generandoPDF}
+              className="button button-secondary button-sm"
+              title="Descargar un PDF con carátula y una actuación por hoja"
+            >
+              <FileDown size={15} /> {generandoPDF ? 'Generando…' : 'PDF'} <ChevronDown size={14} />
+            </button>
+            {mostrarMenuPDF && (
+              <div className="lx-menu">
+                {[
+                  { label: 'Expediente completo', valor: false },
+                  { label: 'Solo importantes', valor: true },
+                ].map((op) => (
+                  <button key={op.label} type="button" className="lx-menu-item" onClick={() => exportarPDF(op.valor)}>
+                    {op.valor ? <Star size={15} /> : <FileText size={15} />} {op.label}
                   </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setMostrarMenuIA(!mostrarMenuIA); setMostrarMenuPDF(false); }}
+              className="button button-sm lx-button-ai"
+            >
+              <Sparkles size={15} /> {cargandoIA ? 'Pensando…' : 'IA'} <ChevronDown size={14} />
+            </button>
+            {mostrarMenuIA && (
+              <div className="lx-menu">
+                {[
+                  { accion: 'resumir', label: 'Resumir expediente' },
+                  { accion: 'analizar-sentencia', label: 'Analizar sentencia' },
+                  { accion: 'analizar-contraparte', label: 'Analizar escrito de contraparte' },
+                  { accion: 'estrategia', label: 'Sugerir estrategia' },
+                ].map((op) => (
                   <button
-                    onClick={() => {
-                      ejecutarIA('analizar-sentencia');
-                      setMostrarMenuIA(false);
-                    }}
+                    key={op.accion}
+                    type="button"
+                    className="lx-menu-item"
                     disabled={cargandoIA}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      color: '#2d3748',
-                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      borderBottom: '1px solid #e2e8f0',
-                      fontWeight: '500'
-                    }}
-                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    onClick={() => { ejecutarIA(op.accion); setMostrarMenuIA(false); }}
                   >
-                    {cargandoIA ? '⏳ Analizar' : 'Analizar'}
+                    {op.label}
                   </button>
-                  <button
-                    onClick={() => {
-                      ejecutarIA('analizar-contraparte');
-                      setMostrarMenuIA(false);
-                    }}
-                    disabled={cargandoIA}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      color: '#2d3748',
-                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      borderBottom: '1px solid #e2e8f0',
-                      fontWeight: '500'
-                    }}
-                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                  >
-                    {cargandoIA ? '⏳ Analizar escrito contraparte' : 'Analizar escrito contraparte'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      ejecutarIA('estrategia');
-                      setMostrarMenuIA(false);
-                    }}
-                    disabled={cargandoIA}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      color: '#2d3748',
-                      cursor: cargandoIA ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                    onMouseEnter={(e) => !cargandoIA && (e.target.style.backgroundColor = '#f8fafc')}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                  >
-                    {cargandoIA ? '⏳ Estrategia' : 'Estrategia'}
-                  </button>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
       {/* Contenido de las pestañas */}
       <div style={{ minHeight: '300px' }}>
@@ -1540,18 +1373,12 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
           <div>
             {/* Formulario para nueva actuación */}
             {mostrarFormulario && (
-              <div style={{ 
-                backgroundColor: '#f7fafc', 
-                padding: '20px', 
-                borderRadius: '8px', 
-                marginBottom: '20px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <h3>Nueva Actuación</h3>
+              <div className="lx-card exp-form">
+                <h3 className="lx-card-title">Nueva actuación</h3>
                 <form onSubmit={handleSubmit}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="exp-form-grid">
                     <div>
-                      <label><strong>Fecha *</strong></label>
+                      <label>Fecha *</label>
                       <input
                         type="date"
                         name="fecha"
@@ -1561,12 +1388,11 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                       />
                     </div>
                     <div>
-                      <label><strong>Tipo *</strong></label>
+                      <label>Tipo *</label>
                       <select
                         name="tipo"
                         value={nuevaActuacion.tipo}
                         onChange={handleChange}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                         required
                       >
                         {tiposActuacion.map(t => (
@@ -1576,25 +1402,23 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                     </div>
                     {nuevaActuacion.tipo === 'Otro' && (
                       <div>
-                        <label><strong>Especificar Tipo *</strong></label>
+                        <label>Especificar Tipo *</label>
                         <input
                           type="text"
                           name="tipoOtro"
                           value={nuevaActuacion.tipoOtro}
                           onChange={handleChange}
                           placeholder="Ej: Oficio, Nota, etc."
-                          style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                          required
+                            required
                         />
                       </div>
                     )}
                     <div>
-                      <label><strong>Origen</strong></label>
+                      <label>Origen</label>
                       <select
                         name="origen"
                         value={nuevaActuacion.origen}
                         onChange={handleChange}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                       >
                         {origenes.map(o => (
                           <option key={o} value={o}>{o}</option>
@@ -1602,12 +1426,11 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                       </select>
                     </div>
                     <div>
-                      <label><strong>Estado *</strong></label>
+                      <label>Estado *</label>
                       <select
                         name="estado"
                         value={nuevaActuacion.estado}
                         onChange={handleChange}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                       >
                         <option value="Borrador">Borrador</option>
                         <option value="Presentado">Presentado</option>
@@ -1615,8 +1438,8 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                       </select>
                     </div>
                   </div>
-                  <div style={{ marginTop: '15px' }}>
-                    <label><strong>Contenido *</strong></label>
+                  <div style={{ marginTop: '16px' }}>
+                    <label>Contenido *</label>
                     <EditorTexto
                       initialValue={nuevaActuacion.contenido}
                       onChange={(value) => setNuevaActuacion(prev => ({ ...prev, contenido: value }))}
@@ -1625,19 +1448,13 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                   </div>
 
                   {mensaje && (
-                    <div style={{ 
-                      marginTop: '15px', 
-                      padding: '10px', 
-                      borderRadius: '8px', 
-                      backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', 
-                      color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' 
-                    }}>
+                    <div className={`alert ${mensaje.includes('✅') ? 'alert-success' : 'alert-urgent'}`} style={{ marginTop: '16px', marginBottom: 0 }}>
                       {mensaje}
                     </div>
                   )}
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                    <button type="submit" className="button button-primary button-sm" disabled={cargando}>
-                      {cargando ? 'Guardando...' : 'Guardar Actuación'}
+                  <div className="exp-form-actions">
+                    <button type="submit" className="button button-sm" disabled={cargando}>
+                      {cargando ? 'Guardando…' : 'Guardar actuación'}
                     </button>
                     <button 
                       type="button" 
@@ -1652,51 +1469,38 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
             )}
 
             {/* Feed de actuaciones */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
-              <h2 style={{ margin: 0 }}>Historial de Actuaciones ({soloImportantes ? `${actuaciones.filter((a) => a.Importante === 'SI').length} de ${actuaciones.length}` : actuaciones.length})</h2>
-              <button
-                onClick={() => setMasViejasPrimero(!masViejasPrimero)}
-                title="Cambiar el orden del historial"
-                style={{
-                  height: 'auto',
-                  padding: '6px 12px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  border: '1px solid #94a3b8',
-                  backgroundColor: '#ffffff',
-                  color: '#334155',
-                }}
-              >
-                {masViejasPrimero ? '↑ Más antiguas primero' : '↓ Más recientes primero'}
-              </button>
-              <button
-                onClick={() => setSoloImportantes(!soloImportantes)}
-                style={{
-                  height: 'auto',
-                  padding: '6px 12px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  border: '1px solid #f59e0b',
-                  backgroundColor: soloImportantes ? '#f59e0b' : '#ffffff',
-                  color: soloImportantes ? '#ffffff' : '#b45309',
-                }}
-              >
-                {soloImportantes ? '★ Viendo solo importantes' : '☆ Ver solo importantes'}
-              </button>
+            <div className="exp-feed-head">
+              <h2 className="exp-feed-title">
+                Historial
+                <span className="lx-tab-count">
+                  {soloImportantes ? `${actuaciones.filter((a) => a.Importante === 'SI').length} de ${actuaciones.length}` : actuaciones.length}
+                </span>
+              </h2>
+              <div className="exp-feed-tools">
+                <button
+                  type="button"
+                  className="button button-secondary button-sm"
+                  onClick={() => setMasViejasPrimero(!masViejasPrimero)}
+                  title="Cambiar el orden del historial"
+                >
+                  <ArrowDownUp size={15} /> {masViejasPrimero ? 'Más antiguas primero' : 'Más recientes primero'}
+                </button>
+                <button
+                  type="button"
+                  className={`button button-secondary button-sm${soloImportantes ? ' is-starred' : ''}`}
+                  onClick={() => setSoloImportantes(!soloImportantes)}
+                >
+                  <Star size={15} fill={soloImportantes ? 'currentColor' : 'none'} /> Solo importantes
+                </button>
+              </div>
             </div>
             {soloImportantes && actuaciones.filter((a) => a.Importante === 'SI').length === 0 && (
-              <p style={{ color: '#4a5568' }}>Todavía no marcaste ninguna actuación como importante. Usá el botón ☆ en cada una.</p>
+              <div className="lx-empty">Todavía no marcaste ninguna actuación como importante. Usá la estrella de cada una.</div>
             )}
             {actuaciones.length === 0 ? (
-              <p style={{ color: '#4a5568' }}>No hay actuaciones registradas para este expediente.</p>
+              <div className="lx-empty">No hay actuaciones registradas para este expediente.</div>
             ) : (
-              <div>
+              <div className="exp-feed">
                 {(masViejasPrimero ? [...actuaciones].map((act, index) => ({ act, index })).reverse() : actuaciones.map((act, index) => ({ act, index }))).map(({ act, index }) => {
                   if (soloImportantes && act.Importante !== 'SI') return null;
                   const resumen = getResumen(act.Contenido, 200);
@@ -1714,46 +1518,31 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                   return (
                     <div
                       key={index}
+                      className={`act-card${estaEditando ? ' is-editing' : ''}${esBorrador ? ' is-draft' : ''}`}
                       style={{
-                        borderRadius: '8px',
-                        padding: '15px',
-                        marginBottom: '10px',
-                        backgroundColor: esBorrador ? '#fefcbf' : paleta.fondo,
-                        border: `1px solid ${paleta.borde}`,
-                        borderLeft: `4px solid ${paleta.borde}`,
-                        cursor: estaEditando ? 'default' : 'pointer',
-                        transition: 'all 0.2s'
+                        '--act-bg': esBorrador ? '#fffbeb' : paleta.fondo,
+                        '--act-bg-hover': esBorrador ? '#fef3c7' : paleta.hover,
+                        '--act-border': esBorrador ? '#fde68a' : paleta.borde,
+                        '--act-accent': esBorrador ? '#f59e0b' : paleta.acento || paleta.borde,
                       }}
                       onClick={() => !estaEditando && toggleExpandir(index)}
-                      onMouseEnter={(e) => {
-                        if (!estaEditando) {
-                          e.currentTarget.style.backgroundColor = esBorrador ? '#fde68a' : paleta.hover;
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!estaEditando) {
-                          e.currentTarget.style.backgroundColor = esBorrador ? '#fefcbf' : paleta.fondo;
-                        }
-                      }}
                     >
                       {estaEditando ? (
                         <div onClick={(e) => e.stopPropagation()}>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                             <div>
-                              <label><strong>Fecha</strong></label>
+                              <label>Fecha</label>
                               <input
                                 id={`edit_fecha_${index}`}
                                 type="date"
                                 defaultValue={parsearFechaArgentina(act.Fecha)} // Convertimos DD/MM/AAAA a YYYY-MM-DD para el input
-                                style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                               />
                             </div>
                             <div>
-                              <label><strong>Tipo</strong></label>
+                              <label>Tipo</label>
                               <select
                                 id={`edit_tipo_${index}`}
                                 defaultValue={act.Tipo}
-                                style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                               >
                                 {tiposActuacion.map(t => (
                                   <option key={t} value={t}>{t}</option>
@@ -1761,11 +1550,10 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                               </select>
                             </div>
                             <div>
-                              <label><strong>Origen</strong></label>
+                              <label>Origen</label>
                               <select
                                 id={`edit_origen_${index}`}
                                 defaultValue={act.Origen || 'Yo'}
-                                style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                               >
                                 {origenes.map(o => (
                                   <option key={o} value={o}>{o}</option>
@@ -1774,16 +1562,16 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                             </div>
                           </div>
                           <div>
-                            <label><strong>Contenido</strong></label>
+                            <label>Contenido</label>
                             <textarea
                               id={`edit_contenido_${index}`}
                               defaultValue={act.Contenido || ''}
-                              style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '80px' }}
+                              className="textarea-sm"
                             />
                           </div>
                           <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-                            <button onClick={() => editarActuacion(act, index)} className="button button-success button-sm">
-                              💾 Guardar
+                            <button onClick={() => editarActuacion(act, index)} className="button button-sm">
+                              Guardar cambios
                             </button>
                             <button onClick={() => setEditando(null)} className="button button-secondary button-sm">
                               Cancelar
@@ -1792,176 +1580,97 @@ export default function ExpedientePage({ sac, nombreUsuario, expediente, cliente
                         </div>
                       ) : (
                         <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <strong style={{ color: '#1a202c' }}>
-                                {act.Tipo || 'Actuación'}
-                              </strong>
-                              <span style={{ 
-                                marginLeft: '10px', 
-                                backgroundColor: 'rgba(255,255,255,0.65)', 
-                                color: paleta.texto, 
-                                border: `1px solid ${paleta.borde}`,
-                                padding: '2px 10px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.8rem',
-                                fontWeight: 600
-                              }}>
+                          <div className="act-head">
+                            <div className="act-head-main">
+                              <span className="act-title">{act.Tipo || 'Actuación'}</span>
+                              <span className="act-pill" style={{ color: paleta.texto, borderColor: paleta.borde }}>
                                 {clasif.etiqueta}
                               </span>
-                              {act.Presentado === 'SI' && (
-                                <span style={{ 
-                                  marginLeft: '10px', 
-                                  backgroundColor: '#38a169', 
-                                  color: 'white', 
-                                  padding: '2px 8px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.8rem' 
-                                }}>
-                                  Presentado
-                                </span>
-                              )}
-                              {act.Enviado === 'SI' && (
-                                <span style={{ 
-                                  marginLeft: '10px', 
-                                  backgroundColor: '#805ad5', 
-                                  color: 'white', 
-                                  padding: '2px 8px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.8rem' 
-                                }}>
-                                  📨 Enviado
-                                </span>
-                              )}
+                              {act.Presentado === 'SI' && <span className="badge badge-success">Presentado</span>}
+                              {act.Enviado === 'SI' && <span className="badge badge-info">Enviado</span>}
                               {esBorrador && act.Presentado !== 'SI' && act.Enviado !== 'SI' && (
-                                <span style={{ 
-                                  marginLeft: '10px', 
-                                  backgroundColor: '#ed8936', 
-                                  color: 'white', 
-                                  padding: '2px 8px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.8rem' 
-                                }}>
-                                  Borrador
-                                </span>
+                                <span className="badge badge-warning">Borrador</span>
                               )}
-                              {tienePDF && (
-                                <span style={{ 
-                                  marginLeft: '10px', 
-                                  backgroundColor: '#805ad5', 
-                                  color: 'white', 
-                                  padding: '2px 8px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.8rem' 
-                                }}>
-                                  📎 PDF
-                                </span>
-                              )}
-                              <span style={{ marginLeft: '15px', color: '#4a5568', fontSize: '0.9rem' }}>
-                                {formatearFechaArgentina(act.Fecha) || 'Sin fecha'}
-                              </span>
+                              {tienePDF && <span className="badge badge-neutral"><Paperclip size={12} /> PDF</span>}
+                              <span className="act-date">{formatearFechaArgentina(act.Fecha) || 'Sin fecha'}</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="act-actions" onClick={(e) => e.stopPropagation()}>
                               <select
+                                className="act-select"
                                 value={act.Categoria_Manual || ''}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => { e.stopPropagation(); cambiarPresentante(act, e.target.value); }}
+                                onChange={(e) => cambiarPresentante(act, e.target.value)}
                                 title="Corregir quién presentó esta actuación (solo cambia lo que muestra LexHub)"
-                                style={{ height: 'auto', width: 'auto', padding: '3px 4px', fontSize: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', cursor: 'pointer' }}
                               >
                                 {OPCIONES_PRESENTANTE.map((o) => (
                                   <option key={o.valor} value={o.valor}>{o.valor ? `Presentó: ${o.etiqueta}` : 'Presentó: auto'}</option>
                                 ))}
                               </select>
                               <button
-                                onClick={(e) => { e.stopPropagation(); toggleImportante(act); }}
+                                type="button"
+                                className={`lx-icon-btn${act.Importante === 'SI' ? ' is-starred' : ''}`}
+                                onClick={() => toggleImportante(act)}
                                 title={act.Importante === 'SI' ? 'Quitar de importantes' : 'Marcar como importante'}
-                                style={{
-                                  height: 'auto',
-                                  padding: '4px 8px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                  border: '1px solid #f59e0b',
-                                  backgroundColor: act.Importante === 'SI' ? '#f59e0b' : '#ffffff',
-                                  color: act.Importante === 'SI' ? '#ffffff' : '#b45309',
-                                }}
+                                aria-label="Importante"
                               >
-                                {act.Importante === 'SI' ? '★ Importante' : '☆ Importante'}
+                                <Star size={16} fill={act.Importante === 'SI' ? 'currentColor' : 'none'} />
                               </button>
                               {puedeEditarAct && (
                                 <>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); editarActuacion(act, index); }}
-                                    style={{ backgroundColor: '#ed8936', padding: '4px 8px', fontSize: '0.75rem' }}
-                                  >
-                                    Editar
+                                  <button type="button" className="lx-icon-btn" onClick={() => editarActuacion(act, index)} title="Editar" aria-label="Editar">
+                                    <Pencil size={15} />
                                   </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); eliminarActuacion(act); }}
-                                    style={{ backgroundColor: '#e53e3e', padding: '4px 8px', fontSize: '0.75rem' }}
-                                  >
-                                    Eliminar
+                                  <button type="button" className="lx-icon-btn lx-text-danger" onClick={() => eliminarActuacion(act)} title="Eliminar" aria-label="Eliminar">
+                                    <Trash2 size={15} />
                                   </button>
                                 </>
                               )}
-                              <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
-                                {estaExpandido ? '▲' : '▼'}
-                              </span>
+                              <button
+                                type="button"
+                                className="lx-icon-btn"
+                                onClick={() => toggleExpandir(index)}
+                                title={estaExpandido ? 'Contraer' : 'Expandir'}
+                                aria-label={estaExpandido ? 'Contraer' : 'Expandir'}
+                              >
+                                <ChevronDown size={16} style={{ transform: estaExpandido ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+                              </button>
                             </div>
                           </div>
 
-                          <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
-                            {resumen ? (
-                              <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {resumen}
-                                {tieneMas && !estaExpandido && (
-                                  <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
-                                )}
-                              </div>
-                            ) : (
-                              <em style={{ color: '#a0aec0' }}>Sin contenido</em>
-                            )}
-                          </div>
+                          {!estaExpandido && (
+                            <div className="act-body">
+                              {resumen ? (
+                                <>
+                                  {resumen}
+                                  {tieneMas && <span className="act-more"> Leer más</span>}
+                                </>
+                              ) : (
+                                <em className="act-empty">Sin contenido</em>
+                              )}
+                            </div>
+                          )}
 
                           {estaExpandido && act.Contenido && (
-                            <div 
-                              style={{ 
-                                marginTop: '12px', 
-                                paddingTop: '12px', 
-                                borderTop: '1px solid #e2e8f0',
-                                whiteSpace: 'pre-wrap',
-                                fontSize: '0.95rem',
-                                backgroundColor: 'white',
-                                padding: '12px',
-                                borderRadius: '4px'
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <div className="act-full" onClick={(e) => e.stopPropagation()}>
                               {limpiarMarcadorSAC(act.Contenido)}
                             </div>
                           )}
 
                           {tienePDF && (
                             <div style={{ marginTop: '10px' }}>
-                              <a 
+                              <a
                                 href={`https://drive.google.com/file/d/${act.ID_PDF_Drive}/view`}
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                style={{ color: '#3182ce', fontSize: '0.9rem' }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="act-link"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                📎 Ver PDF adjunto
+                                <Paperclip size={14} /> Ver PDF adjunto
                               </a>
                             </div>
                           )}
 
                           {act.Creado_Por && (
-                            <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#a0aec0' }}>
-                              👤 {act.Creado_Por}
-                            </div>
+                            <div className="act-author">Cargada por {act.Creado_Por}</div>
                           )}
                         </>
                       )}
