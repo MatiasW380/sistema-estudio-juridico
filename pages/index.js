@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import {
+  AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Clock, FolderOpen, Info, Plus, RefreshCw, Trash2, Wallet, X,
+} from 'lucide-react';
 import { getTareasPendientes, getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../lib/googleSheets';
 
 function parseUserFromCookie(rawCookie = '') {
@@ -203,7 +206,7 @@ export default function Home({
       .finally(() => setCargandoSAC(false));
   }, [usuarioEmail]);
 
-  const colorMovimientoSAC = { rojo: '#dc2626', amarillo: '#d97706', verde: '#16a34a' };
+  const colorMovimientoSAC = { rojo: '#d92d20', amarillo: '#dc6803', verde: '#079455' };
 
   // Agregar plazo manual a partir de una cédula (sin cálculo automático de
   // días hábiles: el usuario indica la fecha de vencimiento).
@@ -368,474 +371,310 @@ export default function Home({
     return fecha;
   };
 
+  const hoyRef = new Date();
+  hoyRef.setHours(0, 0, 0, 0);
+  const proximos = tareas_state.filter((t) => {
+    const f = getFechaLocalObj(t.Fecha);
+    return f && f >= hoyRef;
+  }).length;
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const fechaLarga = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const pesos = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0);
+  const tinte = (hex) => ({ color: hex, backgroundColor: `${hex}14`, borderColor: `${hex}33` });
+  const etiquetaDias = (d) => (d === 0 ? 'Hoy' : d === 1 ? '1 día' : `${d} días`);
+
+  const tiposColumna = [
+    { id: 'ENTREVISTA', label: 'Entrevistas' },
+    { id: 'PLAZO', label: 'Plazos' },
+    { id: 'AUDIENCIA', label: 'Audiencias' },
+    { id: 'TAREAS', label: 'Tareas' },
+    { id: 'VENCIDOS', label: 'Vencidos' },
+  ];
+  const columnasConDatos = tiposColumna
+    .map(({ id, label }) => {
+      const tareasColumna = tareas_state.filter((t) => {
+        const tipo = (t.Tipo || 'OTRO').toUpperCase();
+        const fecha = getFechaLocalObj(t.Fecha);
+        const esVencido = fecha && fecha < hoyRef;
+        if (id === 'VENCIDOS') return esVencido;
+        if (id === 'TAREAS') return !esVencido && (tipo === 'OTRO' || tipo === 'TAREAS');
+        return !esVencido && tipo === id;
+      });
+      return { id, label, tareasColumna };
+    })
+    .filter((c) => c.tareasColumna.length > 0);
+
+  const campo = (label, input) => (
+    <div className="form-group" style={{ marginBottom: 0 }}>
+      <label>{label}</label>
+      {input}
+    </div>
+  );
+
+  const ItemSAC = ({ item, extra, onClick }) => (
+    <div className="dash-row" onClick={onClick}>
+      <span className="dash-row-bar" style={{ backgroundColor: colorMovimientoSAC[item.color] }} />
+      <div className="dash-row-main">
+        <div className="dash-row-title">
+          <span className="dash-row-num">{item.numeroSAC}</span>
+          <span className="dash-row-car">{item.caratula}</span>
+        </div>
+        <div className="dash-row-sub">{item.tipoOperacion} · {item.fecha}</div>
+      </div>
+      {extra}
+      <span className="dash-badge" style={tinte(colorMovimientoSAC[item.color])}>{etiquetaDias(item.dias)}</span>
+    </div>
+  );
+
+  const estadoSAC = (vacio) =>
+    cargandoSAC ? (
+      <div className="dash-empty"><RefreshCw size={16} className="lx-spin" /> Consultando el SAC…</div>
+    ) : errorSAC ? (
+      <div className="dash-empty dash-empty-warn"><AlertTriangle size={16} /> {errorSAC}</div>
+    ) : (
+      <div className="dash-empty">{vacio}</div>
+    );
+
   return (
-    <div className="container">
-      {/* Modal de Edición de Tarea */}
+    <div className="container dash-page">
+      {/* Modal de edición de tarea */}
       {mostrarModal && tareaSeleccionada && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-          }}
-          onClick={() => { setMostrarModal(false); setMensaje(''); }}
-        >
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '8px',
-              padding: '24px',
-              maxWidth: '600px',
-              width: '90%',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ marginTop: 0 }}>{tareaSeleccionada.Titulo}</h2>
+        <div className="lx-modal-overlay" onClick={() => { setMostrarModal(false); setMensaje(''); }}>
+          <div className="lx-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="lx-modal-head">
+              <h2>{tareaSeleccionada.Titulo || 'Tarea'}</h2>
+              <button type="button" className="lx-icon-btn" onClick={() => { setMostrarModal(false); setMensaje(''); }} aria-label="Cerrar">
+                <X size={18} />
+              </button>
+            </div>
             <form onSubmit={handleEditar}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div>
-                  <label><strong>Tipo</strong></label>
-                  <select
-                    value={tareaSeleccionada.Tipo || 'Otro'}
-                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Tipo: e.target.value })}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                  >
+              <div className="lx-modal-grid">
+                {campo('Tipo',
+                  <select value={tareaSeleccionada.Tipo || 'Otro'} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Tipo: e.target.value })}>
                     <option value="Entrevista">Entrevista</option>
                     <option value="Plazo">Plazo</option>
                     <option value="Audiencia">Audiencia</option>
                     <option value="Pericia">Pericia</option>
                     <option value="Otro">Otro</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label><strong>Fecha</strong></label>
-                  <input
-                    type="date"
-                    value={parsearFechaArgentina(tareaSeleccionada.Fecha) || ''}
-                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Fecha: e.target.value })}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                  />
-                </div>
-
-                <div>
-                  <label><strong>Hora</strong></label>
-                  <input
-                    type="time"
-                    value={tareaSeleccionada.Hora || ''}
-                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Hora: e.target.value })}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                  />
-                </div>
-
-                <div>
-                  <label><strong>Estado</strong></label>
-                  <select
-                    value={tareaSeleccionada.Estado || 'Pendiente'}
-                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Estado: e.target.value })}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                  >
+                  </select>)}
+                {campo('Fecha',
+                  <input type="date" value={parsearFechaArgentina(tareaSeleccionada.Fecha) || ''} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Fecha: e.target.value })} />)}
+                {campo('Hora',
+                  <input type="time" value={tareaSeleccionada.Hora || ''} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Hora: e.target.value })} />)}
+                {campo('Estado',
+                  <select value={tareaSeleccionada.Estado || 'Pendiente'} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Estado: e.target.value })}>
                     <option value="Pendiente">Pendiente</option>
                     <option value="Completado">Completado</option>
                     <option value="Cancelado">Cancelado</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label><strong>N° SAC</strong></label>
-                  <input
-                    type="text"
-                    value={tareaSeleccionada.Numero_SAC || ''}
-                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Numero_SAC: e.target.value })}
-                    placeholder="Ej: 123456"
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                  />
-                </div>
-
-                <div>
-                  <label><strong>Cliente</strong></label>
-                  <input
-                    type="text"
-                    value={tareaSeleccionada.Cliente || ''}
-                    onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Cliente: e.target.value })}
-                    placeholder="Nombre del cliente"
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                  />
-                </div>
+                  </select>)}
+                {campo('N° SAC',
+                  <input type="text" value={tareaSeleccionada.Numero_SAC || ''} placeholder="Ej: 123456" onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Numero_SAC: e.target.value })} />)}
+                {campo('Cliente',
+                  <input type="text" value={tareaSeleccionada.Cliente || ''} placeholder="Nombre del cliente" onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Cliente: e.target.value })} />)}
               </div>
-
-              <div style={{ marginTop: '15px' }}>
-                <label><strong>Título</strong></label>
-                <input
-                  type="text"
-                  value={tareaSeleccionada.Titulo || ''}
-                  onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Titulo: e.target.value })}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                />
-              </div>
-
-              <div style={{ marginTop: '15px' }}>
-                <label><strong>Descripción</strong></label>
-                <textarea
-                  value={tareaSeleccionada.Descripcion || ''}
-                  onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Descripcion: e.target.value })}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', minHeight: '60px' }}
-                />
-              </div>
-
-              <div style={{ marginTop: '15px' }}>
-                <label><strong>Lugar</strong></label>
-                <input
-                  type="text"
-                  value={tareaSeleccionada.Lugar || ''}
-                  onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Lugar: e.target.value })}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                />
+              <div className="lx-modal-stack">
+                {campo('Título',
+                  <input type="text" value={tareaSeleccionada.Titulo || ''} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Titulo: e.target.value })} />)}
+                {campo('Descripción',
+                  <textarea className="textarea-sm" value={tareaSeleccionada.Descripcion || ''} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Descripcion: e.target.value })} />)}
+                {campo('Lugar',
+                  <input type="text" value={tareaSeleccionada.Lugar || ''} onChange={(e) => setTareaSeleccionada({ ...tareaSeleccionada, Lugar: e.target.value })} />)}
               </div>
 
               {mensaje && (
-                <div
-                  style={{
-                    marginTop: '15px',
-                    padding: '10px',
-                    borderRadius: '8px',
-                    backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                    color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c',
-                  }}
-                >
+                <div className={`alert ${mensaje.includes('✅') ? 'alert-success' : 'alert-urgent'}`} style={{ marginTop: '16px', marginBottom: 0 }}>
                   {mensaje}
                 </div>
               )}
 
-              <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-                  {cargando ? 'Guardando...' : '💾 Guardar Cambios'}
+              <div className="lx-modal-actions">
+                <button type="button" className="button button-ghost button-sm lx-text-danger" onClick={handleEliminar}>
+                  <Trash2 size={15} /> Eliminar
                 </button>
-                {tareaSeleccionada?.Numero_SAC && (
-                  <button 
-                    type="button" 
-                    onClick={() => router.push(`/expediente/${encodeURIComponent(tareaSeleccionada.Numero_SAC)}`)}
-                    style={{ backgroundColor: '#2563eb' }}
-                  >
-                    📋 IR AL EXPEDIENTE
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {tareaSeleccionada?.Numero_SAC && (
+                    <button type="button" className="button button-secondary button-sm" onClick={() => router.push(`/expediente/${encodeURIComponent(tareaSeleccionada.Numero_SAC)}`)}>
+                      Ir al expediente <ArrowRight size={15} />
+                    </button>
+                  )}
+                  <button type="submit" className="button button-sm" disabled={cargando}>
+                    {cargando ? 'Guardando…' : 'Guardar cambios'}
                   </button>
-                )}
-                <button type="button" onClick={handleEliminar} style={{ backgroundColor: '#e53e3e' }}>
-                  🗑️ Eliminar
-                </button>
-                <button type="button" onClick={() => { setMostrarModal(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
-                  ❌ Cerrar
-                </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Próximos Plazos - Columnas por Tipo (solo las que tienen datos) */}
-      {(() => {
-        const hoyPlazos = new Date();
-        hoyPlazos.setHours(0, 0, 0, 0);
-        const columnasConDatos = ['ENTREVISTA', 'PLAZO', 'AUDIENCIA', 'TAREAS', 'VENCIDOS']
-          .map((tipoColumna) => {
-            const tareasColumnna = tareas_state.filter((t) => {
-              const tipo = (t.Tipo || 'OTRO').toUpperCase();
-              const fecha = getFechaLocalObj(t.Fecha);
-              const esVencido = fecha && fecha < hoyPlazos;
-              if (tipoColumna === 'VENCIDOS') return esVencido;
-              if (tipoColumna === 'TAREAS') return !esVencido && (tipo === 'OTRO' || tipo === 'TAREAS');
-              return !esVencido && tipo === tipoColumna;
-            });
-            return { tipoColumna, tareasColumnna };
-          })
-          .filter((c) => c.tareasColumnna.length > 0);
-
-        return (
-      <div style={{ marginTop: '24px' }}>
-        {tareas_state.length === 0 ? (
-          <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0' }}>
-            No hay plazos en los próximos 5 días.
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columnasConDatos.length}, 1fr)`, gap: '12px', marginTop: '15px' }}>
-            {columnasConDatos.map(({ tipoColumna, tareasColumnna }) => {
-              return (
-                <div key={tipoColumna}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', paddingBottom: '6px', borderBottom: '2px solid #e2e8f0' }}>
-                    {tipoColumna}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {tareasColumnna.map((tarea, index) => (
-                      <div
-                        key={`${tarea.ID || 'tarea'}-${index}`}
-                        style={{
-                          border: '1px solid #e2e8f0',
-                          borderLeft: `3px solid ${getUrgenciaColor(tarea.Fecha)}`,
-                          borderRadius: '4px',
-                          padding: '6px 8px',
-                          backgroundColor: '#ffffff',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                          fontSize: '0.8rem',
-                        }}
-                        onClick={() => handleTareaClick(tarea)}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f8fafc';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ffffff';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
-                          <strong style={{ color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {tarea.Titulo || 'Sin título'}
-                          </strong>
-                          <span style={{ backgroundColor: getUrgenciaColor(tarea.Fecha), color: 'white', padding: '2px 6px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {getUrgenciaTexto(tarea.Fecha)}
-                          </span>
-                        </div>
-                        {tarea.Cliente && (
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {tarea.Cliente}
-                          </div>
-                        )}
-                        {tarea.Numero_SAC && (
-                          <div style={{ fontSize: '0.7rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '1px 4px', borderRadius: '8px', display: 'inline-block', marginTop: '2px' }}>
-                            SAC: {tarea.Numero_SAC}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {tareasColumnna.length === 0 && (
-                      <div style={{ fontSize: '0.75rem', color: '#cbd5e1', textAlign: 'center', padding: '12px 0' }}>
-                        —
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-        );
-      })()}
-
-      {!cargandoSAC && !errorSAC && (noCargadosSAC > 0 || cedulasNoCargadasSAC > 0) && (
-        <div style={{ marginTop: '24px', marginBottom: '-12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', fontSize: '0.8rem', color: '#64748b' }}>
-          <div>
-            {noCargadosSAC > 0 && (
-              <>ℹ️ {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.</>
-            )}
-          </div>
-          <div>
-            {cedulasNoCargadasSAC > 0 && (
-              <>ℹ️ {cedulasNoCargadasSAC} {cedulasNoCargadasSAC === 1 ? 'cédula de los últimos 3 días es de un expediente que no está cargado' : 'cédulas de los últimos 3 días son de expedientes que no están cargados'} en LexHub.</>
-            )}
-            {listaCedulasNoCargadas.length > 0 && (
-              <details style={{ marginTop: '4px' }}>
-                <summary style={{ cursor: 'pointer' }}>Ver cuáles</summary>
-                {listaCedulasNoCargadas.map((c, i) => (
-                  <div key={i} style={{ marginTop: '4px' }}>
-                    <strong>{c.numeroSAC}</strong> — {c.caratula} {c.tipo ? `· ${c.tipo}` : ''} {c.fecha ? `· ${c.fecha}` : ''}
-                  </div>
-                ))}
-              </details>
-            )}
-          </div>
+      {/* Encabezado */}
+      <div className="dash-head">
+        <div>
+          <h1 className="dash-title">{saludo}</h1>
+          <p className="dash-sub">{fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1)}</p>
         </div>
-      )}
+        <div className="dash-head-actions">
+          <button className="button button-secondary button-sm" onClick={() => router.push('/agenda')}>
+            <CalendarDays size={15} /> Agenda
+          </button>
+          <button className="button button-sm" onClick={() => router.push('/clientes/nuevo')}>
+            <Plus size={15} /> Nuevo cliente
+          </button>
+        </div>
+      </div>
 
-      {/* Movimientos SAC + Cédulas SAC - últimos 3 días, en dos columnas, solo expedientes en LexHub */}
-      <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-      <div>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Movimientos SAC{movimientosSAC.length > 0 ? ` (${movimientosSAC.length})` : ''}
-        </h2>
+      {/* Indicadores */}
+      <div className="dash-kpis">
+        <div className="dash-kpi" onClick={() => router.push('/expedientes')}>
+          <div className="dash-kpi-label"><FolderOpen size={15} /> Expedientes</div>
+          <div className="dash-kpi-value">{expedientesAbiertos}</div>
+        </div>
+        <div className="dash-kpi" onClick={() => router.push('/agenda')}>
+          <div className="dash-kpi-label"><CalendarClock size={15} /> Próximos 5 días</div>
+          <div className="dash-kpi-value">{proximos}</div>
+        </div>
+        <div className={`dash-kpi${plazosvencidos > 0 ? ' is-alert' : ''}`} onClick={() => router.push('/agenda')}>
+          <div className="dash-kpi-label"><AlertTriangle size={15} /> Vencidos</div>
+          <div className="dash-kpi-value">{plazosvencidos}</div>
+        </div>
+        <div className="dash-kpi" onClick={() => router.push('/honorarios')}>
+          <div className="dash-kpi-label"><Wallet size={15} /> Honorarios por cobrar</div>
+          <div className="dash-kpi-value">{pesos(totalPendiente)}</div>
+        </div>
+      </div>
 
-        {cargandoSAC ? (
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-            Consultando el SAC...
-          </div>
-        ) : errorSAC ? (
-          <div style={{ backgroundColor: '#fff7ed', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#9a3412', border: '1px solid #fed7aa', fontSize: '0.85rem' }}>
-            {errorSAC}
-          </div>
-        ) : movimientosSAC.length === 0 ? (
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-            Sin movimientos en los últimos 3 días.
-          </div>
+      {/* Agenda: próximos 5 días por tipo */}
+      <div className="lx-card dash-card">
+        <div className="dash-card-head">
+          <h2>Próximos 5 días</h2>
+          <button className="button button-ghost button-sm" onClick={() => router.push('/agenda')}>
+            Ver agenda <ArrowRight size={15} />
+          </button>
+        </div>
+        {tareas_state.length === 0 ? (
+          <div className="dash-empty">No hay plazos ni eventos en los próximos 5 días.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {movimientosSAC.map((m) => (
-              <div
-                key={`${m.numeroSAC}-${m.fecha}`}
-                onClick={() => router.push(`/expediente/${encodeURIComponent(m.numeroSAC)}`)}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderLeft: `3px solid ${colorMovimientoSAC[m.color]}`,
-                  borderRadius: '4px',
-                  padding: '8px 10px',
-                  backgroundColor: '#ffffff',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
-              >
-                <div style={{ overflow: 'hidden' }}>
-                  <strong style={{ color: '#0f172a' }}>{m.numeroSAC}</strong>
-                  <span style={{ color: '#64748b' }}> — {m.caratula}</span>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{m.tipoOperacion} · {m.fecha}</div>
+          <div className="dash-cols" style={{ gridTemplateColumns: `repeat(${columnasConDatos.length}, minmax(0, 1fr))` }}>
+            {columnasConDatos.map(({ id, label, tareasColumna }) => (
+              <div key={id}>
+                <div className={`dash-col-head${id === 'VENCIDOS' ? ' is-alert' : ''}`}>
+                  {label}
+                  <span className="lx-tab-count">{tareasColumna.length}</span>
                 </div>
-                <span style={{ backgroundColor: colorMovimientoSAC[m.color], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {m.dias === 0 ? 'HOY' : m.dias === 1 ? '1 día' : `${m.dias} días`}
-                </span>
+                <div className="dash-col-list">
+                  {tareasColumna.map((tarea, index) => (
+                    <div key={`${tarea.ID || 'tarea'}-${index}`} className="dash-task" onClick={() => handleTareaClick(tarea)}>
+                      <div className="dash-task-top">
+                        <span className="dash-task-title">{tarea.Titulo || 'Sin título'}</span>
+                        <span className="dash-badge" style={tinte(getUrgenciaColor(tarea.Fecha))}>
+                          {getUrgenciaTexto(tarea.Fecha).charAt(0) + getUrgenciaTexto(tarea.Fecha).slice(1).toLowerCase()}
+                        </span>
+                      </div>
+                      {tarea.Cliente && <div className="dash-task-sub">{tarea.Cliente}</div>}
+                      {(tarea.Numero_SAC || tarea.Hora) && (
+                        <div className="dash-task-meta">
+                          {tarea.Hora && <span><Clock size={12} /> {tarea.Hora}</span>}
+                          {tarea.Numero_SAC && <span className="lx-chip">SAC {tarea.Numero_SAC}</span>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
-          Cédulas SAC{cedulasSAC.length > 0 ? ` (${cedulasSAC.length})` : ''}
-        </h2>
+      {/* SAC: movimientos y cédulas de los últimos 3 días */}
+      <div className="dash-grid">
+        <div className="lx-card dash-card">
+          <div className="dash-card-head">
+            <h2>Movimientos SAC <span className="lx-tab-count">{movimientosSAC.length}</span></h2>
+            <span className="dash-hint">Últimos 3 días</span>
+          </div>
+          {movimientosSAC.length === 0 || cargandoSAC || errorSAC ? (
+            estadoSAC('Sin movimientos en los últimos 3 días.')
+          ) : (
+            <div className="dash-list">
+              {movimientosSAC.map((m) => (
+                <ItemSAC key={`${m.numeroSAC}-${m.fecha}`} item={m} onClick={() => router.push(`/expediente/${encodeURIComponent(m.numeroSAC)}`)} />
+              ))}
+            </div>
+          )}
+          {!cargandoSAC && !errorSAC && noCargadosSAC > 0 && (
+            <div className="dash-foot">
+              <Info size={14} /> {noCargadosSAC} {noCargadosSAC === 1 ? 'expediente con novedades en el SAC no está cargado' : 'expedientes con novedades en el SAC no están cargados'} en LexHub.
+            </div>
+          )}
+        </div>
 
-        {cargandoSAC ? (
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-            Consultando el SAC...
+        <div className="lx-card dash-card">
+          <div className="dash-card-head">
+            <h2>Cédulas SAC <span className="lx-tab-count">{cedulasSAC.length}</span></h2>
+            <span className="dash-hint">Últimos 3 días</span>
           </div>
-        ) : errorSAC ? (
-          <div style={{ backgroundColor: '#fff7ed', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#9a3412', border: '1px solid #fed7aa', fontSize: '0.85rem' }}>
-            {errorSAC}
-          </div>
-        ) : cedulasSAC.length === 0 ? (
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '6px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-            Sin cédulas recibidas en los últimos 3 días.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {cedulasSAC.map((c, i) => {
-              const key = `${c.numeroSAC}-${c.fecha}-${i}`;
-              return (
-              <div key={key}>
-              <div
-                onClick={() => router.push(`/expediente/${encodeURIComponent(c.numeroSAC)}`)}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderLeft: `3px solid ${colorMovimientoSAC[c.color]}`,
-                  borderRadius: '4px',
-                  padding: '8px 10px',
-                  backgroundColor: '#ffffff',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
-              >
-                <div style={{ overflow: 'hidden' }}>
-                  <strong style={{ color: '#0f172a' }}>{c.numeroSAC}</strong>
-                  <span style={{ color: '#64748b' }}> — {c.caratula}</span>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.tipoOperacion} · {c.fecha}</div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMensajePlazo('');
-                    setFechaPlazo('');
-                    setPlazoAbiertoKey(plazoAbiertoKey === key ? null : key);
-                  }}
-                  style={{
-                    fontSize: '0.7rem',
-                    color: '#2563eb',
-                    background: 'none',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: '6px',
-                    padding: '3px 8px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                >
-                  + Plazo
-                </button>
-                <span style={{ backgroundColor: colorMovimientoSAC[c.color], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: '700', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {c.dias === 0 ? 'HOY' : c.dias === 1 ? '1 día' : `${c.dias} días`}
-                </span>
+          {cedulasSAC.length === 0 || cargandoSAC || errorSAC ? (
+            estadoSAC('Sin cédulas recibidas en los últimos 3 días.')
+          ) : (
+            <div className="dash-list">
+              {cedulasSAC.map((c, i) => {
+                const key = `${c.numeroSAC}-${c.fecha}-${i}`;
+                return (
+                  <div key={key}>
+                    <ItemSAC
+                      item={c}
+                      onClick={() => router.push(`/expediente/${encodeURIComponent(c.numeroSAC)}`)}
+                      extra={
+                        <button
+                          type="button"
+                          className="button button-secondary button-sm dash-row-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMensajePlazo('');
+                            setFechaPlazo('');
+                            setPlazoAbiertoKey(plazoAbiertoKey === key ? null : key);
+                          }}
+                        >
+                          <Plus size={14} /> Plazo
+                        </button>
+                      }
+                    />
+                    {plazoAbiertoKey === key && (
+                      <div className="dash-plazo" onClick={(e) => e.stopPropagation()}>
+                        <span>Vencimiento</span>
+                        <input type="date" value={fechaPlazo} onChange={(e) => setFechaPlazo(e.target.value)} />
+                        <button className="button button-sm" onClick={() => handleGuardarPlazo(c)} disabled={!fechaPlazo || guardandoPlazo}>
+                          {guardandoPlazo ? 'Guardando…' : 'Guardar'}
+                        </button>
+                        {mensajePlazo && <span className="dash-plazo-msg">{mensajePlazo}</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {!cargandoSAC && !errorSAC && cedulasNoCargadasSAC > 0 && (
+            <div className="dash-foot">
+              <Info size={14} />
+              <div>
+                {cedulasNoCargadasSAC} {cedulasNoCargadasSAC === 1 ? 'cédula es de un expediente que no está cargado' : 'cédulas son de expedientes que no están cargados'} en LexHub.
+                {listaCedulasNoCargadas.length > 0 && (
+                  <details className="dash-details">
+                    <summary>Ver cuáles</summary>
+                    {listaCedulasNoCargadas.map((c, i) => (
+                      <div key={i}>
+                        <strong>{c.numeroSAC}</strong> — {c.caratula}{c.tipo ? ` · ${c.tipo}` : ''}{c.fecha ? ` · ${c.fecha}` : ''}
+                      </div>
+                    ))}
+                  </details>
+                )}
               </div>
-
-              {plazoAbiertoKey === key && (
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    border: '1px solid #bfdbfe',
-                    borderTop: 'none',
-                    borderRadius: '0 0 4px 4px',
-                    padding: '8px 10px',
-                    backgroundColor: '#eff6ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '0.78rem',
-                  }}
-                >
-                  <span style={{ color: '#1e40af' }}>Vencimiento:</span>
-                  <input
-                    type="date"
-                    value={fechaPlazo}
-                    onChange={(e) => setFechaPlazo(e.target.value)}
-                    style={{ padding: '4px 6px', border: '1px solid #bfdbfe', borderRadius: '4px', fontSize: '0.78rem' }}
-                  />
-                  <button
-                    onClick={() => handleGuardarPlazo(c)}
-                    disabled={!fechaPlazo || guardandoPlazo}
-                    style={{
-                      backgroundColor: 'var(--color-cobalt)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '4px 10px',
-                      fontSize: '0.78rem',
-                      cursor: !fechaPlazo || guardandoPlazo ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {guardandoPlazo ? 'Guardando...' : 'Guardar'}
-                  </button>
-                  {mensajePlazo && <span style={{ fontSize: '0.75rem' }}>{mensajePlazo}</span>}
-                </div>
-              )}
-              </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
