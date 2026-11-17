@@ -2263,3 +2263,63 @@ table.lx-table { border: none; box-shadow: none; border-radius: 0; margin: 0; }
 .cli-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); }
 .lx-table.cli-mov tbody tr { cursor: default; }
 @media (max-width: 900px) { .cli-fields { grid-template-columns: 1fr; } }
+
+/* Rango de fechas compacto en barras de filtros */
+.lx-daterange { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: var(--color-text-tertiary); }
+.lx-daterange input[type='date'] { width: 150px; height: 36px; padding-top: 0; padding-bottom: 0; }
+
+/* ============================================================
+   20. AGENDA
+   ============================================================ */
+.lx-segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--color-bg-secondary); border-radius: var(--radius-md); }
+.lx-segment,
+button.lx-segment:not(:disabled) {
+  height: 30px; padding: 0 12px; gap: 6px;
+  background: transparent; color: var(--color-text-secondary);
+  border: none; border-radius: var(--radius-sm); box-shadow: none;
+  font-size: 0.8125rem; font-weight: 500;
+}
+button.lx-segment:not(:disabled):hover { background: rgba(255, 255, 255, 0.6); color: var(--color-text-primary); }
+button.lx-segment.is-active:not(:disabled) { background: var(--color-surface); color: var(--color-text-primary); box-shadow: var(--shadow-xs); }
+
+.ag-selected { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 16px; border-left: 3px solid var(--color-cobalt); }
+
+.ag-cal { padding: 0; overflow: hidden; }
+.ag-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--color-border-light); }
+.ag-month { margin: 0; font-size: 1rem; }
+.ag-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.75rem; color: var(--color-text-secondary); }
+.ag-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.ag-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ag-dow { padding: 8px 10px; font-size: 0.75rem; font-weight: 500; color: var(--color-text-tertiary); border-bottom: 1px solid var(--color-border-light); background: var(--color-bg-primary); }
+.ag-day {
+  min-height: 108px; padding: 6px 6px 8px;
+  border-right: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-light);
+  cursor: pointer; transition: background-color var(--transition-fast);
+  min-width: 0;
+}
+.ag-day:nth-child(7n) { border-right: none; }
+.ag-day:hover { background: var(--color-bg-primary); }
+.ag-day.is-other { background: #fcfcfd; }
+.ag-day.is-other .ag-day-num { color: var(--color-text-disabled); }
+.ag-day-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; margin-bottom: 4px;
+  font-size: 0.8125rem; font-weight: 500; color: var(--color-text-secondary);
+  border-radius: 50%;
+}
+.ag-day.is-today .ag-day-num { background: var(--color-cobalt); color: #fff; font-weight: 600; }
+.ag-event {
+  display: block; margin-top: 2px; padding: 2px 6px;
+  font-size: 0.6875rem; font-weight: 500; line-height: 1.5;
+  color: var(--ev);
+  background: color-mix(in srgb, var(--ev) 10%, white);
+  border-left: 2px solid var(--ev);
+  border-radius: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ag-event:hover { background: color-mix(in srgb, var(--ev) 18%, white); }
+.ag-event-time { font-variant-numeric: tabular-nums; opacity: 0.8; margin-right: 4px; }
+.ag-more { margin-top: 2px; padding-left: 6px; font-size: 0.6875rem; color: var(--color-text-tertiary); }
+.ag-task-date { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8125rem; color: var(--color-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }

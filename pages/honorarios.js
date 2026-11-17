@@ -2,6 +2,7 @@
 // Página de gestión de honorarios y aportes con nombre del cliente
 
 import { useState } from 'react';
+import { Filter, Search, X } from 'lucide-react';
 import { getFinanzas, getResumenFinanzas, formatearFechaArgentina } from '../lib/googleSheets';
 
 export async function getServerSideProps(context) {
@@ -34,8 +35,10 @@ export async function getServerSideProps(context) {
 
 function formatMoney(value) {
   const n = parseFloat(value || 0);
-  return `$${Number.isNaN(n) ? '0.00' : n.toFixed(2)}`;
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(Number.isNaN(n) ? 0 : n);
 }
+
+const NOMBRE_CATEGORIA = { Todos: 'Todas las categorías', Honorarios: 'Honorarios', Caja_Abogados: 'Caja de Abogados', Colegio_Abogados: 'Colegio de Abogados' };
 
 export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: resumenInicial }) {
   const [finanzas, setFinanzas] = useState(finanzasIniciales || []);
@@ -107,131 +110,100 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
   };
 
   return (
-    <div className="container">
-      <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Honorarios y Aportes</h1>
-        <p>Seguimiento de honorarios, caja y aportes a colegios</p>
-      </div>
-
-      {/* Resumen - Solo mostrar si hay filtros activos */}
-      {filtrosActivos && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Acordado</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb' }}>{formatMoney(resumen.totalAcordado)}</div>
-          </div>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pagado</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-success)' }}>{formatMoney(resumen.totalPagado)}</div>
-          </div>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>Total Pendiente</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-urgent)' }}>{formatMoney(resumen.totalPendiente)}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Filtros */}
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#0f172a' }}>Filtros</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Cliente</label>
-            <input
-              type="text"
-              value={filtroCliente}
-              onChange={(e) => setFiltroCliente(e.target.value)}
-              placeholder="Buscar por nombre..."
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Categoría</label>
-            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
-              {categorias.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Estado</label>
-            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-              {estados.map((e) => (
-                <option key={e} value={e}>{e}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Desde</label>
-            <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Hasta</label>
-            <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="button button-sm" onClick={aplicarFiltros}>
-            Aplicar Filtros
-          </button>
-          <button className="button button-secondary button-sm" onClick={limpiarFiltros}>
-            Limpiar
-          </button>
+    <div className="container lx-page">
+      <div className="lx-page-head">
+        <div>
+          <h1>Honorarios y aportes</h1>
+          <p>Seguimiento de honorarios, Caja de Abogados y aportes al Colegio</p>
         </div>
       </div>
 
-      {/* Tabla */}
-      <div style={{ marginTop: '24px' }}>
-        <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>
-          Movimientos
-        </h2>
-        {finanzas.length === 0 ? (
-          <p style={{ color: '#64748b' }}>No hay movimientos registrados.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table table-striped">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Cliente</th>
-                  <th>Categoría</th>
-                  <th>Tipo</th>
-                  <th>Concepto</th>
-                  <th className="numeric">Total</th>
-                  <th className="numeric">Pagado</th>
-                  <th style={{ textAlign: 'center' }}>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {finanzas.map((f, index) => {
-                  const cliente = f.Cliente || f.Nombre_Cliente || 'Sin cliente';
-                  const estado = f.Estado || 'Pendiente';
-                  const statusClass = estado === 'Pagado' ? 'table-status-active' : estado === 'Parcial' ? 'table-status-pending' : 'table-status-urgent';
+      <div className="dash-kpis" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <div className="dash-kpi" style={{ cursor: 'default' }}>
+          <div className="dash-kpi-label">Total acordado{filtrosActivos ? ' (filtrado)' : ''}</div>
+          <div className="dash-kpi-value">{formatMoney(resumen.totalAcordado)}</div>
+        </div>
+        <div className="dash-kpi" style={{ cursor: 'default' }}>
+          <div className="dash-kpi-label">Total cobrado{filtrosActivos ? ' (filtrado)' : ''}</div>
+          <div className="dash-kpi-value" style={{ color: '#079455' }}>{formatMoney(resumen.totalPagado)}</div>
+        </div>
+        <div className={`dash-kpi${parseFloat(resumen.totalPendiente) > 0 ? ' is-alert' : ''}`} style={{ cursor: 'default' }}>
+          <div className="dash-kpi-label">Pendiente de cobro{filtrosActivos ? ' (filtrado)' : ''}</div>
+          <div className="dash-kpi-value">{formatMoney(resumen.totalPendiente)}</div>
+        </div>
+      </div>
 
-                  return (
-                    <tr key={`${f.ID || 'fin'}-${index}`}>
-                      <td>{formatearFechaArgentina(f.Fecha) || ''}</td>
-                      <td style={{ fontWeight: '600' }}>{cliente}</td>
-                      <td>{f.Categoria || ''}</td>
-                      <td>{f.Tipo || ''}</td>
-                      <td>{f.Concepto || ''}</td>
-                      <td className="numeric">{formatMoney(f.Monto_Total)}</td>
-                      <td className="numeric">{formatMoney(f.Monto_Pagado)}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className={statusClass}>{estado}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      <div className="lx-toolbar">
+        <div className="lx-search">
+          <Search size={16} />
+          <input
+            type="text"
+            value={filtroCliente}
+            onChange={(e) => setFiltroCliente(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && aplicarFiltros()}
+            placeholder="Buscar por cliente"
+          />
+        </div>
+        <select className="lx-filter" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
+          {categorias.map((c) => <option key={c} value={c}>{NOMBRE_CATEGORIA[c] || c}</option>)}
+        </select>
+        <select className="lx-filter" style={{ minWidth: '150px' }} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+          {estados.map((e) => <option key={e} value={e}>{e === 'Todos' ? 'Todos los estados' : e}</option>)}
+        </select>
+        <div className="lx-daterange">
+          <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} title="Desde" />
+          <span>a</span>
+          <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} title="Hasta" />
+        </div>
+        <button className="button button-secondary button-sm" onClick={aplicarFiltros}>
+          <Filter size={15} /> Aplicar
+        </button>
+        {filtrosActivos && (
+          <button className="button button-ghost button-sm" onClick={limpiarFiltros}>
+            <X size={15} /> Limpiar
+          </button>
         )}
       </div>
+
+      {finanzas.length === 0 ? (
+        <div className="lx-empty">{filtrosActivos ? 'No hay movimientos que coincidan con los filtros.' : 'No hay movimientos registrados.'}</div>
+      ) : (
+        <div className="lx-table-wrap">
+          <table className="lx-table cli-mov">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Categoría</th>
+                <th>Tipo</th>
+                <th>Concepto</th>
+                <th className="numeric">Total</th>
+                <th className="numeric">Pagado</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {finanzas.map((f, index) => {
+                const cliente = f.Cliente || f.Nombre_Cliente || 'Sin cliente';
+                const estado = f.Estado || 'Pendiente';
+                const badge = estado === 'Pagado' ? 'badge-success' : estado === 'Parcial' ? 'badge-warning' : 'badge-urgent';
+                return (
+                  <tr key={`${f.ID || 'fin'}-${index}`}>
+                    <td className="lx-cell-muted" style={{ whiteSpace: 'nowrap' }}>{formatearFechaArgentina(f.Fecha) || ''}</td>
+                    <td className="lx-cell-strong">{cliente}</td>
+                    <td>{NOMBRE_CATEGORIA[f.Categoria] || f.Categoria || ''}</td>
+                    <td>{f.Tipo || ''}</td>
+                    <td className="lx-cell-muted">{f.Concepto || ''}</td>
+                    <td className="numeric" style={{ whiteSpace: 'nowrap' }}>{formatMoney(f.Monto_Total)}</td>
+                    <td className="numeric" style={{ whiteSpace: 'nowrap' }}>{formatMoney(f.Monto_Pagado)}</td>
+                    <td><span className={`badge ${badge}`}>{estado}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
