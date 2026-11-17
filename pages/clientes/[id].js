@@ -4,6 +4,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes, formatearFechaArgentina } from '../../lib/googleSheets';
+import {
+  ArrowLeft, ChevronDown, ChevronRight, Download, FileText, FolderOpen, MapPin, Pencil, Phone, Plus, X,
+} from 'lucide-react';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -410,624 +413,402 @@ export default function FichaCliente({ cliente, expedientes }) {
     }
   };
 
+  const iniciales = (cliente.Nombre_Cliente || '')
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
+  const pesos = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n || 0);
+  const alerta = (m) => (
+    <div className={`alert ${m.includes('✅') ? 'alert-success' : 'alert-urgent'}`} style={{ marginTop: '16px', marginBottom: 0 }}>{m}</div>
+  );
+  const badgeEstado = (estado = 'Pendiente') =>
+    estado === 'Pagado' ? 'badge-success' : estado === 'Parcial' ? 'badge-warning' : 'badge-urgent';
+
+  const tabs = [
+    { id: 'datos', label: 'Datos', count: null },
+    { id: 'expedientes', label: 'Expedientes', count: expedientes.length },
+    { id: 'consultas', label: 'Consultas', count: consultas.length || null },
+    { id: 'finanzas', label: 'Finanzas', count: null },
+  ];
+  const accionTab = {
+    expedientes: { label: 'Expediente', abierto: mostrarFormulario, toggle: () => { setMostrarFormulario(!mostrarFormulario); setMensaje(''); } },
+    consultas: { label: 'Consulta', abierto: mostrarFormularioConsultas, toggle: () => { setMostrarFormularioConsultas(!mostrarFormularioConsultas); setMensajeConsultas(''); } },
+    finanzas: { label: 'Movimiento', abierto: mostrarFormularioFinanzas, toggle: () => { setMostrarFormularioFinanzas(!mostrarFormularioFinanzas); setMensajeFinanzas(''); } },
+  }[activeTab];
+
+  const dato = (label, valor) => (
+    <div className="cli-field">
+      <div className="cli-field-label">{label}</div>
+      <div className={`cli-field-value${valor ? '' : ' is-empty'}`}>{valor || 'No registrado'}</div>
+    </div>
+  );
+
   return (
-    <div className="container">
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ marginBottom: '4px' }}>{cliente.Nombre_Cliente}</h1>
-        <p style={{ margin: 0 }}>Ficha completa del cliente con expedientes, consultas y movimientos financieros</p>
-        <div style={{ marginTop: '12px', fontSize: '14px', color: '#64748b' }}>
-          <p style={{ margin: '4px 0' }}>
-            <strong>ID Cliente:</strong> {cliente.ID_Cliente}
-          </p>
-          <p style={{ margin: '4px 0' }}>
-            <strong>Teléfono:</strong> {cliente.Telefono || 'No registrado'}
-          </p>
+    <div className="container exp-page">
+      {/* Encabezado */}
+      <div className="exp-head">
+        <div className="exp-head-main">
+          <div className="exp-breadcrumb">
+            <button type="button" className="exp-breadcrumb-link" onClick={volver}>Clientes</button>
+            <span className="exp-breadcrumb-sep">/</span>
+            <span>{cliente.Nombre_Cliente}</span>
+          </div>
+          <div className="cli-title">
+            <span className="lx-avatar cli-avatar">{iniciales}</span>
+            <h1 className="exp-title" style={{ margin: 0 }}>{cliente.Nombre_Cliente}</h1>
+          </div>
+          <div className="exp-meta" style={{ marginTop: '12px' }}>
+            {cliente.DNI && <span className="exp-meta-item"><span className="exp-meta-label">DNI</span>{cliente.DNI}</span>}
+            {cliente.Telefono && <span className="exp-meta-item"><Phone size={13} style={{ color: 'var(--color-text-tertiary)' }} />{cliente.Telefono}</span>}
+            {cliente.Domicilio && <span className="exp-meta-item"><MapPin size={13} style={{ color: 'var(--color-text-tertiary)' }} />{cliente.Domicilio}</span>}
+          </div>
+        </div>
+        <div className="exp-head-actions">
+          <button className="button button-secondary button-sm" onClick={volver}>
+            <ArrowLeft size={15} /> Volver
+          </button>
+          <button className="button button-secondary button-sm" onClick={() => router.push(`/clientes/${cliente.ID_Cliente}/editar`)}>
+            <Pencil size={15} /> Editar
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-        <a href={`/clientes/${cliente.ID_Cliente}/editar`}>
-          <button className="button button-sm">Editar</button>
-        </a>
-        <button 
-          className="button button-secondary button-sm"
-          onClick={volver}
-        >
-          Volver a Clientes
-        </button>
-      </div>
-
       {/* Pestañas */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #e2e8f0', marginBottom: '20px' }}>
-        <button
-          onClick={() => setActiveTab('datos')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'datos' ? '#3182ce' : 'transparent',
-            color: activeTab === 'datos' ? 'white' : '#4a5568',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          Datos
-        </button>
-        <button
-          onClick={() => setActiveTab('expedientes')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'expedientes' ? '#3182ce' : 'transparent',
-            color: activeTab === 'expedientes' ? 'white' : '#4a5568',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          📄 Expedientes ({expedientes.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('consultas')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'consultas' ? '#3182ce' : 'transparent',
-            color: activeTab === 'consultas' ? 'white' : '#4a5568',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          Consultas
-        </button>
-        <button
-          onClick={() => setActiveTab('finanzas')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: activeTab === 'finanzas' ? '#3182ce' : 'transparent',
-            color: activeTab === 'finanzas' ? 'white' : '#4a5568',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          💰 Finanzas
-        </button>
-      </div>
-
-      {/* Contenido de las pestañas */}
-      <div style={{ minHeight: '300px' }}>
-        {activeTab === 'datos' && (
-          <div>
-            <h2>Datos Generales</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }}>
-              <div><strong>ID Cliente:</strong> {cliente.ID_Cliente}</div>
-              <div><strong>Nombre:</strong> {cliente.Nombre_Cliente}</div>
-              <div><strong>Teléfono:</strong> {cliente.Telefono || 'No registrado'}</div>
-              <div><strong>DNI:</strong> {cliente.DNI || 'No registrado'}</div>
-              <div><strong>Domicilio:</strong> {cliente.Domicilio || 'No registrado'}</div>
-              <div><strong>ID Carpeta Drive:</strong> {cliente.ID_Carpeta_Drive || 'No asignada'}</div>
-              <div><strong>Usuarios Compartidos:</strong> {cliente.Usuarios_Compartidos || 'Ninguno'}</div>
-            </div>
+      <div className="exp-tabbar">
+        <div className="lx-tabs" role="tablist">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === t.id}
+              className={`lx-tab${activeTab === t.id ? ' is-active' : ''}`}
+              onClick={() => setActiveTab(t.id)}
+            >
+              {t.label}
+              {t.count !== null && <span className="lx-tab-count">{t.count}</span>}
+            </button>
+          ))}
+        </div>
+        {accionTab && (
+          <div className="exp-toolbar">
+            <button className={`button button-sm${accionTab.abierto ? ' button-secondary' : ''}`} onClick={accionTab.toggle}>
+              {accionTab.abierto ? <><X size={15} /> Cerrar</> : <><Plus size={15} /> {accionTab.label}</>}
+            </button>
           </div>
         )}
+      </div>
 
-        {activeTab === 'expedientes' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>📄 Expedientes del Cliente</h2>
-              <button onClick={() => setMostrarFormulario(!mostrarFormulario)} style={{ backgroundColor: '#38a169' }}>
-                + Agregar Expediente
-              </button>
+      {/* ---------- Datos ---------- */}
+      {activeTab === 'datos' && (
+        <div className="lx-card">
+          <div className="cli-fields">
+            {dato('Nombre', cliente.Nombre_Cliente)}
+            {dato('DNI', cliente.DNI)}
+            {dato('Teléfono', cliente.Telefono)}
+            {dato('Domicilio', cliente.Domicilio)}
+            {dato('Compartido con', cliente.Usuarios_Compartidos)}
+            <div className="cli-field">
+              <div className="cli-field-label">Carpeta de Drive</div>
+              <div className={`cli-field-value${cliente.ID_Carpeta_Drive ? '' : ' is-empty'}`}>
+                {cliente.ID_Carpeta_Drive ? (
+                  <a href={`https://drive.google.com/drive/folders/${cliente.ID_Carpeta_Drive}`} target="_blank" rel="noopener noreferrer" className="act-link">
+                    <FolderOpen size={14} /> Abrir carpeta
+                  </a>
+                ) : 'No asignada'}
+              </div>
             </div>
+            {dato('N.º de cliente', cliente.ID_Cliente)}
+          </div>
+        </div>
+      )}
 
-            {mostrarFormulario && (
-              <div style={{ backgroundColor: '#f7fafc', padding: '20px', borderRadius: '8px', marginTop: '15px', marginBottom: '20px' }}>
-                <h3>Nuevo Expediente</h3>
-                <form onSubmit={handleSubmit}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div>
-                      <label><strong>N° SAC *</strong></label>
-                      <input
-                        type="text"
-                        name="Numero_SAC"
-                        value={nuevoExpediente.Numero_SAC}
-                        onChange={handleChange}
-                        placeholder="Ej: 123456"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label><strong>Carátula *</strong></label>
-                      <input
-                        type="text"
-                        name="Caratula"
-                        value={nuevoExpediente.Caratula}
-                        onChange={handleChange}
-                        placeholder="Ej: Lopez c/ Molina"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label><strong>Fuero</strong></label>
-                      <input
-                        type="text"
-                        name="Fuero"
-                        value={nuevoExpediente.Fuero}
-                        onChange={handleChange}
-                        placeholder="Ej: Civil, Laboral, Familia"
-                      />
-                    </div>
-                    <div>
-                      <label><strong>Juzgado</strong></label>
-                      <input
-                        type="text"
-                        name="Juzgado"
-                        value={nuevoExpediente.Juzgado}
-                        onChange={handleChange}
-                        placeholder="Ej: Juzgado de Familia de 3° Nominación"
-                      />
-                    </div>
+      {/* ---------- Expedientes ---------- */}
+      {activeTab === 'expedientes' && (
+        <div>
+          {mostrarFormulario && (
+            <div className="lx-card exp-form">
+              <h3 className="lx-card-title">Nuevo expediente</h3>
+              <form onSubmit={handleSubmit}>
+                <div className="exp-form-grid">
+                  <div>
+                    <label>N.º SAC *</label>
+                    <input type="text" name="Numero_SAC" value={nuevoExpediente.Numero_SAC} onChange={handleChange} placeholder="Ej: 123456" required />
                   </div>
-                  {mensaje && (
-                    <div style={{ marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: mensaje.includes('✅') ? '#c6f6d5' : '#fed7d7', color: mensaje.includes('✅') ? '#22543d' : '#9b2c2c' }}>
-                      {mensaje}
+                  <div>
+                    <label>Carátula *</label>
+                    <input type="text" name="Caratula" value={nuevoExpediente.Caratula} onChange={handleChange} placeholder="Ej: Lopez c/ Molina" required />
+                  </div>
+                  <div>
+                    <label>Fuero</label>
+                    <input type="text" name="Fuero" value={nuevoExpediente.Fuero} onChange={handleChange} placeholder="Ej: Civil, Laboral, Familia" />
+                  </div>
+                  <div>
+                    <label>Juzgado</label>
+                    <input type="text" name="Juzgado" value={nuevoExpediente.Juzgado} onChange={handleChange} placeholder="Ej: Juzgado de Familia de 3° Nominación" />
+                  </div>
+                </div>
+                {mensaje && alerta(mensaje)}
+                <div className="exp-form-actions">
+                  <button type="submit" className="button button-sm" disabled={cargando}>
+                    {cargando ? 'Guardando…' : 'Guardar expediente'}
+                  </button>
+                  <button type="button" className="button button-secondary button-sm" onClick={() => { setMostrarFormulario(false); setMensaje(''); }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {expedientes.length === 0 ? (
+            <div className="lx-empty">Este cliente no tiene expedientes cargados.</div>
+          ) : (
+            <div className="lx-table-wrap">
+              {expedientes.map((exp, index) => (
+                <div key={index} className="cli-exp">
+                  <div className="cli-exp-row" onClick={() => router.push(`/expediente/${encodeURIComponent(exp.Numero_SAC)}`)}>
+                    <span className="lx-cell-num cli-exp-num">{exp.Numero_SAC || '—'}</span>
+                    <div className="cli-exp-main">
+                      <div className="lx-cell-strong lx-cell-clamp">{exp.Caratula || 'Sin carátula'}</div>
+                      <div className="lx-cell-sub">{[exp.Fuero, exp.Juzgado].filter(Boolean).join(' · ') || 'Sin juzgado registrado'}</div>
+                    </div>
+                    {exp.ID_Carpeta_Drive && (
+                      <button
+                        type="button"
+                        className="button button-secondary button-sm"
+                        onClick={(e) => { e.stopPropagation(); listarArchivos(exp.ID_Carpeta_Drive); }}
+                      >
+                        <FolderOpen size={15} /> Archivos
+                      </button>
+                    )}
+                    <ChevronRight size={16} className="lx-row-chevron" />
+                  </div>
+
+                  {mostrarArchivos && folderIdActual === exp.ID_Carpeta_Drive && archivos.length > 0 && (
+                    <div className="cli-files">
+                      <div className="cli-files-head">
+                        <span>Archivos en la carpeta</span>
+                        <button type="button" className="lx-icon-btn" aria-label="Cerrar" onClick={() => { setMostrarArchivos(false); setArchivos([]); setFolderIdActual(''); }}>
+                          <X size={15} />
+                        </button>
+                      </div>
+                      {archivos.map((file) => (
+                        <div key={file.id} className="cli-file">
+                          <FileText size={15} />
+                          <span className="cli-file-name">{file.name}</span>
+                          <a href={`/api/drive/descargar?fileId=${encodeURIComponent(file.id)}`} target="_blank" rel="noopener noreferrer" className="act-link">
+                            <Download size={14} /> Descargar
+                          </a>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargando}>
-                      {cargando ? 'Guardando...' : 'Guardar Expediente'}
-                    </button>
-                    <button type="button" onClick={() => { setMostrarFormulario(false); setMensaje(''); }} style={{ backgroundColor: '#718096' }}>
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-            {expedientes.length === 0 ? (
-              <p style={{ color: '#4a5568' }}>Este cliente no tiene expedientes cargados.</p>
-            ) : (
-              <div>
-                {expedientes.map((exp, index) => (
+      {/* ---------- Consultas ---------- */}
+      {activeTab === 'consultas' && (
+        <div>
+          {mostrarFormularioConsultas && (
+            <div className="lx-card exp-form">
+              <h3 className="lx-card-title">Nueva consulta</h3>
+              <form onSubmit={handleSubmitConsulta}>
+                <div className="exp-form-grid">
+                  <div>
+                    <label>Fecha</label>
+                    <input type="date" name="fecha" value={nuevaConsulta.fecha} onChange={handleChangeConsulta} />
+                  </div>
+                  <div>
+                    <label>Expediente</label>
+                    <select name="numeroSAC" value={nuevaConsulta.numeroSAC} onChange={handleChangeConsulta}>
+                      <option value="">Sin expediente</option>
+                      {expedientes.map((exp, idx) => (
+                        <option key={idx} value={exp.Numero_SAC}>{exp.Numero_SAC} - {exp.Caratula}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginTop: '16px' }}>
+                  <label>Notas de la consulta *</label>
+                  <textarea
+                    name="notas"
+                    value={nuevaConsulta.notas}
+                    onChange={handleChangeConsulta}
+                    placeholder="Escribí lo que hablaste con el cliente y tu estrategia…"
+                    required
+                  />
+                </div>
+                {mensajeConsultas && alerta(mensajeConsultas)}
+                <div className="exp-form-actions">
+                  <button type="submit" className="button button-sm" disabled={cargandoConsultas}>
+                    {cargandoConsultas ? 'Guardando…' : 'Guardar consulta'}
+                  </button>
+                  <button type="button" className="button button-secondary button-sm" onClick={() => { setMostrarFormularioConsultas(false); setMensajeConsultas(''); }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {consultas.length === 0 ? (
+            <div className="lx-empty">No hay consultas registradas para este cliente.</div>
+          ) : (
+            <div className="exp-feed">
+              {consultas.map((consulta, index) => {
+                const estaExpandida = expandidosConsultas[index] || false;
+                const textoConsulta = consulta.Notas_Consulta || consulta.Notas || '';
+                const tieneMas = textoConsulta.length > 220;
+                return (
                   <div
                     key={index}
-                    style={{
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      padding: '15px',
-                      marginBottom: '15px',
-                      backgroundColor: '#f7fafc',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s',
-                    }}
-                    onClick={() => router.push(`/expediente/${encodeURIComponent(exp.Numero_SAC)}`)}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#edf2f7'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f7fafc'; }}
+                    className="act-card"
+                    style={{ '--act-bg': '#ffffff', '--act-bg-hover': '#f9fafb', '--act-border': 'var(--color-border-light)', '--act-accent': 'var(--color-cobalt)' }}
+                    onClick={() => setExpandidosConsultas((prev) => ({ ...prev, [index]: !prev[index] }))}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <strong>N° SAC:</strong> {exp.Numero_SAC || 'No registrado'}
-                        <br />
-                        <strong>Carátula:</strong> {exp.Caratula || 'No registrada'}
-                        <br />
-                        <strong>Fuero:</strong> {exp.Fuero || 'No registrado'}
-                        <br />
-                        <strong>Juzgado:</strong> {exp.Juzgado || 'No registrado'}
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        {exp.ID_Carpeta_Drive && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              listarArchivos(exp.ID_Carpeta_Drive);
-                            }}
-                            style={{ backgroundColor: '#3182ce', padding: '5px 10px', fontSize: '0.8rem' }}
-                          >
-                            📂 Ver Archivos
-                          </button>
+                    <div className="act-head">
+                      <div className="act-head-main">
+                        <span className="act-title">{formatearFechaArgentina(consulta.Fecha) || 'Sin fecha'}</span>
+                        {consulta.Numero_SAC && <span className="lx-chip">SAC {consulta.Numero_SAC}</span>}
+                        {(consulta.Abogado_Atendio || consulta.Abogado) && (
+                          <span className="act-date">{consulta.Abogado_Atendio || consulta.Abogado}</span>
                         )}
-                        <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>▶</span>
                       </div>
+                      {tieneMas && (
+                        <ChevronDown size={16} style={{ color: 'var(--color-text-tertiary)', transform: estaExpandida ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+                      )}
                     </div>
-
-                    {mostrarArchivos && folderIdActual === exp.ID_Carpeta_Drive && archivos.length > 0 && (
-                      <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
-                        <strong>Archivos en la carpeta:</strong>
-                        <ul style={{ listStyle: 'none', padding: 0, marginTop: '5px' }}>
-                          {archivos.map((file) => (
-                            <li key={file.id} style={{ padding: '5px 0', borderBottom: '1px solid #e2e8f0' }}>
-                              📄 {file.name}
-                              <a
-                                href={`/api/drive/descargar?fileId=${encodeURIComponent(file.id)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ marginLeft: '10px', color: '#3182ce' }}
-                              >
-                                Descargar
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                        <button
-                          onClick={() => { setMostrarArchivos(false); setArchivos([]); setFolderIdActual(''); }}
-                          style={{ marginTop: '10px', backgroundColor: '#718096', padding: '5px 10px', fontSize: '0.8rem' }}
-                        >
-                          Cerrar
-                        </button>
+                    {estaExpandida ? (
+                      <div className="act-full" onClick={(e) => e.stopPropagation()}>{textoConsulta}</div>
+                    ) : (
+                      <div className="act-body">
+                        {textoConsulta || <em className="act-empty">Sin notas</em>}
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'consultas' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>Historial de Consultas</h2>
-              <button
-                onClick={() => setMostrarFormularioConsultas(!mostrarFormularioConsultas)}
-                style={{ backgroundColor: '#38a169' }}
-              >
-                + Agregar Consulta
-              </button>
+                );
+              })}
             </div>
+          )}
+        </div>
+      )}
 
-            {mostrarFormularioConsultas && (
-              <div style={{
-                backgroundColor: '#f7fafc',
-                padding: '20px',
-                borderRadius: '8px',
-                marginTop: '15px',
-                marginBottom: '20px',
-                border: '1px solid #e2e8f0',
-              }}>
-                <h3>Nueva Consulta</h3>
-                <form onSubmit={handleSubmitConsulta}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div>
-                      <label><strong>Fecha</strong></label>
-                      <input
-                        type="date"
-                        name="fecha"
-                        value={nuevaConsulta.fecha}
-                        onChange={handleChangeConsulta}
-                      />
-                    </div>
-                    <div>
-                      <label><strong>Expediente (N° SAC)</strong></label>
-                      <select
-                        name="numeroSAC"
-                        value={nuevaConsulta.numeroSAC}
-                        onChange={handleChangeConsulta}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                      >
-                        <option value="">Sin expediente</option>
-                        {expedientes.map((exp, idx) => (
-                          <option key={idx} value={exp.Numero_SAC}>
-                            {exp.Numero_SAC} - {exp.Caratula}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: '15px' }}>
-                    <label><strong>Notas de la consulta *</strong></label>
-                    <textarea
-                      name="notas"
-                      value={nuevaConsulta.notas}
-                      onChange={handleChangeConsulta}
-                      placeholder="Escribí lo que hablaste con el cliente y tu estrategia..."
-                      style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '120px' }}
-                      required
-                    />
-                  </div>
-                  {mensajeConsultas && (
-                    <div style={{
-                      marginTop: '15px',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      backgroundColor: mensajeConsultas.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                      color: mensajeConsultas.includes('✅') ? '#22543d' : '#9b2c2c',
-                    }}>
-                      {mensajeConsultas}
-                    </div>
-                  )}
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargandoConsultas}>
-                      {cargandoConsultas ? 'Guardando...' : 'Guardar Consulta'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setMostrarFormularioConsultas(false); setMensajeConsultas(''); }}
-                      style={{ backgroundColor: '#718096' }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {consultas.length === 0 ? (
-              <p style={{ color: '#4a5568' }}>No hay consultas registradas para este cliente.</p>
-            ) : (
-              <div>
-                {consultas.map((consulta, index) => {
-                  const estaExpandida = expandidosConsultas[index] || false;
-                  const textoConsulta = consulta.Notas_Consulta || consulta.Notas || '';
-                  const resumen = textoConsulta.substring(0, 150) || '';
-                  const tieneMas = textoConsulta.length > 150;
-
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        padding: '15px',
-                        marginBottom: '10px',
-                        backgroundColor: '#f7fafc',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                      onClick={() => {
-                        setExpandidosConsultas((prev) => ({
-                          ...prev,
-                          [index]: !prev[index],
-                        }));
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#edf2f7'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f7fafc'; }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <strong>{formatearFechaArgentina(consulta.Fecha) || 'Sin fecha'}</strong>
-                          {consulta.Numero_SAC && (
-                            <span style={{ marginLeft: '10px', backgroundColor: '#3182ce', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>
-                              SAC: {consulta.Numero_SAC}
-                            </span>
-                          )}
-                          {(consulta.Abogado_Atendio || consulta.Abogado) && (
-                            <span style={{ marginLeft: '10px', color: '#4a5568', fontSize: '0.8rem' }}>
-                              {consulta.Abogado_Atendio || consulta.Abogado}
-                            </span>
-                          )}
-                        </div>
-                        <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>
-                          {estaExpandida ? '▲' : '▼'}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: '8px', color: '#4a5568', fontSize: '0.95rem' }}>
-                        {resumen}
-                        {tieneMas && !estaExpandida && (
-                          <span style={{ color: '#3182ce', marginLeft: '5px' }}>... <em>clic para leer más</em></span>
-                        )}
-                      </div>
-                      {estaExpandida && textoConsulta && (
-                        <div style={{
-                          marginTop: '12px',
-                          paddingTop: '12px',
-                          borderTop: '1px solid #e2e8f0',
-                          whiteSpace: 'pre-wrap',
-                          fontSize: '0.95rem',
-                          backgroundColor: 'white',
-                          padding: '12px',
-                          borderRadius: '4px',
-                        }}>
-                          {textoConsulta}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'finanzas' && (
-          <div>
-            <h2>💰 Finanzas</h2>
-
-            <div style={{
-              backgroundColor: '#f7fafc',
-              padding: '15px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              display: 'flex',
-              gap: '30px',
-              flexWrap: 'wrap',
-            }}>
-              <div><strong>Total Adeudado:</strong> ${saldo.totalDebe.toFixed(2)}</div>
-              <div><strong>Total Pagado:</strong> ${saldo.totalHaber.toFixed(2)}</div>
-              <div><strong>Saldo:</strong> <span style={{ color: saldo.saldo > 0 ? '#e53e3e' : '#38a169' }}>${saldo.saldo.toFixed(2)}</span></div>
+      {/* ---------- Finanzas ---------- */}
+      {activeTab === 'finanzas' && (
+        <div>
+          <div className="dash-kpis" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+            <div className="dash-kpi" style={{ cursor: 'default' }}>
+              <div className="dash-kpi-label">Total adeudado</div>
+              <div className="dash-kpi-value">{pesos(saldo.totalDebe)}</div>
             </div>
+            <div className="dash-kpi" style={{ cursor: 'default' }}>
+              <div className="dash-kpi-label">Total pagado</div>
+              <div className="dash-kpi-value">{pesos(saldo.totalHaber)}</div>
+            </div>
+            <div className={`dash-kpi${saldo.saldo > 0 ? ' is-alert' : ''}`} style={{ cursor: 'default' }}>
+              <div className="dash-kpi-label">Saldo</div>
+              <div className="dash-kpi-value" style={saldo.saldo > 0 ? undefined : { color: '#079455' }}>{pesos(saldo.saldo)}</div>
+            </div>
+          </div>
 
-            <button
-              onClick={() => setMostrarFormularioFinanzas(!mostrarFormularioFinanzas)}
-              style={{ backgroundColor: '#38a169', marginBottom: '20px' }}
-            >
-              + Agregar Movimiento
-            </button>
+          {mostrarFormularioFinanzas && (
+            <div className="lx-card exp-form">
+              <h3 className="lx-card-title">Nuevo movimiento</h3>
+              <form onSubmit={handleSubmitFinanzas}>
+                <div className="exp-form-grid">
+                  <div>
+                    <label>Fecha *</label>
+                    <input type="date" name="fecha" value={nuevoMovimiento.fecha} onChange={handleChangeFinanzas} required />
+                  </div>
+                  <div>
+                    <label>Categoría</label>
+                    <select name="categoria" value={nuevoMovimiento.categoria} onChange={handleChangeFinanzas}>
+                      <option value="Honorarios">Honorarios</option>
+                      <option value="Caja_Abogados">Caja de Abogados</option>
+                      <option value="Colegio_Abogados">Colegio de Abogados</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Tipo *</label>
+                    <select name="tipo" value={nuevoMovimiento.tipo} onChange={handleChangeFinanzas} required>
+                      <option value="Honorario">Honorario</option>
+                      <option value="Cuota">Cuota</option>
+                      <option value="Pago">Pago</option>
+                      <option value="Aporte">Aporte</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Estado</label>
+                    <select name="estado" value={nuevoMovimiento.estado} onChange={handleChangeFinanzas}>
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="Pagado">Pagado</option>
+                      <option value="Parcial">Parcial</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Monto total</label>
+                    <input type="number" step="0.01" name="montoTotal" value={nuevoMovimiento.montoTotal} onChange={handleChangeFinanzas} placeholder="0,00" />
+                  </div>
+                  <div>
+                    <label>Monto pagado</label>
+                    <input type="number" step="0.01" name="montoPagado" value={nuevoMovimiento.montoPagado} onChange={handleChangeFinanzas} placeholder="0,00" />
+                  </div>
+                </div>
+                <div style={{ marginTop: '16px' }}>
+                  <label>Concepto</label>
+                  <textarea className="textarea-sm" name="concepto" value={nuevoMovimiento.concepto} onChange={handleChangeFinanzas} placeholder="Descripción del movimiento…" />
+                </div>
+                {mensajeFinanzas && alerta(mensajeFinanzas)}
+                <div className="exp-form-actions">
+                  <button type="submit" className="button button-sm" disabled={cargandoFinanzas}>
+                    {cargandoFinanzas ? 'Guardando…' : 'Guardar movimiento'}
+                  </button>
+                  <button type="button" className="button button-secondary button-sm" onClick={() => { setMostrarFormularioFinanzas(false); setMensajeFinanzas(''); }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
-            {mostrarFormularioFinanzas && (
-              <div style={{
-                backgroundColor: '#f7fafc',
-                padding: '20px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                border: '1px solid #e2e8f0',
-              }}>
-                <h3>Nuevo Movimiento</h3>
-                <form onSubmit={handleSubmitFinanzas}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div>
-                      <label><strong>Fecha *</strong></label>
-                      <input
-                        type="date"
-                        name="fecha"
-                        value={nuevoMovimiento.fecha}
-                        onChange={handleChangeFinanzas}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label><strong>Categoría</strong></label>
-                      <select
-                        name="categoria"
-                        value={nuevoMovimiento.categoria}
-                        onChange={handleChangeFinanzas}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                      >
-                        <option value="Honorarios">Honorarios</option>
-                        <option value="Caja_Abogados">Caja de Abogados</option>
-                        <option value="Colegio_Abogados">Colegio de Abogados</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label><strong>Tipo *</strong></label>
-                      <select
-                        name="tipo"
-                        value={nuevoMovimiento.tipo}
-                        onChange={handleChangeFinanzas}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                        required
-                      >
-                        <option value="Honorario">Honorario</option>
-                        <option value="Cuota">Cuota</option>
-                        <option value="Pago">Pago</option>
-                        <option value="Aporte">Aporte</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label><strong>Estado</strong></label>
-                      <select
-                        name="estado"
-                        value={nuevoMovimiento.estado}
-                        onChange={handleChangeFinanzas}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                      >
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Pagado">Pagado</option>
-                        <option value="Parcial">Parcial</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label><strong>Monto Total</strong></label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        name="montoTotal"
-                        value={nuevoMovimiento.montoTotal}
-                        onChange={handleChangeFinanzas}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label><strong>Monto Pagado</strong></label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        name="montoPagado"
-                        value={nuevoMovimiento.montoPagado}
-                        onChange={handleChangeFinanzas}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                  <div style={{ marginTop: '15px' }}>
-                    <label><strong>Concepto</strong></label>
-                    <textarea
-                      name="concepto"
-                      value={nuevoMovimiento.concepto}
-                      onChange={handleChangeFinanzas}
-                      placeholder="Descripción del movimiento..."
-                      style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', minHeight: '60px' }}
-                    />
-                  </div>
-                  {mensajeFinanzas && (
-                    <div style={{
-                      marginTop: '15px',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      backgroundColor: mensajeFinanzas.includes('✅') ? '#c6f6d5' : '#fed7d7',
-                      color: mensajeFinanzas.includes('✅') ? '#22543d' : '#9b2c2c',
-                    }}>
-                      {mensajeFinanzas}
-                    </div>
-                  )}
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                    <button type="submit" style={{ backgroundColor: '#3182ce' }} disabled={cargandoFinanzas}>
-                      {cargandoFinanzas ? 'Guardando...' : 'Guardar Movimiento'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setMostrarFormularioFinanzas(false); setMensajeFinanzas(''); }}
-                      style={{ backgroundColor: '#718096' }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            <h3>Historial de Movimientos</h3>
-            {movimientos.length === 0 ? (
-              <p style={{ color: '#4a5568' }}>No hay movimientos registrados para este cliente.</p>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <h2 className="exp-feed-title" style={{ margin: '8px 0 12px' }}>Movimientos</h2>
+          {movimientos.length === 0 ? (
+            <div className="lx-empty">No hay movimientos registrados para este cliente.</div>
+          ) : (
+            <div className="lx-table-wrap">
+              <table className="lx-table cli-mov">
                 <thead>
-                  <tr style={{ backgroundColor: '#edf2f7' }}>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Fecha</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Categoría</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Tipo</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Concepto</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>Total</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>Pagado</th>
-                    <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>Estado</th>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Categoría</th>
+                    <th>Tipo</th>
+                    <th>Concepto</th>
+                    <th className="numeric">Total</th>
+                    <th className="numeric">Pagado</th>
+                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {movimientos.map((mov, index) => {
-                    const total = parseFloat(mov.Monto_Total) || 0;
-                    const pagado = parseFloat(mov.Monto_Pagado) || 0;
-                    return (
-                      <tr key={index}>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{formatearFechaArgentina(mov.Fecha) || ''}</td>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Categoria || ''}</td>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Tipo || ''}</td>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{mov.Concepto || ''}</td>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                          ${total.toFixed(2)}
-                        </td>
-                        <td style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                          ${pagado.toFixed(2)}
-                        </td>
-                        <td style={{
-                          padding: '10px',
-                          border: '1px solid #e2e8f0',
-                          textAlign: 'center',
-                          color: mov.Estado === 'Pagado' ? '#38a169' : mov.Estado === 'Parcial' ? '#ed8936' : '#e53e3e',
-                        }}>
-                          {mov.Estado || 'Pendiente'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {movimientos.map((mov, index) => (
+                    <tr key={index}>
+                      <td className="lx-cell-muted" style={{ whiteSpace: 'nowrap' }}>{formatearFechaArgentina(mov.Fecha) || ''}</td>
+                      <td>{(mov.Categoria || '').replace(/_/g, ' ')}</td>
+                      <td>{mov.Tipo || ''}</td>
+                      <td className="lx-cell-muted">{mov.Concepto || ''}</td>
+                      <td className="numeric">{pesos(parseFloat(mov.Monto_Total) || 0)}</td>
+                      <td className="numeric">{pesos(parseFloat(mov.Monto_Pagado) || 0)}</td>
+                      <td><span className={`badge ${badgeEstado(mov.Estado)}`}>{mov.Estado || 'Pendiente'}</span></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

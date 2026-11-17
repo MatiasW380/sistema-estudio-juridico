@@ -2239,3 +2239,27 @@ table.lx-table { border: none; box-shadow: none; border-radius: 0; margin: 0; }
 .lx-avatar-sm { width: 28px; height: 28px; font-size: 0.6875rem; }
 .lx-table .lx-icon-btn { opacity: 0; transition: opacity var(--transition-fast); }
 .lx-table tbody tr:hover .lx-icon-btn { opacity: 1; }
+
+/* ============================================================
+   19. FICHA DE CLIENTE
+   ============================================================ */
+.cli-title { display: flex; align-items: center; gap: 12px; }
+.cli-avatar { width: 40px; height: 40px; font-size: 0.875rem; }
+.cli-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; }
+.cli-field { padding: 12px 0; border-bottom: 1px solid var(--color-border-light); }
+.cli-field-label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-tertiary); margin-bottom: 2px; }
+.cli-field-value { font-size: 0.875rem; color: var(--color-text-primary); word-break: break-word; }
+.cli-field-value.is-empty { color: var(--color-text-tertiary); }
+.cli-exp + .cli-exp { border-top: 1px solid var(--color-border-light); }
+.cli-exp-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; cursor: pointer; transition: background-color var(--transition-fast); }
+.cli-exp-row:hover { background: var(--color-bg-primary); }
+.cli-exp-row:hover .lx-row-chevron { color: var(--color-text-secondary); }
+.cli-exp-num { width: 90px; flex-shrink: 0; }
+.cli-exp-main { flex: 1; min-width: 0; }
+.cli-files { margin: 0 16px 14px; padding: 8px 12px; background: var(--color-bg-primary); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); }
+.cli-files-head { display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 4px; }
+.cli-file { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.8125rem; color: var(--color-text-secondary); }
+.cli-file + .cli-file { border-top: 1px solid var(--color-border-light); }
+.cli-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); }
+.lx-table.cli-mov tbody tr { cursor: default; }
+@media (max-width: 900px) { .cli-fields { grid-template-columns: 1fr; } }
