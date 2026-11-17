@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getClientes, formatearFechaArgentina } from '../../lib/googleSheets';
+import { getClientes, formatearFechaArgentina, parsearFechaArgentina } from '../../lib/googleSheets';
 import {
   ArrowLeft, ChevronDown, ChevronRight, Download, FileText, FolderOpen, MapPin, Pencil, Phone, Plus, X,
 } from 'lucide-react';
@@ -61,6 +61,10 @@ const cliente = todosLosClientes.find(
 
 export default function FichaCliente({ cliente, expedientes }) {
   const [activeTab, setActiveTab] = useState('datos');
+  const [movEditando, setMovEditando] = useState(null);
+  const [guardandoMov, setGuardandoMov] = useState(false);
+  const [mensajeMov, setMensajeMov] = useState('');
+  const [montoPago, setMontoPago] = useState('');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoExpediente, setNuevoExpediente] = useState({
     Numero_SAC: '',
@@ -84,6 +88,8 @@ export default function FichaCliente({ cliente, expedientes }) {
   const [cargandoFinanzas, setCargandoFinanzas] = useState(false);
   const [mensajeFinanzas, setMensajeFinanzas] = useState('');
   const [nuevoMovimiento, setNuevoMovimiento] = useState({
+    numeroSAC: '',
+    fechaVencimiento: '',
     fecha: new Date().toISOString().split('T')[0],
     tipo: 'Honorario',
     categoria: 'Honorarios',
@@ -142,17 +148,13 @@ export default function FichaCliente({ cliente, expedientes }) {
       todosMovimientos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
       setMovimientos(todosMovimientos);
 
+      // Igual que en Honorarios: acordado = suma de montos totales,
+      // pagado = suma de montos pagados, saldo = lo que falta cobrar.
       let totalDebe = 0;
       let totalHaber = 0;
       todosMovimientos.forEach((m) => {
-        const total = parseFloat(m.Monto_Total) || 0;
-        const pagado = parseFloat(m.Monto_Pagado) || 0;
-        if (m.Tipo === 'Honorario' || m.Tipo === 'Cuota') {
-          totalDebe += total - pagado;
-        }
-        if (m.Tipo === 'Pago') {
-          totalHaber += pagado;
-        }
+        totalDebe += parseFloat(m.Monto_Total) || 0;
+        totalHaber += parseFloat(m.Monto_Pagado) || 0;
       });
       setSaldo({ totalDebe, totalHaber, saldo: totalDebe - totalHaber });
     } catch (error) {
@@ -170,7 +172,7 @@ export default function FichaCliente({ cliente, expedientes }) {
     setMensajeFinanzas('');
     setCargandoFinanzas(true);
 
-    const exp = expedientes[0];
+    const exp = expedientes.find((e) => e.Numero_SAC === nuevoMovimiento.numeroSAC) || expedientes[0];
     if (!exp) {
       setMensajeFinanzas('⚠️ El cliente no tiene expedientes');
       setCargandoFinanzas(false);
@@ -190,6 +192,7 @@ export default function FichaCliente({ cliente, expedientes }) {
         body: JSON.stringify({
           numeroSAC: exp.Numero_SAC,
           fecha: nuevoMovimiento.fecha,
+          fechaVencimiento: nuevoMovimiento.fechaVencimiento || '',
           tipo: nuevoMovimiento.tipo,
           categoria: nuevoMovimiento.categoria,
           concepto: nuevoMovimiento.concepto,
@@ -203,6 +206,8 @@ export default function FichaCliente({ cliente, expedientes }) {
       if (resultado.success) {
         setMensajeFinanzas('Movimiento agregado correctamente');
         setNuevoMovimiento({
+          numeroSAC: '',
+          fechaVencimiento: '',
           fecha: new Date().toISOString().split('T')[0],
           tipo: 'Honorario',
           categoria: 'Honorarios',
@@ -223,6 +228,85 @@ export default function FichaCliente({ cliente, expedientes }) {
       setCargandoFinanzas(false);
     }
   };
+
+  // ---------- Edición de un movimiento ----------
+  const estadoSegunMontos = (total, pagado) => {
+    const t = parseFloat(total) || 0;
+    const p = parseFloat(pagado) || 0;
+    if (t > 0 && p >= t) return 'Pagado';
+    if (p > 0) return 'Parcial';
+    return 'Pendiente';
+  };
+
+  // Fecha de la hoja (DD/MM/AAAA, D/M/AAAA o AAAA-MM-DD) -> AAAA-MM-DD para el campo de fecha
+  const aISO = (f) => {
+    const iso = parsearFechaArgentina(f);
+    const [a, m, d] = String(iso || '').split('-');
+    return a && m && d ? `${a}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '';
+  };
+
+  const abrirEdicionMovimiento = (mov) => {
+    setMensajeMov('');
+    setMontoPago('');
+    setMovEditando({
+      ID: mov.ID,
+      Numero_SAC: mov.Numero_SAC,
+      Fecha: aISO(mov.Fecha),
+      Fecha_Vencimiento: aISO(mov.Fecha_Vencimiento),
+      Tipo: mov.Tipo || 'Honorario',
+      Categoria: mov.Categoria || 'Honorarios',
+      Concepto: mov.Concepto || '',
+      Monto_Total: mov.Monto_Total || '',
+      Monto_Pagado: mov.Monto_Pagado || '',
+      Estado: mov.Estado || 'Pendiente',
+    });
+  };
+
+  const cambiarMov = (campo, valor) => {
+    setMovEditando((prev) => {
+      const nuevo = { ...prev, [campo]: valor };
+      if (campo === 'Monto_Total' || campo === 'Monto_Pagado') {
+        nuevo.Estado = estadoSegunMontos(nuevo.Monto_Total, nuevo.Monto_Pagado);
+      }
+      return nuevo;
+    });
+  };
+
+  const sumarPago = () => {
+    const monto = parseFloat(String(montoPago).replace(/\./g, '').replace(',', '.'));
+    if (!monto || monto <= 0) return;
+    const pagado = (parseFloat(movEditando.Monto_Pagado) || 0) + monto;
+    cambiarMov('Monto_Pagado', String(pagado));
+    setMontoPago('');
+  };
+
+  const guardarMovimiento = async (e) => {
+    e.preventDefault();
+    setGuardandoMov(true);
+    setMensajeMov('');
+    try {
+      const { ID, Numero_SAC, ...campos } = movEditando;
+      const response = await fetch('/api/finanzas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ID, ...campos }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'No se pudo guardar');
+      setMovEditando(null);
+      cargarMovimientos();
+    } catch (error) {
+      setMensajeMov(`❌ ${error.message}`);
+    } finally {
+      setGuardandoMov(false);
+    }
+  };
+
+  // Abrir directamente una pestaña desde la URL (p. ej. ?tab=finanzas)
+  useEffect(() => {
+    const tab = router.query?.tab;
+    if (tab && ['datos', 'expedientes', 'consultas', 'finanzas'].includes(tab)) setActiveTab(tab);
+  }, [router.query?.tab]);
 
   // Cargar movimientos al entrar a la pestaña finanzas
   useEffect(() => {
@@ -701,7 +785,7 @@ export default function FichaCliente({ cliente, expedientes }) {
         <div>
           <div className="dash-kpis" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             <div className="dash-kpi" style={{ cursor: 'default' }}>
-              <div className="dash-kpi-label">Total adeudado</div>
+              <div className="dash-kpi-label">Total acordado</div>
               <div className="dash-kpi-value">{pesos(saldo.totalDebe)}</div>
             </div>
             <div className="dash-kpi" style={{ cursor: 'default' }}>
@@ -719,9 +803,23 @@ export default function FichaCliente({ cliente, expedientes }) {
               <h3 className="lx-card-title">Nuevo movimiento</h3>
               <form onSubmit={handleSubmitFinanzas}>
                 <div className="exp-form-grid">
+                  {expedientes.length > 1 && (
+                    <div>
+                      <label>Expediente</label>
+                      <select name="numeroSAC" value={nuevoMovimiento.numeroSAC} onChange={handleChangeFinanzas}>
+                        {expedientes.map((exp) => (
+                          <option key={exp.Numero_SAC} value={exp.Numero_SAC}>{exp.Numero_SAC} - {exp.Caratula}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label>Fecha *</label>
                     <input type="date" name="fecha" value={nuevoMovimiento.fecha} onChange={handleChangeFinanzas} required />
+                  </div>
+                  <div>
+                    <label>Vence el</label>
+                    <input type="date" name="fechaVencimiento" value={nuevoMovimiento.fechaVencimiento} onChange={handleChangeFinanzas} />
                   </div>
                   <div>
                     <label>Categoría</label>
@@ -774,6 +872,85 @@ export default function FichaCliente({ cliente, expedientes }) {
             </div>
           )}
 
+
+          {movEditando && (
+            <div className="lx-modal-overlay" onClick={() => setMovEditando(null)}>
+              <div className="lx-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="lx-modal-head">
+                  <h2>Modificar movimiento</h2>
+                  <button type="button" className="lx-icon-btn" onClick={() => setMovEditando(null)} aria-label="Cerrar"><X size={18} /></button>
+                </div>
+                <form onSubmit={guardarMovimiento}>
+                  <div className="fin-pago">
+                    <div>
+                      <div className="fin-pago-label">Registrar un pago</div>
+                      <div className="fin-pago-help">Se suma a lo ya pagado y el estado se actualiza solo.</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={montoPago}
+                        onChange={(e) => setMontoPago(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sumarPago(); } }}
+                        placeholder="Monto"
+                        style={{ width: '150px' }}
+                      />
+                      <button type="button" className="button button-secondary button-sm" onClick={sumarPago} disabled={!montoPago}>
+                        <Plus size={14} /> Sumar
+                      </button>
+                    </div>
+                  </div>
+                  <div className="lx-modal-grid">
+                    <div><label>Fecha</label><input type="date" value={movEditando.Fecha} onChange={(e) => cambiarMov('Fecha', e.target.value)} /></div>
+                    <div><label>Vence el</label><input type="date" value={movEditando.Fecha_Vencimiento} onChange={(e) => cambiarMov('Fecha_Vencimiento', e.target.value)} /></div>
+                    <div>
+                      <label>Categoría</label>
+                      <select value={movEditando.Categoria} onChange={(e) => cambiarMov('Categoria', e.target.value)}>
+                        <option value="Honorarios">Honorarios</option>
+                        <option value="Caja_Abogados">Caja de Abogados</option>
+                        <option value="Colegio_Abogados">Colegio de Abogados</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Tipo</label>
+                      <select value={movEditando.Tipo} onChange={(e) => cambiarMov('Tipo', e.target.value)}>
+                        <option value="Honorario">Honorario</option>
+                        <option value="Cuota">Cuota</option>
+                        <option value="Pago">Pago</option>
+                        <option value="Aporte">Aporte</option>
+                      </select>
+                    </div>
+                    <div><label>Monto total</label><input type="number" step="0.01" value={movEditando.Monto_Total} onChange={(e) => cambiarMov('Monto_Total', e.target.value)} placeholder="0" /></div>
+                    <div><label>Monto pagado</label><input type="number" step="0.01" value={movEditando.Monto_Pagado} onChange={(e) => cambiarMov('Monto_Pagado', e.target.value)} placeholder="0" /></div>
+                    <div>
+                      <label>Estado</label>
+                      <select value={movEditando.Estado} onChange={(e) => cambiarMov('Estado', e.target.value)}>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Parcial">Parcial</option>
+                        <option value="Pagado">Pagado</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Falta cobrar</label>
+                      <div className="fin-falta">{pesos(Math.max((parseFloat(movEditando.Monto_Total) || 0) - (parseFloat(movEditando.Monto_Pagado) || 0), 0))}</div>
+                    </div>
+                  </div>
+                  <div className="lx-modal-stack">
+                    <div><label>Concepto</label><input type="text" value={movEditando.Concepto} onChange={(e) => cambiarMov('Concepto', e.target.value)} placeholder="Ej: 2.ª cuota de honorarios" /></div>
+                  </div>
+                  {mensajeMov && <div className="alert alert-urgent" style={{ marginTop: '16px', marginBottom: 0 }}>{mensajeMov}</div>}
+                  <div className="lx-modal-actions">
+                    <span className="dash-hint">Expediente {movEditando.Numero_SAC}</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" className="button button-secondary button-sm" onClick={() => setMovEditando(null)}>Cancelar</button>
+                      <button type="submit" className="button button-sm" disabled={guardandoMov}>{guardandoMov ? 'Guardando…' : 'Guardar cambios'}</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
           <h2 className="exp-feed-title" style={{ margin: '8px 0 12px' }}>Movimientos</h2>
           {movimientos.length === 0 ? (
             <div className="lx-empty">No hay movimientos registrados para este cliente.</div>
@@ -789,11 +966,12 @@ export default function FichaCliente({ cliente, expedientes }) {
                     <th className="numeric">Total</th>
                     <th className="numeric">Pagado</th>
                     <th>Estado</th>
+                    <th aria-label="Editar" />
                   </tr>
                 </thead>
                 <tbody>
                   {movimientos.map((mov, index) => (
-                    <tr key={index}>
+                    <tr key={index} className="is-clickable" onClick={() => abrirEdicionMovimiento(mov)} title="Clic para modificar este movimiento">
                       <td className="lx-cell-muted" style={{ whiteSpace: 'nowrap' }}>{formatearFechaArgentina(mov.Fecha) || ''}</td>
                       <td>{(mov.Categoria || '').replace(/_/g, ' ')}</td>
                       <td>{mov.Tipo || ''}</td>
@@ -801,6 +979,7 @@ export default function FichaCliente({ cliente, expedientes }) {
                       <td className="numeric">{pesos(parseFloat(mov.Monto_Total) || 0)}</td>
                       <td className="numeric">{pesos(parseFloat(mov.Monto_Pagado) || 0)}</td>
                       <td><span className={`badge ${badgeEstado(mov.Estado)}`}>{mov.Estado || 'Pendiente'}</span></td>
+                      <td className="lx-cell-actions"><Pencil size={14} className="lx-row-chevron" /></td>
                     </tr>
                   ))}
                 </tbody>

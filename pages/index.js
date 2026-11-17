@@ -102,12 +102,30 @@ export async function getServerSideProps(context) {
     let totalPagado = 0;
     let totalPendiente = 0;
 
+    // Por cobrar según el mes de vencimiento (o la fecha del movimiento si no
+    // tiene vencimiento cargado): este mes, el próximo y lo atrasado.
+    const claveMes = (d) => d.getFullYear() * 12 + d.getMonth();
+    const mesActual = claveMes(hoy);
+    let porCobrarMes = 0;
+    let porCobrarProximo = 0;
+    let porCobrarAtrasado = 0;
+
     (finanzas || []).forEach((f) => {
       const total = parseFloat(f.Monto_Total) || 0;
       const pagado = parseFloat(f.Monto_Pagado) || 0;
       totalAcordado += total;
       totalPagado += pagado;
       totalPendiente += total - pagado;
+
+      const pendiente = total - pagado;
+      if (f.Estado === 'Pagado' || pendiente <= 0) return;
+      const iso = parsearFechaArgentina(f.Fecha_Vencimiento || f.Fecha);
+      const [a, m] = String(iso).split('-').map((x) => parseInt(x, 10));
+      if (!a || !m) return;
+      const mes = a * 12 + (m - 1);
+      if (mes < mesActual) porCobrarAtrasado += pendiente;
+      else if (mes === mesActual) porCobrarMes += pendiente;
+      else if (mes === mesActual + 1) porCobrarProximo += pendiente;
     });
 
     const expedientesAbiertos = clientes.reduce((sum, c) => sum + (c.expedientes?.length || 0), 0);
@@ -126,6 +144,9 @@ export async function getServerSideProps(context) {
         totalAcordado,
         totalPagado,
         totalPendiente,
+        porCobrarMes,
+        porCobrarProximo,
+        porCobrarAtrasado,
       },
     };
   } catch (error) {
@@ -140,6 +161,9 @@ export async function getServerSideProps(context) {
         totalAcordado: 0,
         totalPagado: 0,
         totalPendiente: 0,
+        porCobrarMes: 0,
+        porCobrarProximo: 0,
+        porCobrarAtrasado: 0,
       },
     };
   }
@@ -153,6 +177,9 @@ export default function Home({
   totalAcordado,
   totalPagado,
   totalPendiente,
+  porCobrarMes = 0,
+  porCobrarProximo = 0,
+  porCobrarAtrasado = 0,
 }) {
   const [tareas_state] = useState(tareasUrgentes || []);
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -382,6 +409,13 @@ export default function Home({
   const fechaLarga = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
   const pesos = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0);
   const tinte = (hex) => ({ color: hex, backgroundColor: `${hex}14`, borderColor: `${hex}33` });
+  const nombreMes = (offset) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + offset);
+    const n = d.toLocaleDateString('es-AR', { month: 'long' });
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  };
   const etiquetaDias = (d) => (d === 0 ? 'Hoy' : d === 1 ? '1 día' : `${d} días`);
 
   const tiposColumna = [
@@ -539,8 +573,18 @@ export default function Home({
           <div className="dash-kpi-value">{plazosvencidos}</div>
         </div>
         <div className="dash-kpi" onClick={() => router.push('/honorarios')}>
-          <div className="dash-kpi-label"><Wallet size={15} /> Honorarios por cobrar</div>
-          <div className="dash-kpi-value">{pesos(totalPendiente)}</div>
+          <div className="dash-kpi-label"><Wallet size={15} /> Por cobrar</div>
+          <div className="dash-kpi-split">
+            <div>
+              <div className="dash-kpi-sub">{nombreMes(0)}</div>
+              <div className="dash-kpi-value dash-kpi-value-sm">{pesos(porCobrarMes)}</div>
+            </div>
+            <div>
+              <div className="dash-kpi-sub">{nombreMes(1)}</div>
+              <div className="dash-kpi-value dash-kpi-value-sm">{pesos(porCobrarProximo)}</div>
+            </div>
+          </div>
+          {porCobrarAtrasado > 0 && <div className="dash-kpi-note">+ {pesos(porCobrarAtrasado)} atrasado</div>}
         </div>
       </div>
 

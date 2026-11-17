@@ -2,6 +2,7 @@
 // Página de gestión de honorarios y aportes con nombre del cliente
 
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { Filter, Search, X } from 'lucide-react';
 import { getFinanzas, getResumenFinanzas, formatearFechaArgentina } from '../lib/googleSheets';
 
@@ -48,6 +49,7 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [resumen, setResumen] = useState(resumenInicial || {});
+  const router = useRouter();
 
   const categorias = ['Todos', 'Honorarios', 'Caja_Abogados', 'Colegio_Abogados'];
   const estados = ['Todos', 'Pendiente', 'Pagado', 'Parcial'];
@@ -169,7 +171,7 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
         <div className="lx-empty">{filtrosActivos ? 'No hay movimientos que coincidan con los filtros.' : 'No hay movimientos registrados.'}</div>
       ) : (
         <div className="lx-table-wrap">
-          <table className="lx-table cli-mov">
+          <table className="lx-table">
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -188,7 +190,11 @@ export default function HonorariosPage({ finanzas: finanzasIniciales, resumen: r
                 const estado = f.Estado || 'Pendiente';
                 const badge = estado === 'Pagado' ? 'badge-success' : estado === 'Parcial' ? 'badge-warning' : 'badge-urgent';
                 return (
-                  <tr key={`${f.ID || 'fin'}-${index}`}>
+                  <tr
+                    key={`${f.ID || 'fin'}-${index}`}
+                    onClick={() => f.Cliente_ID && router.push(`/clientes/${encodeURIComponent(f.Cliente_ID)}?tab=finanzas`)}
+                    title={f.Cliente_ID ? 'Ver las finanzas de este cliente' : ''}
+                  >
                     <td className="lx-cell-muted" style={{ whiteSpace: 'nowrap' }}>{formatearFechaArgentina(f.Fecha) || ''}</td>
                     <td className="lx-cell-strong">{cliente}</td>
                     <td>{NOMBRE_CATEGORIA[f.Categoria] || f.Categoria || ''}</td>

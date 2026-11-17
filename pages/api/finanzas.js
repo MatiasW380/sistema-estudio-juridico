@@ -1,7 +1,7 @@
 // pages/api/finanzas.js
 // API para gestionar finanzas
 
-import { getFinanzas, agregarFinanza, getResumenFinanzas } from '../../lib/googleSheets';
+import { getFinanzas, agregarFinanza, getResumenFinanzas, actualizarFinanza } from '../../lib/googleSheets';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -108,6 +108,28 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('❌ Error al agregar movimiento:', error);
       return res.status(500).json({ error: 'Error al agregar movimiento' });
+    }
+  }
+
+  if (req.method === 'PUT') {
+    try {
+      const userData = parseUserFromCookie(req.headers.cookie || '');
+      if (!userData?.email) return res.status(401).json({ error: 'No autenticado' });
+      const { id, ...campos } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Falta el ID del movimiento' });
+
+      // Solo se puede modificar un movimiento de un expediente al que el usuario tiene acceso
+      const visibles = await getFinanzas(null, null, null, null, null, userData.email);
+      if (!visibles.some((f) => String(f.ID) === String(id))) {
+        return res.status(403).json({ error: 'No tenés acceso a ese movimiento' });
+      }
+
+      const r = await actualizarFinanza(id, campos);
+      if (!r.ok) return res.status(500).json({ error: r.error });
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('❌ Error al modificar movimiento:', error);
+      return res.status(500).json({ error: 'Error al modificar movimiento' });
     }
   }
 
