@@ -175,20 +175,20 @@ button:focus-visible,
 }
 
 /* ============ PRIMARIO (acento) ============ */
-button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled),
-.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled) {
+button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not([class*='dash-']):not(:disabled),
+.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not([class*='dash-']):not(:disabled) {
   background-color: var(--color-cobalt);
   color: #ffffff;
   box-shadow: var(--shadow-xs);
 }
 
-button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):hover,
-.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):hover {
+button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not([class*='dash-']):not(:disabled):hover,
+.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not([class*='dash-']):not(:disabled):hover {
   background-color: var(--color-cobalt-dark);
 }
 
-button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):active,
-.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):active {
+button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not([class*='dash-']):not(:disabled):active,
+.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not([class*='dash-']):not(:disabled):active {
   filter: brightness(0.96);
 }
 
@@ -2368,3 +2368,17 @@ button.ia-example:not(:disabled):hover { background: var(--color-surface); borde
 .fin-pago-help { font-size: 0.75rem; color: var(--color-text-secondary); }
 .fin-pago input[type='number'] { height: 32px; padding-top: 0; padding-bottom: 0; background: #fff; }
 .fin-falta { height: 38px; display: flex; align-items: center; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+
+/* Resumen de cobros compacto en el encabezado del Inicio */
+.dash-head-actions { align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+button.dash-cobros:not(:disabled) {
+  height: 32px; padding: 0 12px; gap: 8px;
+  background: var(--color-surface); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light); border-radius: 999px; box-shadow: var(--shadow-xs);
+  font-size: 0.8125rem; font-weight: 500;
+}
+button.dash-cobros:not(:disabled):hover { background: var(--color-surface); border-color: var(--color-border-strong); }
+.dash-cobros svg { color: var(--color-text-tertiary); }
+.dash-cobros-item { padding-left: 8px; border-left: 1px solid var(--color-border-light); color: var(--color-text-tertiary); font-weight: 400; }
+.dash-cobros-item strong { color: var(--color-text-primary); font-weight: 600; margin-left: 2px; }
+.dash-cobros-item.is-alert, .dash-cobros-item.is-alert strong { color: #d92d20; }

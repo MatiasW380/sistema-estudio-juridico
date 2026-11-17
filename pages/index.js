@@ -551,42 +551,19 @@ export default function Home({
           <p className="dash-sub">{fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1)}</p>
         </div>
         <div className="dash-head-actions">
+          <button type="button" className="dash-cobros" onClick={() => router.push('/honorarios')} title="Honorarios por cobrar según su vencimiento">
+            <Wallet size={15} />
+            <span>Por cobrar</span>
+            <span className="dash-cobros-item">{nombreMes(0)} <strong>{pesos(porCobrarMes)}</strong></span>
+            <span className="dash-cobros-item">{nombreMes(1)} <strong>{pesos(porCobrarProximo)}</strong></span>
+            {porCobrarAtrasado > 0 && <span className="dash-cobros-item is-alert">Atrasado <strong>{pesos(porCobrarAtrasado)}</strong></span>}
+          </button>
           <button className="button button-secondary button-sm" onClick={() => router.push('/agenda')}>
             <CalendarDays size={15} /> Agenda
           </button>
           <button className="button button-sm" onClick={() => router.push('/clientes/nuevo')}>
             <Plus size={15} /> Nuevo cliente
           </button>
-        </div>
-      </div>
-
-      {/* Indicadores */}
-      <div className="dash-kpis">
-        <div className="dash-kpi" onClick={() => router.push('/expedientes')}>
-          <div className="dash-kpi-label"><FolderOpen size={15} /> Expedientes</div>
-          <div className="dash-kpi-value">{expedientesAbiertos}</div>
-        </div>
-        <div className="dash-kpi" onClick={() => router.push('/agenda')}>
-          <div className="dash-kpi-label"><CalendarClock size={15} /> Próximos 5 días</div>
-          <div className="dash-kpi-value">{proximos}</div>
-        </div>
-        <div className={`dash-kpi${plazosvencidos > 0 ? ' is-alert' : ''}`} onClick={() => router.push('/agenda')}>
-          <div className="dash-kpi-label"><AlertTriangle size={15} /> Vencidos</div>
-          <div className="dash-kpi-value">{plazosvencidos}</div>
-        </div>
-        <div className="dash-kpi" onClick={() => router.push('/honorarios')}>
-          <div className="dash-kpi-label"><Wallet size={15} /> Por cobrar</div>
-          <div className="dash-kpi-split">
-            <div>
-              <div className="dash-kpi-sub">{nombreMes(0)}</div>
-              <div className="dash-kpi-value dash-kpi-value-sm">{pesos(porCobrarMes)}</div>
-            </div>
-            <div>
-              <div className="dash-kpi-sub">{nombreMes(1)}</div>
-              <div className="dash-kpi-value dash-kpi-value-sm">{pesos(porCobrarProximo)}</div>
-            </div>
-          </div>
-          {porCobrarAtrasado > 0 && <div className="dash-kpi-note">+ {pesos(porCobrarAtrasado)} atrasado</div>}
         </div>
       </div>
 
