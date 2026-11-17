@@ -422,6 +422,7 @@ export default function Home({
     { id: 'ENTREVISTA', label: 'Entrevistas' },
     { id: 'PLAZO', label: 'Plazos' },
     { id: 'AUDIENCIA', label: 'Audiencias' },
+    { id: 'PERICIA', label: 'Pericias' },
     { id: 'TAREAS', label: 'Tareas' },
     { id: 'VENCIDOS', label: 'Vencidos' },
   ];
@@ -432,7 +433,8 @@ export default function Home({
         const fecha = getFechaLocalObj(t.Fecha);
         const esVencido = fecha && fecha < hoyRef;
         if (id === 'VENCIDOS') return esVencido;
-        if (id === 'TAREAS') return !esVencido && (tipo === 'OTRO' || tipo === 'TAREAS');
+        // "Tareas" recibe todo lo que no tiene columna propia, así nada queda sin mostrarse
+        if (id === 'TAREAS') return !esVencido && !['ENTREVISTA', 'PLAZO', 'AUDIENCIA', 'PERICIA'].includes(tipo);
         return !esVencido && tipo === id;
       });
       return { id, label, tareasColumna };
