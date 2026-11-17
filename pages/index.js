@@ -110,22 +110,42 @@ export async function getServerSideProps(context) {
     let porCobrarProximo = 0;
     let porCobrarAtrasado = 0;
 
+    const mesDe = (f) => {
+      const iso = parsearFechaArgentina(f.Fecha_Vencimiento || f.Fecha);
+      const [a, m] = String(iso).split('-').map((x) => parseInt(x, 10));
+      return a && m ? a * 12 + (m - 1) : null;
+    };
+
+    // Los pagos a veces se cargan como filas aparte (monto total vacío y monto
+    // pagado). Por eso se calcula por expediente y categoría: lo pagado de más
+    // en una fila cubre lo que falta en las otras, empezando por la más antigua.
+    // Así el total coincide con "Pendiente de cobro" de Honorarios.
+    const grupos = new Map();
     (finanzas || []).forEach((f) => {
       const total = parseFloat(f.Monto_Total) || 0;
       const pagado = parseFloat(f.Monto_Pagado) || 0;
       totalAcordado += total;
       totalPagado += pagado;
       totalPendiente += total - pagado;
+      const clave = `${f.Numero_SAC || ''}|${f.Categoria || ''}`;
+      if (!grupos.has(clave)) grupos.set(clave, []);
+      grupos.get(clave).push({ saldo: total - pagado, mes: mesDe(f) });
+    });
 
-      const pendiente = total - pagado;
-      if (f.Estado === 'Pagado' || pendiente <= 0) return;
-      const iso = parsearFechaArgentina(f.Fecha_Vencimiento || f.Fecha);
-      const [a, m] = String(iso).split('-').map((x) => parseInt(x, 10));
-      if (!a || !m) return;
-      const mes = a * 12 + (m - 1);
-      if (mes < mesActual) porCobrarAtrasado += pendiente;
-      else if (mes === mesActual) porCobrarMes += pendiente;
-      else if (mes === mesActual + 1) porCobrarProximo += pendiente;
+    grupos.forEach((filas) => {
+      let credito = filas.filter((x) => x.saldo < 0).reduce((acc, x) => acc - x.saldo, 0);
+      filas
+        .filter((x) => x.saldo > 0)
+        .sort((x, y) => (x.mes ?? Infinity) - (y.mes ?? Infinity))
+        .forEach((x) => {
+          const cubierto = Math.min(credito, x.saldo);
+          credito -= cubierto;
+          const pendiente = x.saldo - cubierto;
+          if (pendiente <= 0 || x.mes === null) return;
+          if (x.mes < mesActual) porCobrarAtrasado += pendiente;
+          else if (x.mes === mesActual) porCobrarMes += pendiente;
+          else if (x.mes === mesActual + 1) porCobrarProximo += pendiente;
+        });
     });
 
     const expedientesAbiertos = clientes.reduce((sum, c) => sum + (c.expedientes?.length || 0), 0);
