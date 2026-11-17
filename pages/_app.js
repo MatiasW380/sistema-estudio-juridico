@@ -61,7 +61,7 @@ function MyApp({ Component, pageProps }) {
       )}
       <div
         style={{
-          paddingTop: shouldShowHeader ? '60px' : '0',
+          paddingTop: shouldShowHeader ? '56px' : '0',
           transition: 'padding-top 0.2s',
         }}
       >

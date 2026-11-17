@@ -11,10 +11,18 @@ export default function Document() {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="shortcut icon" href="/favicon.svg" />
         
+        {/* Tipografía: Inter */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+
         {/* Meta tags */}
         <meta charSet="utf-8" />
         <meta name="description" content="LexHub - Sistema de Gestión Jurídica" />
-        <meta name="theme-color" content="#1e40af" />
+        <meta name="theme-color" content="#ffffff" />
       </Head>
       <body>
         <Main />

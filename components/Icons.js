@@ -8,3 +8,5 @@ export { Calendar as IconAgenda } from 'lucide-react';
 export { DollarSign as IconHonorarios } from 'lucide-react';
 export { BookOpen as IconBiblioteca } from 'lucide-react';
 export { Zap as IconIA } from 'lucide-react';
+export { Link2 as IconSAC } from 'lucide-react';
+export { LogOut as IconSalir } from 'lucide-react';
