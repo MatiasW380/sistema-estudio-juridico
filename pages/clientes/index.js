@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getClientes } from '../../lib/googleSheets';
+import { ChevronRight, Plus, Search, Trash2, X } from 'lucide-react';
 
 function parseUserFromCookie(rawCookie = '') {
   const userCookie = rawCookie
@@ -99,95 +100,91 @@ export default function ClientesPage({ clientes: clientesIniciales }) {
     }
   };
 
+  const iniciales = (nombre = '') =>
+    nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
+
   return (
-    <div className="container">
-      <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Clientes</h1>
-        <p>Gestión de clientes y expedientes asociados</p>
+    <div className="container lx-page">
+      <div className="lx-page-head">
+        <div>
+          <h1>Clientes <span className="lx-tab-count">{clientesIniciales.length}</span></h1>
+          <p>Gestión de clientes y sus expedientes</p>
+        </div>
+        <button className="button button-sm" onClick={() => router.push('/clientes/nuevo')}>
+          <Plus size={15} /> Nuevo cliente
+        </button>
       </div>
 
-      {/* Buscador y acciones */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          value={terminoBusqueda}
-          onChange={(e) => setTerminoBusqueda(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Buscar por nombre, DNI, teléfono..."
-          style={{ flex: 1, minWidth: '200px' }}
-        />
-        <button className="button button-sm" onClick={handleBuscar} disabled={cargando}>
-          {cargando ? 'Buscando...' : 'Buscar'}
+      <div className="lx-toolbar">
+        <div className="lx-search">
+          <Search size={16} />
+          <input
+            type="text"
+            value={terminoBusqueda}
+            onChange={(e) => setTerminoBusqueda(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Buscar por nombre, DNI o teléfono y presioná Enter"
+          />
+        </div>
+        <button className="button button-secondary button-sm" onClick={handleBuscar} disabled={cargando}>
+          {cargando ? 'Buscando…' : 'Buscar'}
         </button>
-        <button 
-          className="button button-secondary button-sm"
-          onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }}
-        >
-          Limpiar
-        </button>
-        <button 
-          className="button button-success button-sm"
-          onClick={() => router.push('/clientes/nuevo')}
-        >
-          + Nuevo Cliente
-        </button>
+        {terminoBusqueda && (
+          <button className="button button-ghost button-sm" onClick={() => { setTerminoBusqueda(''); setClientes(clientesIniciales); }}>
+            <X size={15} /> Limpiar
+          </button>
+        )}
       </div>
 
       {clientes.length === 0 ? (
-        <div className="table-empty">
-          <div className="table-empty-text">No hay clientes registrados</div>
-          <div className="table-empty-subtext">Crea un nuevo cliente para comenzar</div>
+        <div className="lx-empty">
+          {terminoBusqueda ? 'No hay clientes que coincidan con la búsqueda.' : 'Todavía no hay clientes. Creá el primero con “Nuevo cliente”.'}
         </div>
       ) : (
-        <table className="table table-striped">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Teléfono</th>
-              <th>DNI</th>
-              <th>Domicilio</th>
-              <th className="numeric">Expedientes</th>
-              <th style={{ textAlign: 'center' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clientes.map((cliente) => (
-              <tr key={cliente.ID_Cliente}>
-                <td>
-                  <a href={`/clientes/${cliente.ID_Cliente}`} className="table-link">
-                    {cliente.ID_Cliente || ''}
-                  </a>
-                </td>
-                <td>
-                  <a href={`/clientes/${cliente.ID_Cliente}`} className="table-link">
-                    {cliente.Nombre_Cliente || ''}
-                  </a>
-                </td>
-                <td>{cliente.Telefono || ''}</td>
-                <td>{cliente.DNI || ''}</td>
-                <td>{cliente.Domicilio || ''}</td>
-                <td className="numeric">{cliente.totalExpedientes || 0}</td>
-                <td style={{ textAlign: 'center' }}>
-                  <div className="table-actions" style={{ justifyContent: 'center' }}>
+        <div className="lx-table-wrap">
+          <table className="lx-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th>Domicilio</th>
+                <th className="numeric">Expedientes</th>
+                <th aria-label="Acciones" />
+              </tr>
+            </thead>
+            <tbody>
+              {clientes.map((cliente) => (
+                <tr key={cliente.ID_Cliente} onClick={() => router.push(`/clientes/${cliente.ID_Cliente}`)}>
+                  <td>
+                    <div className="lx-cell-person">
+                      <span className="lx-avatar lx-avatar-sm">{iniciales(cliente.Nombre_Cliente)}</span>
+                      <span className="lx-cell-strong">{cliente.Nombre_Cliente || 'Sin nombre'}</span>
+                    </div>
+                  </td>
+                  <td className="lx-cell-muted">{cliente.DNI || '—'}</td>
+                  <td className="lx-cell-muted">{cliente.Telefono || '—'}</td>
+                  <td className="lx-cell-muted lx-cell-trunc">{cliente.Domicilio || '—'}</td>
+                  <td className="numeric"><span className="lx-tab-count">{cliente.totalExpedientes || 0}</span></td>
+                  <td className="lx-cell-actions" onClick={(e) => e.stopPropagation()}>
                     <button
-                      className="button button-danger button-sm"
+                      type="button"
+                      className="lx-icon-btn lx-text-danger"
                       onClick={() => eliminarCliente(cliente.ID_Cliente, cliente.Nombre_Cliente)}
                       disabled={eliminando === cliente.ID_Cliente}
+                      title="Eliminar cliente"
+                      aria-label="Eliminar cliente"
                     >
-                      {eliminando === cliente.ID_Cliente ? 'Eliminando...' : 'Eliminar'}
+                      <Trash2 size={15} />
                     </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <ChevronRight size={16} className="lx-row-chevron" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-
-      <div style={{ marginTop: '20px' }}>
-        <a href="/" style={{ color: '#3182ce', textDecoration: 'none' }}>← Volver al inicio</a>
-      </div>
     </div>
   );
 }
