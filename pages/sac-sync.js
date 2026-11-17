@@ -190,21 +190,19 @@ export default function SACSync() {
   });
 
   return (
-    <div style={{ maxWidth: '720px', margin: '40px auto', padding: '0 20px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '4px' }}>
-          🔗 Sincronización con SAC
-        </h1>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-          Trae los movimientos nuevos del Poder Judicial de Córdoba a los expedientes que ya tenés en LexHub.
-        </p>
+    <div className="container lx-page" style={{ maxWidth: '760px' }}>
+      <div className="lx-page-head">
+        <div>
+          <h1>Sincronización con el SAC</h1>
+          <p>Trae los movimientos nuevos del Poder Judicial de Córdoba a los expedientes que ya tenés en LexHub.</p>
+        </div>
       </div>
 
       {/* Estado de conexión */}
       <div style={{ ...card, marginBottom: '16px' }}>
         {estadoConexion === 'verificando' && (
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            ⏳ Conectando con el SAC...
+            Conectando con el SAC…
           </div>
         )}
 

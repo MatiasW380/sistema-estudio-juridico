@@ -177,7 +177,7 @@ export default function LoginPage() {
             style={{
               width: '100%',
               padding: '12px',
-              backgroundColor: '#3182ce',
+              backgroundColor: '#2563eb',
               color: 'white',
               border: 'none',
               borderRadius: '8px',

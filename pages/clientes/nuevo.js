@@ -77,25 +77,21 @@ export default function NuevoCliente({ nextId }) {
   };
 
   return (
-    <div className="container">
-      <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Nuevo Cliente</h1>
-        <p>Crea un nuevo registro de cliente en el sistema</p>
+    <div className="container lx-page" style={{ maxWidth: '720px' }}>
+      <div className="exp-breadcrumb">
+        <button type="button" className="exp-breadcrumb-link" onClick={() => router.push('/clientes')}>Clientes</button>
+        <span className="exp-breadcrumb-sep">/</span>
+        <span>Nuevo</span>
+      </div>
+      <div className="lx-page-head" style={{ marginTop: 0 }}>
+        <div>
+          <h1>Nuevo cliente</h1>
+          <p>Se le asignará el número de cliente {nextId}</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
-        <div className="form-section">
-          <h2 className="form-section-title">Información Básica</h2>
-
-          <div className="form-group">
-            <label>ID Asignado</label>
-            <input
-              type="text"
-              value={nextId}
-              disabled
-            />
-            <span className="input-helper">El ID se asigna automáticamente al crear el cliente</span>
-          </div>
+      <form onSubmit={handleSubmit} className="lx-card cli-form">
+        <div>
 
           <div className="form-group">
             <label>Tipo de Cliente</label>
@@ -103,7 +99,6 @@ export default function NuevoCliente({ nextId }) {
               <option value="persona">Persona Física</option>
               <option value="empresa">Persona Jurídica</option>
             </select>
-            <span className="input-helper">Selecciona el tipo de cliente que estás registrando</span>
           </div>
 
           <div className="form-group">
@@ -154,27 +149,16 @@ export default function NuevoCliente({ nextId }) {
         </div>
 
         {error && (
-          <div className="form-note error">
-            <strong>Error:</strong> {error}
-          </div>
+          <div className="alert alert-urgent" style={{ marginTop: '4px' }}>{error}</div>
         )}
 
-        <div className="form-actions">
-          <div className="form-actions-left" />
-          <div className="form-actions-right">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => router.push('/clientes')}
-            >
+        <div className="cli-form-actions">
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" className="button button-secondary button-sm" onClick={() => router.push('/clientes')}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="button button-success"
-              disabled={cargando}
-            >
-              {cargando ? 'Guardando...' : 'Guardar Cliente'}
+            <button type="submit" className="button button-sm" disabled={cargando}>
+              {cargando ? 'Guardando…' : 'Crear cliente'}
             </button>
           </div>
         </div>

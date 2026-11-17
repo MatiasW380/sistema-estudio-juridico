@@ -101,18 +101,22 @@ export default function EditarCliente({ cliente }) {
   };
 
   return (
-    <div className="container">
-      <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Editar Cliente</h1>
-        <p>Modifica la información del cliente</p>
+    <div className="container lx-page" style={{ maxWidth: '720px' }}>
+      <div className="exp-breadcrumb">
+        <button type="button" className="exp-breadcrumb-link" onClick={() => router.push('/clientes')}>Clientes</button>
+        <span className="exp-breadcrumb-sep">/</span>
+        <button type="button" className="exp-breadcrumb-link" onClick={() => router.push(`/clientes/${id}`)}>{nombre || id}</button>
+        <span className="exp-breadcrumb-sep">/</span>
+        <span>Editar</span>
+      </div>
+      <div className="lx-page-head" style={{ marginTop: 0 }}>
+        <div>
+          <h1>Editar cliente</h1>
+          <p>Cliente n.º {id}</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
-        <div className="form-group">
-          <label>ID Cliente</label>
-          <input type="text" value={id} disabled />
-          <span className="input-helper">ID asignado automáticamente</span>
-        </div>
+      <form onSubmit={handleSubmit} className="lx-card cli-form">
 
         <div className="form-group">
           <label className="label-required">Nombre</label>
@@ -156,27 +160,16 @@ export default function EditarCliente({ cliente }) {
         </div>
 
         {error && (
-          <div className="form-note error" style={{ marginBottom: '16px' }}>
-            <strong>Error:</strong> {error}
-          </div>
+          <div className="alert alert-urgent" style={{ marginTop: '4px' }}>{error}</div>
         )}
 
-        <div className="form-actions">
-          <div className="form-actions-left" />
-          <div className="form-actions-right">
-            <button 
-              type="button" 
-              className="button button-secondary"
-              onClick={() => router.push(`/clientes/${id}`)}
-            >
+        <div className="cli-form-actions">
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" className="button button-secondary button-sm" onClick={() => router.push(`/clientes/${id}`)}>
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              className="button button-success"
-              disabled={cargando}
-            >
-              {cargando ? 'Guardando...' : 'Guardar Cambios'}
+            <button type="submit" className="button button-sm" disabled={cargando}>
+              {cargando ? 'Guardando…' : 'Guardar cambios'}
             </button>
           </div>
         </div>

@@ -175,20 +175,20 @@ button:focus-visible,
 }
 
 /* ============ PRIMARIO (acento) ============ */
-button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not(:disabled),
-.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not(:disabled) {
+button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled),
+.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled) {
   background-color: var(--color-cobalt);
   color: #ffffff;
   box-shadow: var(--shadow-xs);
 }
 
-button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not(:disabled):hover,
-.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not(:disabled):hover {
+button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):hover,
+.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):hover {
   background-color: var(--color-cobalt-dark);
 }
 
-button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not(:disabled):active,
-.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not(:disabled):active {
+button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):active,
+.button:not(.button-secondary):not(.button-danger):not(.button-ghost):not(.button-success):not(.button-warning):not(.button-info):not(.button-outline):not([class*='lx-']):not([class*='exp-']):not([class*='ia-']):not(:disabled):active {
   filter: brightness(0.96);
 }
 
@@ -2323,3 +2323,30 @@ button.lx-segment.is-active:not(:disabled) { background: var(--color-surface); c
 .ag-event-time { font-variant-numeric: tabular-nums; opacity: 0.8; margin-right: 4px; }
 .ag-more { margin-top: 2px; padding-left: 6px; font-size: 0.6875rem; color: var(--color-text-tertiary); }
 .ag-task-date { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8125rem; color: var(--color-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   21. ASISTENTE IA
+   ============================================================ */
+.ia-badge { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; color: #fff; background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+.ia-box { padding: 12px; }
+.ia-box textarea { border: none; box-shadow: none; padding: 6px 8px; min-height: 96px; resize: vertical; font-size: 0.9375rem; }
+.ia-box textarea:focus { box-shadow: none; }
+.ia-box:focus-within { border-color: #84adff; box-shadow: var(--focus-ring); }
+.ia-box-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 4px 0; border-top: 1px solid var(--color-border-light); }
+.ia-examples { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+.ia-example,
+button.ia-example:not(:disabled) {
+  justify-content: flex-start; height: auto; padding: 10px 14px;
+  background: var(--color-surface); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light); box-shadow: none;
+  font-size: 0.8125rem; font-weight: 400; white-space: normal; text-align: left;
+}
+button.ia-example:not(:disabled):hover { background: var(--color-surface); border-color: var(--color-border-strong); color: var(--color-text-primary); }
+.ia-answer { margin-top: 16px; }
+.ia-answer-text { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.7; color: var(--color-text-primary); }
+
+/* Formularios de alta y edición de cliente */
+.cli-form { padding: 24px; }
+.cli-form .form-group { margin-bottom: 16px; }
+.cli-form .input-helper { display: block; margin-top: 4px; font-size: 0.75rem; color: var(--color-text-tertiary); }
+.cli-form-actions { display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border-light); }

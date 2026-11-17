@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { Copy, Sparkles } from 'lucide-react';
 
 export default function IAGeneralPage() {
   const [consulta, setConsulta] = useState('');
@@ -37,7 +38,7 @@ export default function IAGeneralPage() {
       } else {
         let errorMsg = data.error || 'Error desconocido';
         if (response.status === 429) {
-          errorMsg = 'Límite de uso de Gemini alcanzado. Esperá 24 horas o verificá tu API Key.';
+          errorMsg = data.error || 'Gemini está recibiendo demasiadas consultas. Esperá un minuto y probá de nuevo.';
         }
         setMensaje('Error: ' + errorMsg);
       }
@@ -49,52 +50,61 @@ export default function IAGeneralPage() {
     }
   };
 
+  const ejemplos = [
+    '¿Qué pruebas son importantes en una privación de responsabilidad parental?',
+    '¿Cómo se fija la cuota alimentaria provisoria?',
+    '¿Qué plazos rigen para apelar una sentencia de familia en Córdoba?',
+  ];
+
   return (
-    <div className="container">
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ marginBottom: '4px' }}>Asistente IA General</h1>
-        <p style={{ margin: 0 }}>Consultas sobre derecho usando la biblioteca legal del sistema</p>
+    <div className="container lx-page" style={{ maxWidth: '860px' }}>
+      <div className="lx-page-head">
+        <div>
+          <h1><span className="ia-badge"><Sparkles size={16} /></span> Asistente IA</h1>
+          <p>Consultas sobre derecho usando la biblioteca legal cargada en LexHub (leyes, jurisprudencia y modelos)</p>
+        </div>
       </div>
 
-      <p style={{ color: '#64748b', marginBottom: '24px', fontSize: '0.95rem' }}>
-        Hacé consultas generales sobre derecho. La IA usará exclusivamente la biblioteca legal cargada en el sistema (leyes, jurisprudencia y doctrina).
-      </p>
-
-      <form onSubmit={handleSubmit} style={{ marginBottom: '24px' }}>
-        <div className="form-group">
-          <input
-            type="text"
-            value={consulta}
-            onChange={(e) => setConsulta(e.target.value)}
-            placeholder="Ej: ¿Qué pruebas son importantes para una privación de responsabilidad parental?"
-            disabled={cargando}
-          />
+      <form onSubmit={handleSubmit} className="lx-card ia-box">
+        <textarea
+          value={consulta}
+          onChange={(e) => setConsulta(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e); }}
+          placeholder="Escribí tu consulta…"
+          disabled={cargando}
+          rows={4}
+        />
+        <div className="ia-box-foot">
+          <span className="dash-hint">Ctrl + Enter para enviar</span>
+          <button type="submit" className="button button-sm lx-button-ai" disabled={cargando || !consulta.trim()}>
+            <Sparkles size={15} /> {cargando ? 'Consultando…' : 'Consultar'}
+          </button>
         </div>
-        <button type="submit" className="button button-primary" disabled={cargando}>
-          {cargando ? 'Consultando...' : 'Consultar'}
-        </button>
       </form>
 
-      {mensaje && (
-        <div className={`form-note ${mensaje.includes('Error') ? 'error' : 'success'}`} style={{ marginBottom: '24px' }}>
-          {mensaje}
+      {!respuesta && !cargando && (
+        <div className="ia-examples">
+          {ejemplos.map((e) => (
+            <button key={e} type="button" className="ia-example" onClick={() => setConsulta(e)}>{e}</button>
+          ))}
         </div>
       )}
 
+      {mensaje && mensaje.includes('Error') && (
+        <div className="alert alert-urgent" style={{ marginTop: '16px' }}>{mensaje}</div>
+      )}
+
+      {cargando && <div className="lx-empty" style={{ marginTop: '16px' }}>La IA está analizando tu consulta…</div>}
+
       {respuesta && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '20px',
-          borderRadius: '6px',
-          border: '1px solid #e2e8f0',
-          whiteSpace: 'pre-wrap',
-          lineHeight: '1.6',
-          maxHeight: '500px',
-          overflow: 'auto',
-          fontSize: '0.95rem',
-          color: '#334155'
-        }}>
-          {respuesta}
+        <div className="lx-card ia-answer">
+          <div className="dash-card-head" style={{ marginBottom: '10px' }}>
+            <h2><Sparkles size={15} style={{ color: '#7c3aed' }} /> Respuesta</h2>
+            <button type="button" className="button button-ghost button-sm" onClick={() => navigator.clipboard?.writeText(respuesta)}>
+              <Copy size={14} /> Copiar
+            </button>
+          </div>
+          <div className="ia-answer-text">{respuesta}</div>
         </div>
       )}
     </div>
